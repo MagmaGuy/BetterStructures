@@ -1,0 +1,147 @@
+package com.magmaguy.betterstructures.util;
+
+import org.bukkit.Material;
+
+public class IgnorableSurfaceMaterials {
+    private IgnorableSurfaceMaterials() {
+    }
+
+    public static boolean ignorable(Material material) {
+        switch (material) {
+            case ACACIA_LOG:
+            case BIRCH_LOG:
+            case DARK_OAK_LOG:
+            case JUNGLE_LOG:
+            case MANGROVE_LOG:
+            case OAK_LOG:
+            case SPRUCE_LOG:
+            case STRIPPED_ACACIA_LOG:
+            case STRIPPED_BIRCH_LOG:
+            case STRIPPED_DARK_OAK_LOG:
+            case STRIPPED_JUNGLE_LOG:
+            case STRIPPED_MANGROVE_LOG:
+            case STRIPPED_OAK_LOG:
+            case STRIPPED_SPRUCE_LOG:
+            case ACACIA_WOOD:
+            case BIRCH_WOOD:
+            case JUNGLE_WOOD:
+            case DARK_OAK_WOOD:
+            case OAK_WOOD:
+            case MANGROVE_WOOD:
+            case SPRUCE_WOOD:
+            case STRIPPED_ACACIA_WOOD:
+            case STRIPPED_BIRCH_WOOD:
+            case STRIPPED_DARK_OAK_WOOD:
+            case STRIPPED_JUNGLE_WOOD:
+            case STRIPPED_MANGROVE_WOOD:
+            case STRIPPED_OAK_WOOD:
+            case STRIPPED_SPRUCE_WOOD:
+            case MUSHROOM_STEM:
+            case BROWN_MUSHROOM_BLOCK:
+            case RED_MUSHROOM_BLOCK:
+            case SUGAR_CANE:
+            case BAMBOO:
+            case TALL_GRASS:
+            case WEEPING_VINES:
+            case VINE:
+            case TWISTING_VINES:
+            case CAVE_VINES_PLANT:
+            case CAVE_VINES:
+            case WEEPING_VINES_PLANT:
+            case TWISTING_VINES_PLANT:
+            case FLOWERING_AZALEA:
+            case CHORUS_FLOWER:
+            case CORNFLOWER:
+            case FLOWERING_AZALEA_LEAVES:
+            case SUNFLOWER:
+            case ACACIA_LEAVES:
+            case AZALEA_LEAVES:
+            case BIRCH_LEAVES:
+            case DARK_OAK_LEAVES:
+            case JUNGLE_LEAVES:
+            case MANGROVE_LEAVES:
+            case OAK_LEAVES:
+            case SPRUCE_LEAVES:
+            case DEAD_BUSH:
+            case SWEET_BERRY_BUSH:
+            case ROSE_BUSH:
+            case POPPY:
+            case DANDELION:
+            case BLUE_ORCHID:
+            case ALLIUM:
+            case AZURE_BLUET:
+            case ORANGE_TULIP:
+            case PINK_TULIP:
+            case RED_TULIP:
+            case WHITE_TULIP:
+            case OXEYE_DAISY:
+            case LILY_OF_THE_VALLEY:
+            case WITHER_ROSE:
+            case PEONY:
+            case COCOA:
+            case COCOA_BEANS:
+            case BAMBOO_SAPLING:
+            case SPRUCE_SAPLING:
+            case ACACIA_SAPLING:
+            case BIRCH_SAPLING:
+            case DARK_OAK_SAPLING:
+            case JUNGLE_SAPLING:
+            case OAK_SAPLING:
+            case MELON:
+            case POTATOES:
+            case CARROTS:
+            case BEETROOTS:
+            case WHEAT:
+            case AIR:
+            case CAVE_AIR:
+            case VOID_AIR:
+            case ACACIA_FENCE:
+            case ACACIA_FENCE_GATE:
+            case BIRCH_FENCE_GATE:
+            case BIRCH_FENCE:
+            case CRIMSON_FENCE:
+            case CRIMSON_FENCE_GATE:
+            case DARK_OAK_FENCE:
+            case DARK_OAK_FENCE_GATE:
+            case JUNGLE_FENCE:
+            case JUNGLE_FENCE_GATE:
+            case MANGROVE_FENCE:
+            case NETHER_BRICK_FENCE:
+            case OAK_FENCE:
+            case MANGROVE_FENCE_GATE:
+            case OAK_FENCE_GATE:
+            case SPRUCE_FENCE:
+            case SPRUCE_FENCE_GATE:
+            case WARPED_FENCE:
+            case WARPED_FENCE_GATE:
+            case FERN:
+            case GRASS:
+            case LILAC:
+            case SNOW_BLOCK:
+            case POWDER_SNOW:
+            case SNOW:
+            case CHORUS_PLANT:
+            case CRIMSON_STEM:
+            case STRIPPED_CRIMSON_STEM:
+            case STRIPPED_CRIMSON_HYPHAE:
+            case NETHER_WART_BLOCK:
+            case NETHER_WART:
+            case CRIMSON_ROOTS:
+            case CRIMSON_FUNGUS:
+            case SHROOMLIGHT:
+            case FIRE:
+            case WARPED_STEM:
+            case WARPED_FUNGUS:
+            case WARPED_HYPHAE:
+            case WARPED_NYLIUM:
+            case WARPED_ROOTS:
+            case STRIPPED_WARPED_HYPHAE:
+            case STRIPPED_WARPED_STEM:
+            case NETHER_SPROUTS:
+            case BONE_BLOCK:
+                return true;
+            default:
+                return false;
+        }
+    }
+}

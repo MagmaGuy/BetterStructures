@@ -1,0 +1,8 @@
+name: BetterStructures
+version: '1.0.0-SNAPSHOT-1'
+main: com.magmaguy.betterstructures.BetterStructures
+api-version: 1.14
+depend: [ WorldEdit ]
+authors: [ MagmaGuy ]
+description: A plugin that adds random structures to your Minecraft world!
+website: magmaguy.com
