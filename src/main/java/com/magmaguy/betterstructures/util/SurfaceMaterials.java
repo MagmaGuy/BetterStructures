@@ -2,8 +2,8 @@ package com.magmaguy.betterstructures.util;
 
 import org.bukkit.Material;
 
-public class IgnorableSurfaceMaterials {
-    private IgnorableSurfaceMaterials() {
+public class SurfaceMaterials {
+    private SurfaceMaterials() {
     }
 
     public static boolean ignorable(Material material) {
@@ -139,6 +139,66 @@ public class IgnorableSurfaceMaterials {
             case STRIPPED_WARPED_STEM:
             case NETHER_SPROUTS:
             case BONE_BLOCK:
+            case LARGE_FERN:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    public static boolean isPedestalMaterial(Material material){
+        switch (material){
+            case DIRT:
+            case COARSE_DIRT:
+            case ROOTED_DIRT:
+            case STONE:
+            case SNOW_BLOCK:
+            case POWDER_SNOW:
+            case SNOW:
+            case NETHERRACK:
+            case SOUL_SAND:
+            case END_STONE:
+            case DIRT_PATH:
+            case GRASS_BLOCK:
+            case GRAVEL:
+            case DEEPSLATE:
+            case DIORITE:
+            case CLAY:
+            case SAND:
+            case SANDSTONE:
+            case TERRACOTTA:
+            case BLACK_TERRACOTTA:
+            case BLUE_TERRACOTTA:
+            case BROWN_TERRACOTTA:
+            case CYAN_TERRACOTTA:
+            case GRAY_TERRACOTTA:
+            case GREEN_TERRACOTTA:
+            case LIGHT_BLUE_TERRACOTTA:
+            case LIGHT_GRAY_TERRACOTTA:
+            case LIME_TERRACOTTA:
+            case MAGENTA_TERRACOTTA:
+            case PINK_TERRACOTTA:
+            case ORANGE_TERRACOTTA:
+            case PURPLE_TERRACOTTA:
+            case RED_TERRACOTTA:
+            case WHITE_TERRACOTTA:
+            case YELLOW_TERRACOTTA:
+            case PODZOL:
+            case RED_SAND:
+            case MYCELIUM:
+            case BASALT:
+            case GRANITE:
+            case ANDESITE:
+            case BLACKSTONE:
+            case CALCITE:
+            case ICE:
+            case BLUE_ICE:
+            case FROSTED_ICE:
+            case PACKED_ICE:
+            case MOSS_BLOCK:
+            case MOSSY_COBBLESTONE:
+            case WARPED_NYLIUM:
+            case CRIMSON_NYLIUM:
                 return true;
             default:
                 return false;

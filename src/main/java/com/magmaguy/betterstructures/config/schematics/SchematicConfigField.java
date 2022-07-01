@@ -5,7 +5,6 @@ import com.magmaguy.betterstructures.config.generators.GeneratorConfig;
 import com.magmaguy.betterstructures.config.generators.GeneratorConfigFields;
 import lombok.Getter;
 import lombok.Setter;
-import org.bukkit.Bukkit;
 import org.bukkit.Material;
 
 public class SchematicConfigField extends CustomConfigFields {
@@ -22,7 +21,7 @@ public class SchematicConfigField extends CustomConfigFields {
     private GeneratorConfigFields generatorConfigFields;
     @Getter
     @Setter
-    private Material pedestalMaterial = Material.DIRT; //todo: make null and add advanced processing to the Anything scanner
+    private Material pedestalMaterial = null;
 
 
     /**
@@ -42,5 +41,5 @@ public class SchematicConfigField extends CustomConfigFields {
         this.pedestalMaterial = processEnum("pedestalMaterial", pedestalMaterial, null, Material.class, false);
         this.generatorConfigFilename = processString("generatorConfigFilename", generatorConfigFilename, null, true);
         this.generatorConfigFields = GeneratorConfig.getConfigFields(generatorConfigFilename);
-     }
+    }
 }

@@ -3,6 +3,7 @@ package com.magmaguy.betterstructures.config;
 
 import com.magmaguy.betterstructures.MetadataHandler;
 import com.magmaguy.betterstructures.util.WarningMessage;
+import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.reflections.Reflections;
@@ -25,6 +26,7 @@ public class CustomConfig {
 
     public CustomConfig(String folderName, Class<? extends CustomConfigFields> customConfigFields, CustomConfigFields schematicConfigField) {
         this.folderName = folderName;
+        Bukkit.getLogger().info("Directory: " + folderName);
         this.customConfigFields = customConfigFields;
         initialize(schematicConfigField);
     }

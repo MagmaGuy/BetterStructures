@@ -13,7 +13,7 @@ import java.util.List;
 
 public class ConfigurationEngine {
     public static File fileCreator(String path, String fileName) {
-        File file = new File(MetadataHandler.PLUGIN.getDataFolder().getPath() + "/" + path + "/", fileName);
+        File file = new File(MetadataHandler.PLUGIN.getDataFolder().getPath() + File.separatorChar + path + File.separatorChar, fileName);
         return fileCreator(file);
     }
 

@@ -3,7 +3,8 @@ package com.magmaguy.betterstructures.buildingfitter;
 import com.magmaguy.betterstructures.buildingfitter.util.SchematicPicker;
 import com.magmaguy.betterstructures.config.generators.GeneratorConfigFields;
 import com.magmaguy.betterstructures.schematics.SchematicContainer;
-import com.magmaguy.betterstructures.util.IgnorableSurfaceMaterials;
+import com.magmaguy.betterstructures.util.SpigotMessage;
+import com.magmaguy.betterstructures.util.SurfaceMaterials;
 import com.magmaguy.betterstructures.worldedit.Schematic;
 import com.sk89q.worldedit.WorldEditException;
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
@@ -15,8 +16,10 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.BlockData;
+import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -40,6 +43,9 @@ public class FitAnything {
 
 
     protected void paste(Location location) {
+
+        //Set pedestal material before the paste so bedrock blocks get replaced correcty
+        assignPedestalMaterial(location);
 
         //These blocks are dynamic and get replaced with world contents, need to be replaced back after the paste to preserve the mechanic
         Set<BlockVector3> barrierBlocks = new HashSet<>();
@@ -79,7 +85,7 @@ public class FitAnything {
                             worldBlock = adjustedLocation.clone().add(new Vector(x, y, z)).getBlock();
                             if (worldBlock.getType().isAir()) {
                                 //Case for air - replace with filler block
-                                worldBlock.setType(schematicContainer.getSchematicConfigField().getPedestalMaterial());
+                                worldBlock.setType(pedestalMaterial);
                             }
                             //Case for any solid block - do not replace world block
                             schematicClipboard.setBlock(adjustedClipboardLocation, BukkitAdapter.adapt(worldBlock.getBlockData()));
@@ -92,7 +98,14 @@ public class FitAnything {
 
 
         Schematic.paste(schematicClipboard, location);
-        Bukkit.broadcastMessage("[BetterStructures] Placed new structure at " + location.toString());
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            if (player.hasPermission("betterstructures.warn"))
+                player.spigot().sendMessage(
+                        SpigotMessage.commandHoverMessage("[BetterStructures] New building generated! Click to teleport.",
+                                "Click to teleport to " + location.toString(),
+                                "/tp " + location.getBlockX() + " " + location.getBlockY() + " " + location.getBlockZ())
+                );
+        }
         for (BlockVector3 blockVector3 : barrierBlocks) {
             try {
                 schematicClipboard.setBlock(blockVector3, BukkitAdapter.adapt(barrierBlock));
@@ -113,15 +126,39 @@ public class FitAnything {
         clearTrees(location);
     }
 
-    private void addPedestal(Location location) {
-        Material pedestalMaterial;
-/*
+    Material pedestalMaterial = null;
+
+    private void assignPedestalMaterial(Location location) {
+        pedestalMaterial = schematicContainer.getSchematicConfigField().getPedestalMaterial();
+        //If the pedestal material is null, fill in with the most common sampled ground source
+        if (pedestalMaterial != null) return;
+        Location lowestCorner = location.clone().add(schematicOffset);
+        HashMap<Material, Integer> materials = new HashMap<>();
         for (int x = 0; x < schematicClipboard.getDimensions().getX(); x += 3)
             for (int z = 0; z < schematicClipboard.getDimensions().getZ(); z += 3)
-                for (int y = -1; y > -11; y--) {
+                for (int y = -1; y > -3; y--) {
+                    Block groundBlock = lowestCorner.clone().add(new Vector(x, 0, z)).getBlock();
+                    if (SurfaceMaterials.isPedestalMaterial(groundBlock.getType()))
+                        if (materials.get(groundBlock.getType()) != null)
+                            materials.
+                                    put(groundBlock.getType(), materials.get(groundBlock.getType()) + 1);
+                        else
+                            materials.put(groundBlock.getType(), 1);
+                }
+        //Case for if all blocks were air, this should be impossible
+        if (materials.isEmpty()) pedestalMaterial = Material.DIRT;
+        Material mostCommonMaterial = null;
+        int highestScore = 0;
+        for (Material material : materials.keySet()) {
+            if (highestScore < materials.get(material)) {
+                highestScore = materials.get(material);
+                mostCommonMaterial = material;
+            }
+        }
+        pedestalMaterial = mostCommonMaterial;
+    }
 
-
- */
+    private void addPedestal(Location location) {
         Location lowestCorner = location.clone().add(schematicOffset);
         for (int x = 0; x < schematicClipboard.getDimensions().getX(); x++)
             for (int z = 0; z < schematicClipboard.getDimensions().getZ(); z++) {
@@ -130,8 +167,8 @@ public class FitAnything {
                 if (groundBlock.getType().isAir()) continue;
                 for (int y = -1; y > -11; y--) {
                     Block block = lowestCorner.clone().add(new Vector(x, y, z)).getBlock();
-                    if (IgnorableSurfaceMaterials.ignorable(block.getType()))
-                        block.setType(schematicContainer.getSchematicConfigField().getPedestalMaterial());
+                    if (SurfaceMaterials.ignorable(block.getType()))
+                        block.setType(pedestalMaterial);
                     else
                         //Pedestal only fills until it hits the first solid block
                         break;
@@ -149,7 +186,7 @@ public class FitAnything {
             for (int x = 0; x < schematicClipboard.getDimensions().getX(); x++)
                 for (int z = 0; z < schematicClipboard.getDimensions().getZ(); z++) {
                     Block block = highestCorner.clone().add(new Vector(x, y, z)).getBlock();
-                    if (IgnorableSurfaceMaterials.ignorable(block.getType()) && !block.getType().isAir()) {
+                    if (SurfaceMaterials.ignorable(block.getType()) && !block.getType().isAir()) {
                         detectedTreeElement = true;
                         block.setType(Material.AIR);
                     }

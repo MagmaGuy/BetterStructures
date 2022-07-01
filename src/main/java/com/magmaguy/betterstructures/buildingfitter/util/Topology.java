@@ -1,6 +1,6 @@
 package com.magmaguy.betterstructures.buildingfitter.util;
 
-import com.magmaguy.betterstructures.util.IgnorableSurfaceMaterials;
+import com.magmaguy.betterstructures.util.SurfaceMaterials;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -47,7 +47,7 @@ public class Topology {
                     return 0;
                 }
                 int safeGuard = 0;
-                while (IgnorableSurfaceMaterials.ignorable(projectedLocation.getBlock().getType())) {
+                while (SurfaceMaterials.ignorable(projectedLocation.getBlock().getType())) {
                     if (projectedLocation.getBlock().getType().equals(Material.VOID_AIR)) return 0;
                     projectedLocation.setY(projectedLocation.getY() - 1);
                     safeGuard++;
@@ -76,7 +76,7 @@ public class Topology {
             //This is middle point for the height in the Nether
             location.setY(63);
             //The nether has specific topology
-            if (IgnorableSurfaceMaterials.ignorable(location.getBlock().getType())) {
+            if (SurfaceMaterials.ignorable(location.getBlock().getType())) {
                 //Basically air for all intents and purposes, scan down
                 for (int y = (int) location.getY(); y > 30; y--) {
                     location.setY(y);
@@ -97,12 +97,12 @@ public class Topology {
 
     private static boolean validNetherSurface(Location location) {
         //See if current block is solid and if the one above it is air or similar to air
-        if (!(!IgnorableSurfaceMaterials.ignorable(location.getBlock().getType()) &&
-                IgnorableSurfaceMaterials.ignorable(location.getBlock().getLocation().add(new Vector(0, 1, 0)).getBlock().getType())))
+        if (!(!SurfaceMaterials.ignorable(location.getBlock().getType()) &&
+                SurfaceMaterials.ignorable(location.getBlock().getLocation().add(new Vector(0, 1, 0)).getBlock().getType())))
             return false;
         //Scan 10 blocks vertically to make sure they're all air
         for (int i = 1; i < 11; i++) {
-            if (IgnorableSurfaceMaterials.ignorable(location.clone().add(new Vector(0, i, 0)).getBlock().getType()))
+            if (SurfaceMaterials.ignorable(location.clone().add(new Vector(0, i, 0)).getBlock().getType()))
                 continue;
             return false;
         }
@@ -114,9 +114,9 @@ public class Topology {
         //Sort to make math on points faster
         Collections.sort(heights);
         //Check difference between lowest and highest points
-        if (heights.get(0) - heights.get(heights.size() - 1) >= 10) {
+        if (Math.abs(heights.get(0) - heights.get(heights.size() - 1)) >= 10) {
             //The schematicOffset between the lowest and highest blocks is too great
-            Bukkit.getLogger().info("Exited because of height difference");
+            Bukkit.getLogger().info("Exited because of extreme height difference");
             return 0;
         }
 

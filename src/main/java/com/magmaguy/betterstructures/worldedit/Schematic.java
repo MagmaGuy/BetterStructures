@@ -26,14 +26,16 @@ public class Schematic {
     private Schematic() {
     }
 
-    public static Clipboard load(String schematicName) {
+    public static Clipboard load(File schematicFile) {
+        /*
         File file = Path.of(Bukkit.getPluginManager().getPlugin("BetterStructures").getDataFolder().getAbsolutePath()
-                + File.separatorChar + "schematics" + File.separatorChar + schematicName).toFile();
+                + File.separatorChar + "schematics" + File.separatorChar + schematicFile).toFile();
+         */
         Clipboard clipboard;
 
-        ClipboardFormat format = ClipboardFormats.findByFile(file);
+        ClipboardFormat format = ClipboardFormats.findByFile(schematicFile);
 
-        try (ClipboardReader reader = format.getReader(new FileInputStream(file))) {
+        try (ClipboardReader reader = format.getReader(new FileInputStream(schematicFile))) {
             clipboard = reader.read();
         } catch (FileNotFoundException e) {
             throw new RuntimeException(e);
