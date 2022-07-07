@@ -6,15 +6,15 @@ import org.bukkit.block.Biome;
 
 import java.util.Arrays;
 
-public class GeneratorSurfaceBarrenConfig extends GeneratorConfigFields {
-    public GeneratorSurfaceBarrenConfig(){
-        super("generator_surface_barren", true, Arrays.asList(StructureType.SURFACE));
+public class GeneratorSkySnowyConfig extends GeneratorConfigFields {
+    public GeneratorSkySnowyConfig(){
+        super("generator_sky_snowy", true, Arrays.asList(StructureType.SKY));
         setValidBiomes(Arrays.asList(
-                Biome.BADLANDS,
-                Biome.SAVANNA,
-                Biome.SAVANNA_PLATEAU,
-                Biome.WINDSWEPT_SAVANNA,
-                Biome.MUSHROOM_FIELDS
+                Biome.SNOWY_TAIGA,
+                Biome.SNOWY_BEACH,
+                Biome.SNOWY_PLAINS,
+                Biome.SNOWY_SLOPES,
+                Biome.ICE_SPIKES
         ));
         setChestEntries(DefaultChestContents.overworldContents());
     }

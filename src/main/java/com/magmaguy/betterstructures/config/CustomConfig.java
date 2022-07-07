@@ -26,7 +26,6 @@ public class CustomConfig {
 
     public CustomConfig(String folderName, Class<? extends CustomConfigFields> customConfigFields, CustomConfigFields schematicConfigField) {
         this.folderName = folderName;
-        Bukkit.getLogger().info("Directory: " + folderName);
         this.customConfigFields = customConfigFields;
         initialize(schematicConfigField);
     }

@@ -6,9 +6,9 @@ import org.bukkit.World;
 
 import java.util.Arrays;
 
-public class GeneratorSurfaceEndConfig extends GeneratorConfigFields {
-    public GeneratorSurfaceEndConfig() {
-        super("generator_surface_end", true, Arrays.asList(StructureType.SURFACE));
+public class GeneratorSkyEndConfig  extends GeneratorConfigFields  {
+    public GeneratorSkyEndConfig(){
+        super("generator_sky_end", true, Arrays.asList(StructureType.SKY));
         setValidWorldEnvironments(Arrays.asList(World.Environment.THE_END));
         setChestEntries(DefaultChestContents.endContents());
     }

@@ -1,6 +1,7 @@
 package com.magmaguy.betterstructures.config.generators.premade;
 
 import com.magmaguy.betterstructures.config.generators.GeneratorConfigFields;
+import com.magmaguy.betterstructures.util.DefaultChestContents;
 import org.bukkit.block.Biome;
 
 import java.util.Arrays;
@@ -11,5 +12,6 @@ public class GeneratorSurfaceDesertConfig extends GeneratorConfigFields {
         setValidBiomes(Arrays.asList(
                 Biome.DESERT
         ));
+        setChestEntries(DefaultChestContents.overworldContents());
     }
 }

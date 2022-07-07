@@ -2,14 +2,14 @@ package com.magmaguy.betterstructures.config.generators.premade;
 
 import com.magmaguy.betterstructures.config.generators.GeneratorConfigFields;
 import com.magmaguy.betterstructures.util.DefaultChestContents;
-import org.bukkit.World;
+import org.bukkit.block.Biome;
 
 import java.util.Arrays;
 
-public class GeneratorSurfaceNetherConfig extends GeneratorConfigFields {
-    public GeneratorSurfaceNetherConfig() {
-        super("generator_surface_nether", true, Arrays.asList(StructureType.SURFACE));
-        setValidWorldEnvironments(Arrays.asList(World.Environment.NETHER));
+public class GeneratorSkySoulSandConfig extends GeneratorConfigFields {
+    public GeneratorSkySoulSandConfig() {
+        super("generator_sky_soul_sand", true, Arrays.asList(StructureType.SKY));
+        setValidBiomes(Arrays.asList(Biome.SOUL_SAND_VALLEY));
         setChestEntries(DefaultChestContents.netherContents());
     }
 }

@@ -1,5 +1,6 @@
 package com.magmaguy.betterstructures.buildingfitter;
 
+import com.magmaguy.betterstructures.buildingfitter.util.LocationProjector;
 import com.magmaguy.betterstructures.buildingfitter.util.SchematicPicker;
 import com.magmaguy.betterstructures.config.generators.GeneratorConfigFields;
 import com.magmaguy.betterstructures.schematics.SchematicContainer;
@@ -15,7 +16,10 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
+import org.bukkit.block.Chest;
 import org.bukkit.block.data.BlockData;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
 
@@ -83,7 +87,7 @@ public class FitAnything {
                                 bedrockBlock = BukkitAdapter.adapt(schematicClipboard.getBlock(adjustedClipboardLocation));
 
                             worldBlock = adjustedLocation.clone().add(new Vector(x, y, z)).getBlock();
-                            if (worldBlock.getType().isAir()) {
+                            if (worldBlock.getType().isAir() || worldBlock.isLiquid()) {
                                 //Case for air - replace with filler block
                                 worldBlock.setType(pedestalMaterial);
                             }
@@ -122,13 +126,19 @@ public class FitAnything {
             }
         }
 
-        addPedestal(location);
-        clearTrees(location);
+        if (!(this instanceof FitAirBuilding)) {
+            addPedestal(location);
+            clearTrees(location);
+        }
+
+        fillChests();
+        spawnEntities();
     }
 
     Material pedestalMaterial = null;
 
     private void assignPedestalMaterial(Location location) {
+        if (this instanceof FitAirBuilding || this instanceof FitLiquidBuilding) return;
         pedestalMaterial = schematicContainer.getSchematicConfigField().getPedestalMaterial();
         //If the pedestal material is null, fill in with the most common sampled ground source
         if (pedestalMaterial != null) return;
@@ -191,6 +201,25 @@ public class FitAnything {
                         block.setType(Material.AIR);
                     }
                 }
+        }
+    }
+
+    private void fillChests() {
+        for (Vector chestPosition : schematicContainer.getChestLocations()) {
+            Location chestLocation = LocationProjector.project(location, schematicOffset, chestPosition);
+            schematicContainer.getGeneratorConfigFields().getChestContents().rollChestContents((Chest) chestLocation.getBlock().getState());
+        }
+    }
+
+    private void spawnEntities() {
+        for (Vector entityPosition : schematicContainer.getVanillaSpawns().keySet()) {
+            Location signLocation = LocationProjector.project(location, schematicOffset, entityPosition);
+            signLocation.getBlock().setType(Material.AIR);
+            Entity entity = signLocation.getWorld().spawnEntity(signLocation, schematicContainer.getVanillaSpawns().get(entityPosition));
+            entity.setPersistent(true);
+            if (entity instanceof LivingEntity) {
+                ((LivingEntity) entity).setRemoveWhenFarAway(false);
+            }
         }
     }
 

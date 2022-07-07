@@ -114,9 +114,9 @@ public class Topology {
         //Sort to make math on points faster
         Collections.sort(heights);
         //Check difference between lowest and highest points
-        if (Math.abs(heights.get(0) - heights.get(heights.size() - 1)) >= 10) {
+        if (Math.abs(heights.get(0) - heights.get(heights.size() - 1)) >= 20) {
             //The schematicOffset between the lowest and highest blocks is too great
-            Bukkit.getLogger().info("Exited because of extreme height difference");
+            //Bukkit.getLogger().info("Exited because of extreme height difference");
             return 0;
         }
 

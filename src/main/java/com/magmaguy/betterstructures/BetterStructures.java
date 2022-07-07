@@ -6,6 +6,7 @@ import com.magmaguy.betterstructures.config.ValidWorldsConfig;
 import com.magmaguy.betterstructures.config.generators.GeneratorConfig;
 import com.magmaguy.betterstructures.config.schematics.SchematicConfig;
 import com.magmaguy.betterstructures.listeners.NewChunkLoadEvent;
+import com.magmaguy.betterstructures.schematics.SchematicContainer;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -34,6 +35,7 @@ public final class BetterStructures extends JavaPlugin {
     @Override
     public void onDisable() {
         // Plugin shutdown logic
+        SchematicContainer.shutdown();
         Bukkit.getLogger().info("[BetterStructures] Shutdown!");
     }
 }

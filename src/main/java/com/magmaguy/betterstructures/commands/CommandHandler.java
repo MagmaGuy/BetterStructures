@@ -11,12 +11,16 @@ import cloud.commandframework.minecraft.extras.MinecraftExceptionHandler;
 import cloud.commandframework.minecraft.extras.MinecraftHelp;
 import com.magmaguy.betterstructures.MetadataHandler;
 import com.magmaguy.betterstructures.buildingfitter.FitSurfaceBuilding;
+import com.magmaguy.betterstructures.config.generators.GeneratorConfig;
+import com.magmaguy.betterstructures.config.generators.GeneratorConfigFields;
 import com.magmaguy.betterstructures.schematics.SchematicContainer;
+import com.magmaguy.betterstructures.util.ItemStackSerialization;
 import com.magmaguy.betterstructures.util.WarningMessage;
 import net.kyori.adventure.platform.bukkit.BukkitAudiences;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -107,6 +111,34 @@ public class CommandHandler {
                 .handler(commandContext -> {
                     placeSchematic(commandContext.get("schematic"), (Player) commandContext.getSender());
                 }));
+
+        // /em reload
+        manager.command(builder.literal("reload")
+                .meta(CommandMeta.DESCRIPTION, "Reloads the plugin. Works almost every time.")
+                .senderType(CommandSender.class)
+                .permission("elitemobs.*")
+                .handler(commandContext -> {
+                    MetadataHandler.PLUGIN.onDisable();
+                    MetadataHandler.PLUGIN.onLoad();
+                    MetadataHandler.PLUGIN.onEnable();
+                    commandContext.getSender().sendMessage("[BetterStructures] Reload attempted. This may not 100% work. Restart instead if it didn't!!");
+                }));
+
+        ArrayList<String> generators = new ArrayList<>(GeneratorConfig.getGeneratorConfigurations().keySet());
+
+        manager.command(builder.literal("lootify")
+                .senderType(Player.class)
+                .argument(StringArgument.<CommandSender>newBuilder("generator")
+                                .withSuggestionsProvider(((objectCommandContext, s) -> generators)),
+                        ArgumentDescription.of("File name of the generator"))
+                .meta(CommandMeta.DESCRIPTION, "Adds a held item to the loot settings of a generator")
+                .argument(StringArgument.<CommandSender>newBuilder("minAmount"))
+                .argument(StringArgument.<CommandSender>newBuilder("maxAmount"))
+                .argument(StringArgument.<CommandSender>newBuilder("chance"))
+                .permission("betterstructures.*")
+                .handler(commandContext -> {
+                    lootify(commandContext.get("generator"), commandContext.get("minAmount"), commandContext.get("maxAmount"), commandContext.get("chance"), (Player) commandContext.getSender());
+                }));
     }
 
     private void placeSchematic(String schematicFile, Player player) {
@@ -127,5 +159,53 @@ public class CommandHandler {
         } catch (Exception ex) {
             player.sendMessage("[BetterStructures] Invalid schematic!");
         }
+    }
+
+    private void lootify(String generator, String minAmount, String maxAmount, String chance, Player player) {
+        GeneratorConfigFields generatorConfigFields = GeneratorConfig.getConfigFields(generator);
+        if (generatorConfigFields == null) {
+            player.sendMessage("[BetterStructures] Not a valid generator! Try again.");
+            return;
+        }
+        int minAmountInt;
+        try {
+            minAmountInt = Integer.parseInt(minAmount);
+        } catch (Exception exception) {
+            player.sendMessage("[BetterStructures] Not a valid minimum amount! Try again.");
+            return;
+        }
+        if (minAmountInt < 1) {
+            player.sendMessage("[BetterStructures] Minimum amount should not be less than 1! This value will not be saved.");
+            return;
+        }
+        int maxAmountInt;
+        try {
+            maxAmountInt = Integer.parseInt(maxAmount);
+        } catch (Exception exception) {
+            player.sendMessage("[BetterStructures] Not a valid maximum amount! Try again.");
+            return;
+        }
+        if (maxAmountInt > 64) {
+            player.sendMessage("[BetterStructures] Maximum amount should not be more than 64! If you want more than one stack, make multiple entries. This value will not be saved.");
+            return;
+        }
+        double chanceDouble;
+        try {
+            chanceDouble = Double.parseDouble(chance);
+        } catch (Exception exception) {
+            player.sendMessage("[BetterStructures] Not a valid chance! Try again.");
+            return;
+        }
+        if (chanceDouble > 1) {
+            player.sendMessage("[BetterStructures] Chance should never be higher than 1.0! 1.0 is 100%, 0.0 is 0%, 0.5 is 50%! This value will not be saved.");
+            return;
+        }
+        ItemStack itemStack = player.getInventory().getItemInMainHand();
+        if (itemStack == null || itemStack.getType().isAir()) {
+            player.sendMessage("[BetterStructures] You need to be holding an item in order to register the item you're holding! This value will not be saved.");
+            return;
+        }
+        String configString = "serialized=" + ItemStackSerialization.toBase64(itemStack) + ":amount=" + minAmount + "-" + maxAmount + ":chance=" + chance;
+        generatorConfigFields.addChestEntry(configString, player);
     }
 }

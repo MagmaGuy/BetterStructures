@@ -6,9 +6,9 @@ import org.bukkit.block.Biome;
 
 import java.util.Arrays;
 
-public class GeneratorSurfaceGrasslandConfig extends GeneratorConfigFields {
-    public GeneratorSurfaceGrasslandConfig(){
-        super("generator_surface_grassland", true, Arrays.asList(StructureType.SURFACE));
+public class GeneratorSkyGrasslandConfig extends GeneratorConfigFields {
+    public GeneratorSkyGrasslandConfig(){
+        super("generator_sky_grassland", true, Arrays.asList(StructureType.SKY));
         setValidBiomes(Arrays.asList(
                 Biome.PLAINS,
                 Biome.FOREST,
@@ -24,7 +24,7 @@ public class GeneratorSurfaceGrasslandConfig extends GeneratorConfigFields {
                 Biome.SUNFLOWER_PLAINS,
                 Biome.WINDSWEPT_FOREST,
                 Biome.WINDSWEPT_HILLS
-                ));
+        ));
         setChestEntries(DefaultChestContents.overworldContents());
     }
 }

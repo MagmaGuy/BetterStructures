@@ -1,5 +1,8 @@
 package com.magmaguy.betterstructures.listeners;
 
+import com.magmaguy.betterstructures.MetadataHandler;
+import com.magmaguy.betterstructures.buildingfitter.FitAirBuilding;
+import com.magmaguy.betterstructures.buildingfitter.FitLiquidBuilding;
 import com.magmaguy.betterstructures.buildingfitter.FitSurfaceBuilding;
 import com.magmaguy.betterstructures.buildingfitter.FitUndergroundShallowBuilding;
 import com.magmaguy.betterstructures.buildingfitter.util.FitUndergroundDeepBuilding;
@@ -12,10 +15,14 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.world.ChunkLoadEvent;
+import org.bukkit.scheduler.BukkitRunnable;
 
+import java.util.HashSet;
 import java.util.Random;
 
 public class NewChunkLoadEvent implements Listener {
+
+    private static HashSet<Chunk> loadingChunks = new HashSet<>();
     private static Random random = null;
     private static int surfaceOffset;
     private static int shallowUndergroundOffset;
@@ -23,8 +30,17 @@ public class NewChunkLoadEvent implements Listener {
     private static int airOffset;
     private static int liquidOffset;
 
-    @EventHandler(priority = EventPriority.HIGHEST)
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onChunkLoad(ChunkLoadEvent event) {
+        if (loadingChunks.contains(event.getChunk())) return;
+        //In some cases the same chunk gets loaded (at least at an event level) several times, this prevents the plugin from doing multiple scans and placing multiple builds, enhancing performance
+        loadingChunks.add(event.getChunk());
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                loadingChunks.remove(event.getChunk());
+            }
+        }.runTaskLater(MetadataHandler.PLUGIN, 20L);
         if (!event.isNewChunk()) return;
         if (!ValidWorldsConfig.getValidWorlds().get(event.getWorld())) return;
         if (random == null) {
@@ -45,7 +61,6 @@ public class NewChunkLoadEvent implements Listener {
     private void surfaceScanner(Chunk chunk) {
         if (SchematicContainer.getSchematics().get(GeneratorConfigFields.StructureType.SURFACE).isEmpty()) return;
         if (!seededSimplexRandomization(chunk, 0.95, surfaceOffset)) return;
-        //Bukkit.broadcastMessage("Spawning a structure!");
         new FitSurfaceBuilding(chunk);
     }
 
@@ -53,29 +68,33 @@ public class NewChunkLoadEvent implements Listener {
         if (SchematicContainer.getSchematics().get(GeneratorConfigFields.StructureType.UNDERGROUND_SHALLOW).isEmpty())
             return;
         if (!seededSimplexRandomization(chunk, 0.95, shallowUndergroundOffset)) return;
-        //Bukkit.broadcastMessage("Spawning an underground structure!");
-        new FitUndergroundShallowBuilding(chunk);
+        FitUndergroundShallowBuilding.fit(chunk);
     }
 
     private void deepUndergroundScanner(Chunk chunk) {
         if (SchematicContainer.getSchematics().get(GeneratorConfigFields.StructureType.UNDERGROUND_DEEP).isEmpty())
             return;
         if (!seededSimplexRandomization(chunk, 0.95, deepUndergroundOffset)) return;
-        //Bukkit.broadcastMessage("Spawning a deep underground structure!");
-        new FitUndergroundDeepBuilding(chunk);
+        FitUndergroundDeepBuilding.fit(chunk);
     }
 
     private void skyScanner(Chunk chunk) {
         if (SchematicContainer.getSchematics().get(GeneratorConfigFields.StructureType.SKY).isEmpty()) return;
+        if (!seededSimplexRandomization(chunk, 0.98, airOffset)) return;
+        new FitAirBuilding(chunk);
     }
 
     private void liquidSurfaceScanner(Chunk chunk) {
         if (SchematicContainer.getSchematics().get(GeneratorConfigFields.StructureType.LIQUID_SURFACE).isEmpty())
             return;
+        if (!seededSimplexRandomization(chunk, 0.98, liquidOffset))
+            return;
+        new FitLiquidBuilding(chunk);
     }
 
 
     private boolean seededSimplexRandomization(Chunk chunk, double strictness, int offset) {
         return (SimplexNoise.noise(chunk.getX() + (double) offset, chunk.getZ() + (double) offset) > strictness);
     }
+
 }

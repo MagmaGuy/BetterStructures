@@ -6,9 +6,9 @@ import org.bukkit.block.Biome;
 
 import java.util.Arrays;
 
-public class GeneratorSurfaceBarrenConfig extends GeneratorConfigFields {
-    public GeneratorSurfaceBarrenConfig(){
-        super("generator_surface_barren", true, Arrays.asList(StructureType.SURFACE));
+public class GeneratorSkyBarrenConfig extends GeneratorConfigFields {
+    public GeneratorSkyBarrenConfig(){
+        super("generator_sky_barren", true, Arrays.asList(StructureType.SKY));
         setValidBiomes(Arrays.asList(
                 Biome.BADLANDS,
                 Biome.SAVANNA,

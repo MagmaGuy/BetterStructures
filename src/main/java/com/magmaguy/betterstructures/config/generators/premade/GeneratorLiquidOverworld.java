@@ -6,9 +6,9 @@ import org.bukkit.World;
 
 import java.util.Arrays;
 
-public class GeneratorSurfaceGlobalConfig extends GeneratorConfigFields {
-    public GeneratorSurfaceGlobalConfig() {
-        super("generator_surface_global", true, Arrays.asList(StructureType.SURFACE));
+public class GeneratorLiquidOverworld extends GeneratorConfigFields {
+    public GeneratorLiquidOverworld() {
+        super("generator_liquid_overworld", true, Arrays.asList(StructureType.LIQUID_SURFACE));
         setValidWorldEnvironments(Arrays.asList(World.Environment.NORMAL, World.Environment.CUSTOM));
         setChestEntries(DefaultChestContents.overworldContents());
     }

@@ -18,6 +18,12 @@ public class SchematicConfig extends CustomConfig {
         super("schematics", "", SchematicConfigField.class);
         schematicConfigurations.clear();
 
+        File readMeFile = new File(MetadataHandler.PLUGIN.getDataFolder(), "schematics" + File.separatorChar + "ReadMe.txt");
+        if (!readMeFile.exists()) {
+            readMeFile.getParentFile().mkdirs();
+            MetadataHandler.PLUGIN.saveResource("schematics" + File.separatorChar + "ReadMe.txt", false);
+        }
+
         HashMap<File, Clipboard> clipboards = new HashMap();
         //Initialize schematics
         for (File file : new File(MetadataHandler.PLUGIN.getDataFolder().getAbsolutePath() + File.separatorChar + "schematics").listFiles())

@@ -1,10 +1,13 @@
 package com.magmaguy.betterstructures.config.generators;
 
+import com.magmaguy.betterstructures.MetadataHandler;
+import com.magmaguy.betterstructures.chests.ChestContents;
 import com.magmaguy.betterstructures.config.CustomConfigFields;
 import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.World;
 import org.bukkit.block.Biome;
+import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -23,23 +26,28 @@ public class GeneratorConfigFields extends CustomConfigFields {
 
     @Getter
     @Setter
-    List<StructureType> structureTypes = new ArrayList<>(Arrays.asList(StructureType.UNDEFINED));
-    private
+    private List<StructureType> structureTypes = new ArrayList<>(Arrays.asList(StructureType.UNDEFINED));
     @Getter
     @Setter
-    int lowestYLevel = -59;
+    private int lowestYLevel = -59;
     @Getter
     @Setter
-    int highestYLevel = 320;
+    private int highestYLevel = 320;
     @Getter
     @Setter
-    List<World> validWorlds = new ArrayList<>();
+    private List<World> validWorlds = new ArrayList<>();
     @Getter
     @Setter
-    List<World.Environment> validWorldEnvironments = new ArrayList<>();
+    private List<World.Environment> validWorldEnvironments = new ArrayList<>();
     @Getter
     @Setter
-    List<Biome> validBiomes = new ArrayList<>();
+    private List<Biome> validBiomes = new ArrayList<>();
+    @Getter
+    @Setter
+    List<String> chestEntries = new ArrayList<>();
+    @Getter
+    private ChestContents chestContents = null;
+
 
     /**
      * Used by plugin-generated files (defaults)
@@ -65,5 +73,22 @@ public class GeneratorConfigFields extends CustomConfigFields {
         this.validWorlds = processWorldList("validWorlds", validWorlds, new ArrayList<>(), false);
         this.validWorldEnvironments = processEnumList("validWorldEnvironments", validWorldEnvironments, null, World.Environment.class, false);
         this.validBiomes = processEnumList("validBiomes", validBiomes, new ArrayList<>(), Biome.class, false);
+        this.chestEntries = processStringList("chestEntries", chestEntries, new ArrayList<>(), false);
+        chestContents = new ChestContents(chestEntries, this);
+    }
+
+    public void addChestEntry(String entry, Player player) {
+        chestEntries.add(entry);
+        fileConfiguration.set("chestEntries", chestEntries);
+        try {
+            fileConfiguration.save(file);
+        } catch (Exception ex) {
+            player.sendMessage("[BetterStructures] Failed to save entry to file! Report this to the developer.");
+            return;
+        }
+        MetadataHandler.PLUGIN.onDisable();
+        MetadataHandler.PLUGIN.onLoad();
+        MetadataHandler.PLUGIN.onEnable();
+        player.sendMessage("[BetterStructures] Reloaded plugin to add chest entry! It should now be live.");
     }
 }
