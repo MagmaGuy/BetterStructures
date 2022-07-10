@@ -1,6 +1,7 @@
 package com.magmaguy.betterstructures.buildingfitter;
 
 import com.magmaguy.betterstructures.buildingfitter.util.TerrainAdequacy;
+import com.magmaguy.betterstructures.config.DefaultConfig;
 import com.magmaguy.betterstructures.config.generators.GeneratorConfigFields;
 import com.magmaguy.betterstructures.schematics.SchematicContainer;
 import com.magmaguy.betterstructures.util.WorldEditUtils;
@@ -16,11 +17,12 @@ public class FitUndergroundBuilding extends FitAnything {
     private GeneratorConfigFields.StructureType structureType;
 
     //For commands
-    public FitUndergroundBuilding(Chunk chunk, SchematicContainer schematicContainer, int lowestY, int highestY) {
+    public FitUndergroundBuilding(Chunk chunk, SchematicContainer schematicContainer, int lowestY, int highestY, GeneratorConfigFields.StructureType structureType) {
         this.lowestY = lowestY;
         this.highestY = highestY;
         this.schematicContainer = schematicContainer;
         this.schematicClipboard = schematicContainer.getClipboard();
+        this.structureType = structureType;
         scan(chunk);
     }
 
@@ -190,13 +192,40 @@ public class FitUndergroundBuilding extends FitAnything {
         }
 
         schematicOffset = WorldEditUtils.getSchematicOffset(schematicClipboard);
-        for (int chunkX = -searchRadius; chunkX < searchRadius + 1; chunkX += 4) {
-            for (int chunkZ = -searchRadius; chunkZ < searchRadius + 1; chunkZ += 4) {
-                chunkScan(originalLocation, chunkX, chunkZ);
+
+        //Make sure the schematic will not go beyond the bedrock level
+        switch (originalLocation.getWorld().getEnvironment()) {
+            case NORMAL:
+            case CUSTOM:
+                if (originalLocation.getY() - Math.abs(schematicOffset.getY()) < DefaultConfig.getLowestYNormalCustom())
+                    originalLocation.setY(DefaultConfig.getLowestYNormalCustom() + 1 + Math.abs(schematicOffset.getY()));
+                else if (originalLocation.getY() + Math.abs(schematicOffset.getY()) - schematicClipboard.getRegion().getHeight() > DefaultConfig.getHighestYNormalCustom())
+                    originalLocation.setY(DefaultConfig.getHighestYNormalCustom() - schematicClipboard.getRegion().getHeight() + Math.abs(schematicOffset.getY()));
+                break;
+            case NETHER:
+                if (originalLocation.getY() - Math.abs(schematicOffset.getY()) < DefaultConfig.getLowestYNether())
+                    originalLocation.setY(DefaultConfig.getLowestYNether() + 1 + Math.abs(schematicOffset.getY()));
+                else if (originalLocation.getY() + Math.abs(schematicOffset.getY()) - schematicClipboard.getRegion().getHeight() > DefaultConfig.getHighestYNether())
+                    originalLocation.setY(DefaultConfig.getHighestYNether() - schematicClipboard.getRegion().getHeight() + Math.abs(schematicOffset.getY()));
+                break;
+            case THE_END:
+                if (originalLocation.getY() - Math.abs(schematicOffset.getY()) < DefaultConfig.getLowestYEnd())
+                    originalLocation.setY(DefaultConfig.getLowestYEnd() + 1 + Math.abs(schematicOffset.getY()));
+                else if (originalLocation.getY() + Math.abs(schematicOffset.getY()) - schematicClipboard.getRegion().getHeight() > DefaultConfig.getLowestYEnd())
+                    originalLocation.setY(DefaultConfig.getLowestYEnd() - schematicClipboard.getRegion().getHeight() + Math.abs(schematicOffset.getY()));
+                break;
+        }
+
+        chunkScan(originalLocation, 0, 0);
+        if (highestScore < 90)
+            for (int chunkX = -searchRadius; chunkX < searchRadius + 1; chunkX++) {
+                for (int chunkZ = -searchRadius; chunkZ < searchRadius + 1; chunkZ++) {
+                    if (chunkX == 0 && chunkZ == 0) continue;
+                    chunkScan(originalLocation, chunkX, chunkZ);
+                    if (highestScore > 90) break;
+                }
                 if (highestScore > 90) break;
             }
-            if (highestScore > 90) break;
-        }
 
         if (location == null)
             return;

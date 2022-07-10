@@ -18,14 +18,11 @@ public class SchematicPicker {
                 !schematicContainer.isValidEnvironment(naiveAnchorLocation.getWorld().getEnvironment()) ||
                         !schematicContainer.isValidBiome(naiveAnchorLocation.getBlock().getBiome()) ||
                         !schematicContainer.isValidYLevel(naiveAnchorLocation.getBlockY()));
-        //Bukkit.getLogger().info("Schematic container size: " + schematicContainers.size());
         if (schematicContainers.isEmpty()) return null;
         HashMap<Integer, Double> probabilities = new HashMap<>();
         for (int i = 0; i < schematicContainers.size(); i++)
             probabilities.put(i, schematicContainers.get(i).getSchematicConfigField().getWeight());
-        //Bukkit.getLogger().info("probabilities size: " + probabilities.keySet().size());
         SchematicContainer schematicContainer = schematicContainers.get(WeighedProbability.pickWeighedProbability(probabilities));
-        //Bukkit.getLogger().info("Schematic container was null " + (schematicContainer == null));
         return schematicContainer;
     }
 }

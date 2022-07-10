@@ -1,11 +1,14 @@
 package com.magmaguy.betterstructures.buildingfitter;
 
+import com.magmaguy.betterstructures.MetadataHandler;
+import com.magmaguy.betterstructures.buildingfitter.util.FitUndergroundDeepBuilding;
 import com.magmaguy.betterstructures.buildingfitter.util.LocationProjector;
 import com.magmaguy.betterstructures.buildingfitter.util.SchematicPicker;
 import com.magmaguy.betterstructures.config.generators.GeneratorConfigFields;
 import com.magmaguy.betterstructures.schematics.SchematicContainer;
 import com.magmaguy.betterstructures.util.SpigotMessage;
 import com.magmaguy.betterstructures.util.SurfaceMaterials;
+import com.magmaguy.betterstructures.util.WarningMessage;
 import com.magmaguy.betterstructures.worldedit.Schematic;
 import com.sk89q.worldedit.WorldEditException;
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
@@ -13,14 +16,16 @@ import com.sk89q.worldedit.extent.clipboard.Clipboard;
 import com.sk89q.worldedit.math.BlockVector3;
 import com.sk89q.worldedit.world.block.BlockState;
 import org.bukkit.Bukkit;
+import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
-import org.bukkit.block.Chest;
+import org.bukkit.block.Container;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 
 import java.util.HashMap;
@@ -38,6 +43,27 @@ public class FitAnything {
     protected double highestScore = 10;
     protected Location location = null;
 
+    public static void commandBasedCreation(Chunk chunk, GeneratorConfigFields.StructureType structureType, SchematicContainer container) {
+        switch (structureType) {
+            case SKY:
+                new FitAirBuilding(chunk, container);
+                break;
+            case SURFACE:
+                new FitSurfaceBuilding(chunk, container);
+                break;
+            case LIQUID_SURFACE:
+                new FitLiquidBuilding(chunk, container);
+                break;
+            case UNDERGROUND_DEEP:
+                FitUndergroundDeepBuilding.fit(chunk, container);
+                break;
+            case UNDERGROUND_SHALLOW:
+                FitUndergroundShallowBuilding.fit(chunk, container);
+                break;
+            default:
+        }
+    }
+
     protected void setSchematicFilename(Location location, GeneratorConfigFields.StructureType structureType) {
         if (schematicClipboard != null) return;
         schematicContainer = SchematicPicker.pick(location, structureType);
@@ -47,98 +73,134 @@ public class FitAnything {
 
 
     protected void paste(Location location) {
+        FitAnything fitAnything = this;
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                //Set pedestal material before the paste so bedrock blocks get replaced correctly
+                assignPedestalMaterial(location);
+                if (pedestalMaterial == null)
+                    switch (location.getWorld().getEnvironment()) {
+                        case NORMAL:
+                        case CUSTOM:
+                            pedestalMaterial = Material.STONE;
+                            break;
+                        case NETHER:
+                            pedestalMaterial = Material.NETHERRACK;
+                            break;
+                        case THE_END:
+                            pedestalMaterial = Material.END_STONE;
+                            break;
+                        default:
+                            pedestalMaterial = Material.STONE;
+                    }
 
-        //Set pedestal material before the paste so bedrock blocks get replaced correcty
-        assignPedestalMaterial(location);
-
-        //These blocks are dynamic and get replaced with world contents, need to be replaced back after the paste to preserve the mechanic
-        Set<BlockVector3> barrierBlocks = new HashSet<>();
-        Set<BlockVector3> bedrockBlocks = new HashSet<>();
-        BlockData barrierBlock = null;
-        BlockData bedrockBlock = null;
+                //These blocks are dynamic and get replaced with world contents, need to be replaced back after the paste to preserve the mechanic
+                Set<BlockVector3> barrierBlocks = new HashSet<>();
+                Set<BlockVector3> bedrockBlocks = new HashSet<>();
+                BlockData barrierBlock = null;
+                BlockData bedrockBlock = null;
 
 
-        //adjusts the offset just for the prescan, not needed for worldedit as that figures it out on its own
-        Location adjustedLocation = location.clone().add(schematicOffset);
-        for (int x = 0; x < schematicClipboard.getDimensions().getX(); x++)
-            for (int y = 0; y < schematicClipboard.getDimensions().getY(); y++)
-                for (int z = 0; z < schematicClipboard.getDimensions().getZ(); z++) {
-                    BlockVector3 adjustedClipboardLocation = BlockVector3.at(
-                            x + schematicClipboard.getMinimumPoint().getX(),
-                            y + schematicClipboard.getMinimumPoint().getY(),
-                            z + schematicClipboard.getMinimumPoint().getZ());
-                    BlockState blockState = schematicClipboard.getBlock(adjustedClipboardLocation);
-                    Material material = BukkitAdapter.adapt(blockState.getBlockType());
-                    Block worldBlock = adjustedLocation.clone().add(new Vector(x, y, z)).getBlock();
-                    if (material == Material.BARRIER) {
-                        //special behavior: do not replace
-                        try {
-                            if (barrierBlock == null)
-                                barrierBlock = BukkitAdapter.adapt(schematicClipboard.getBlock(adjustedClipboardLocation));
-                            schematicClipboard.setBlock(adjustedClipboardLocation, BukkitAdapter.adapt(worldBlock.getBlockData()));
-                            barrierBlocks.add(adjustedClipboardLocation);
-                        } catch (WorldEditException e) {
-                            throw new RuntimeException(e);
-                        }
-                    } else if (material == Material.BEDROCK) {
-                        //special behavior: replace if air
-                        try {
-                            if (bedrockBlock == null)
-                                bedrockBlock = BukkitAdapter.adapt(schematicClipboard.getBlock(adjustedClipboardLocation));
+                //adjusts the offset just for the prescan, not needed for worldedit as that figures it out on its own
+                Location adjustedLocation = location.clone().add(schematicOffset);
+                for (int x = 0; x < schematicClipboard.getDimensions().getX(); x++)
+                    for (int y = 0; y < schematicClipboard.getDimensions().getY(); y++)
+                        for (int z = 0; z < schematicClipboard.getDimensions().getZ(); z++) {
+                            BlockVector3 adjustedClipboardLocation = BlockVector3.at(
+                                    x + schematicClipboard.getMinimumPoint().getX(),
+                                    y + schematicClipboard.getMinimumPoint().getY(),
+                                    z + schematicClipboard.getMinimumPoint().getZ());
+                            BlockState blockState = schematicClipboard.getBlock(adjustedClipboardLocation);
+                            Material material = BukkitAdapter.adapt(blockState.getBlockType());
+                            Block worldBlock = adjustedLocation.clone().add(new Vector(x, y, z)).getBlock();
+                            if (material == Material.BARRIER) {
+                                //special behavior: do not replace
+                                try {
+                                    if (barrierBlock == null)
+                                        barrierBlock = BukkitAdapter.adapt(schematicClipboard.getBlock(adjustedClipboardLocation));
+                                    schematicClipboard.setBlock(adjustedClipboardLocation, BukkitAdapter.adapt(worldBlock.getBlockData()));
+                                    barrierBlocks.add(adjustedClipboardLocation);
+                                } catch (WorldEditException e) {
+                                    throw new RuntimeException(e);
+                                }
+                            } else if (material == Material.BEDROCK) {
+                                //special behavior: replace if air
+                                try {
+                                    if (bedrockBlock == null)
+                                        bedrockBlock = BukkitAdapter.adapt(schematicClipboard.getBlock(adjustedClipboardLocation));
 
-                            worldBlock = adjustedLocation.clone().add(new Vector(x, y, z)).getBlock();
-                            if (worldBlock.getType().isAir() || worldBlock.isLiquid()) {
-                                //Case for air - replace with filler block
-                                worldBlock.setType(pedestalMaterial);
+                                    worldBlock = adjustedLocation.clone().add(new Vector(x, y, z)).getBlock();
+                                    if (worldBlock.getType().isAir() || worldBlock.isLiquid()) {
+                                        //Case for air - replace with filler block
+                                        worldBlock.setType(pedestalMaterial);
+                                    }
+                                    //Case for any solid block - do not replace world block
+                                    schematicClipboard.setBlock(adjustedClipboardLocation, BukkitAdapter.adapt(worldBlock.getBlockData()));
+                                    bedrockBlocks.add(adjustedClipboardLocation);
+                                } catch (WorldEditException e) {
+                                    throw new RuntimeException(e);
+                                }
                             }
-                            //Case for any solid block - do not replace world block
-                            schematicClipboard.setBlock(adjustedClipboardLocation, BukkitAdapter.adapt(worldBlock.getBlockData()));
-                            bedrockBlocks.add(adjustedClipboardLocation);
-                        } catch (WorldEditException e) {
-                            throw new RuntimeException(e);
                         }
+
+
+                Schematic.paste(schematicClipboard, location);
+                for (Player player : Bukkit.getOnlinePlayers()) {
+                    if (player.hasPermission("betterstructures.warn"))
+                        player.spigot().sendMessage(
+                                SpigotMessage.commandHoverMessage("[BetterStructures] New building generated! Click to teleport.",
+                                        "Click to teleport to " + location.toString(),
+                                        "/tp " + location.getBlockX() + " " + location.getBlockY() + " " + location.getBlockZ())
+                        );
+                }
+                for (BlockVector3 blockVector3 : barrierBlocks) {
+                    try {
+                        schematicClipboard.setBlock(blockVector3, BukkitAdapter.adapt(barrierBlock));
+                    } catch (WorldEditException e) {
+                        throw new RuntimeException(e);
                     }
                 }
 
+                for (BlockVector3 blockVector3 : bedrockBlocks) {
+                    try {
+                        schematicClipboard.setBlock(blockVector3, BukkitAdapter.adapt(bedrockBlock));
+                    } catch (WorldEditException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
 
-        Schematic.paste(schematicClipboard, location);
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            if (player.hasPermission("betterstructures.warn"))
-                player.spigot().sendMessage(
-                        SpigotMessage.commandHoverMessage("[BetterStructures] New building generated! Click to teleport.",
-                                "Click to teleport to " + location.toString(),
-                                "/tp " + location.getBlockX() + " " + location.getBlockY() + " " + location.getBlockZ())
-                );
-        }
-        for (BlockVector3 blockVector3 : barrierBlocks) {
-            try {
-                schematicClipboard.setBlock(blockVector3, BukkitAdapter.adapt(barrierBlock));
-            } catch (WorldEditException e) {
-                throw new RuntimeException(e);
+                if (!(fitAnything instanceof FitAirBuilding)) {
+                    try {
+                        addPedestal(location);
+                    } catch (Exception exception) {
+                        new WarningMessage("Failed to correctly assign pedestal material!", true);
+                    }
+                    try {
+                        clearTrees(location);
+                    } catch (Exception exception) {
+                        new WarningMessage("Failed to correctly clear trees!", true);
+                    }
+                }
+                try {
+                    fillChests();
+                } catch (Exception exception) {
+                    new WarningMessage("Failed to correctly fill chests!", true);
+                }
+                try {
+                    spawnEntities();
+                } catch (Exception exception) {
+                    new WarningMessage("Failed to correctly spawn entities!", true);
+                }
             }
-        }
+        }.runTaskLater(MetadataHandler.PLUGIN, 0);
 
-        for (BlockVector3 blockVector3 : bedrockBlocks) {
-            try {
-                schematicClipboard.setBlock(blockVector3, BukkitAdapter.adapt(bedrockBlock));
-            } catch (WorldEditException e) {
-                throw new RuntimeException(e);
-            }
-        }
-
-        if (!(this instanceof FitAirBuilding)) {
-            addPedestal(location);
-            clearTrees(location);
-        }
-
-        fillChests();
-        spawnEntities();
     }
 
     Material pedestalMaterial = null;
 
     private void assignPedestalMaterial(Location location) {
-        if (this instanceof FitAirBuilding || this instanceof FitLiquidBuilding) return;
+        if (this instanceof FitAirBuilding) return;
         pedestalMaterial = schematicContainer.getSchematicConfigField().getPedestalMaterial();
         //If the pedestal material is null, fill in with the most common sampled ground source
         if (pedestalMaterial != null) return;
@@ -169,6 +231,7 @@ public class FitAnything {
     }
 
     private void addPedestal(Location location) {
+        if (this instanceof FitAirBuilding || this instanceof FitLiquidBuilding) return;
         Location lowestCorner = location.clone().add(schematicOffset);
         for (int x = 0; x < schematicClipboard.getDimensions().getX(); x++)
             for (int z = 0; z < schematicClipboard.getDimensions().getZ(); z++) {
@@ -207,14 +270,16 @@ public class FitAnything {
     private void fillChests() {
         for (Vector chestPosition : schematicContainer.getChestLocations()) {
             Location chestLocation = LocationProjector.project(location, schematicOffset, chestPosition);
-            schematicContainer.getGeneratorConfigFields().getChestContents().rollChestContents((Chest) chestLocation.getBlock().getState());
+            schematicContainer.getGeneratorConfigFields().getChestContents().rollChestContents((Container) chestLocation.getBlock().getState());
         }
     }
 
     private void spawnEntities() {
         for (Vector entityPosition : schematicContainer.getVanillaSpawns().keySet()) {
-            Location signLocation = LocationProjector.project(location, schematicOffset, entityPosition);
+            Location signLocation = LocationProjector.project(location, schematicOffset, entityPosition).clone();
             signLocation.getBlock().setType(Material.AIR);
+            //If mobs spawn in corners they might choke on adjacent walls
+            signLocation.clone().add(new Vector(0.5,0,0.5));
             Entity entity = signLocation.getWorld().spawnEntity(signLocation, schematicContainer.getVanillaSpawns().get(entityPosition));
             entity.setPersistent(true);
             if (entity instanceof LivingEntity) {

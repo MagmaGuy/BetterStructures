@@ -7,6 +7,7 @@ import lombok.Getter;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.block.Chest;
+import org.bukkit.block.Container;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayList;
@@ -79,7 +80,7 @@ public class ChestContents {
         }
     }
 
-    public void rollChestContents(Chest chest) {
+    public void rollChestContents(Container chest) {
         for (ChestEntry chestEntry : chestEntries) {
             ItemStack itemStack = chestEntry.rollEntry();
             if (itemStack == null) continue;

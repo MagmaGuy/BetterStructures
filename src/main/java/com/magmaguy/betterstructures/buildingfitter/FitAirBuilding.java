@@ -1,6 +1,7 @@
 package com.magmaguy.betterstructures.buildingfitter;
 
 import com.magmaguy.betterstructures.buildingfitter.util.TerrainAdequacy;
+import com.magmaguy.betterstructures.config.DefaultConfig;
 import com.magmaguy.betterstructures.config.generators.GeneratorConfigFields;
 import com.magmaguy.betterstructures.schematics.SchematicContainer;
 import com.magmaguy.betterstructures.util.WorldEditUtils;
@@ -25,7 +26,21 @@ public class FitAirBuilding extends FitAnything {
 
     private void scan(Chunk chunk) {
         //The 8 offset on x and y is to center the anchor on the chunk, the system adds 100 blocks
-        Location originalLocation = chunk.getWorld().getHighestBlockAt(chunk.getX() * 16 + 8, chunk.getZ() * 16 + 8).getLocation().add(new Vector(0, 100, 0));
+        int altitude = 0;
+        switch (chunk.getWorld().getEnvironment()) {
+            case NORMAL:
+            case CUSTOM:
+                altitude = ThreadLocalRandom.current().nextInt(DefaultConfig.getNormalCustomAirBuildingMinAltitude(), DefaultConfig.getNormalCustomAirBuildingMaxAltitude() + 1);
+                break;
+            case NETHER:
+                //this is dealt with later
+                altitude = 0;
+                break;
+            case THE_END:
+                altitude = ThreadLocalRandom.current().nextInt(DefaultConfig.getEndAirBuildMinAltitude(), DefaultConfig.getEndAirBuildMinAltitude() + 1);
+                break;
+        }
+        Location originalLocation = chunk.getWorld().getHighestBlockAt(chunk.getX() * 16 + 8, chunk.getZ() * 16 + 8).getLocation().add(new Vector(0, altitude, 0));
 
         switch (chunk.getWorld().getEnvironment()) {
             case CUSTOM:
@@ -90,13 +105,16 @@ public class FitAirBuilding extends FitAnything {
         }
         schematicOffset = WorldEditUtils.getSchematicOffset(schematicClipboard);
 
-        for (int chunkX = -searchRadius; chunkX < searchRadius + 1; chunkX += 4) {
-            for (int chunkZ = -searchRadius; chunkZ < searchRadius + 1; chunkZ += 4) {
-                chunkScan(originalLocation, chunkX, chunkZ);
+        chunkScan(originalLocation, 0, 0);
+        if (location == null)
+            for (int chunkX = -searchRadius; chunkX < searchRadius + 1; chunkX++) {
+                for (int chunkZ = -searchRadius; chunkZ < searchRadius + 1; chunkZ++) {
+                    if (chunkX == 0 && chunkZ == 0) continue;
+                    chunkScan(originalLocation, chunkX, chunkZ);
+                    if (location != null) break;
+                }
                 if (location != null) break;
             }
-            if (location != null) break;
-        }
         if (location == null) {
             //Bukkit.broadcastMessage("Yo your locations are whack!");
             return;

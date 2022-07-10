@@ -33,12 +33,13 @@ public class FitLiquidBuilding extends FitAnything {
         switch (chunk.getWorld().getEnvironment()) {
             case CUSTOM:
             case NORMAL:
+                if (!originalLocation.getBlock().isLiquid()) return;
                 break;
             case NETHER:
                 int netherLavaOceanHeight = 31;
                 originalLocation.setY(netherLavaOceanHeight);
                 if (originalLocation.getBlock().getType() != Material.LAVA) {
-                   return;
+                    return;
                 }
                 for (int i = 1; i < 20; i++)
                     if (!originalLocation.clone().add(new Vector(0, i, 0)).getBlock().getType().isAir()) {
@@ -52,13 +53,17 @@ public class FitLiquidBuilding extends FitAnything {
             return;
         }
         schematicOffset = WorldEditUtils.getSchematicOffset(schematicClipboard);
-        for (int chunkX = -searchRadius; chunkX < searchRadius + 1; chunkX += 4) {
-            for (int chunkZ = -searchRadius; chunkZ < searchRadius + 1; chunkZ += 4) {
-                chunkScan(originalLocation, chunkX, chunkZ);
-                if (highestScore > 50) break;
+
+        chunkScan(originalLocation, 0, 0);
+        if (highestScore < 90)
+            for (int chunkX = -searchRadius; chunkX < searchRadius + 1; chunkX++) {
+                for (int chunkZ = -searchRadius; chunkZ < searchRadius + 1; chunkZ++) {
+                    if (chunkX == 0 && chunkZ == 0) continue;
+                    chunkScan(originalLocation, chunkX, chunkZ);
+                    if (highestScore >= 90) break;
+                }
+                if (highestScore >= 90) break;
             }
-            if (highestScore > 50) break;
-        }
 
         if (location == null) {
             //Bukkit.broadcastMessage("Yo your locations are whack!");
@@ -69,9 +74,13 @@ public class FitLiquidBuilding extends FitAnything {
     }
 
     private void chunkScan(Location originalLocation, int chunkX, int chunkZ) {
-        Location iteratedLocation = originalLocation.clone().add(new Vector(chunkX * 16, 0, chunkZ * 16));
+        Location iteratedLocation = originalLocation.clone().add(new Vector(chunkX * 16, 1, chunkZ * 16));
         double newScore = TerrainAdequacy.scan(scanStep, schematicClipboard, iteratedLocation, schematicOffset, TerrainAdequacy.ScanType.LIQUID);
-        if (newScore == startingScore) location = iteratedLocation;
+        if (newScore < 90) return;
+        if (newScore == startingScore) {
+            highestScore = newScore;
+            location = iteratedLocation;
+        }
     }
 
 }

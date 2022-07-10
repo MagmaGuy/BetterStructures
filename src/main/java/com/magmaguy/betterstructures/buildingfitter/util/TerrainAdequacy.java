@@ -62,7 +62,10 @@ public class TerrainAdequacy {
                     return projectedWorldLocation.getBlock().getType().isAir();
                 } else {
                     //for underwater level
-                    return projectedWorldLocation.getBlock().isLiquid();
+                    if (schematicBlockMaterial == Material.WATER || schematicBlockMaterial == Material.LAVA)
+                        return projectedWorldLocation.getBlock().isLiquid();
+                    else
+                        return true;
                 }
             default:
                 return false;

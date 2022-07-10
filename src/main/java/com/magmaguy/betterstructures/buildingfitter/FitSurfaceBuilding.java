@@ -33,13 +33,16 @@ public class FitSurfaceBuilding extends FitAnything {
             return;
         }
         schematicOffset = WorldEditUtils.getSchematicOffset(schematicClipboard);
-        for (int chunkX = -searchRadius; chunkX < searchRadius + 1; chunkX += 4) {
-            for (int chunkZ = -searchRadius; chunkZ < searchRadius + 1; chunkZ += 4) {
-                chunkScan(originalLocation, chunkX, chunkZ);
+
+        chunkScan(originalLocation, 0, 0);
+        if (highestScore < 50)
+            for (int chunkX = -searchRadius; chunkX < searchRadius + 1; chunkX++) {
+                for (int chunkZ = -searchRadius; chunkZ < searchRadius + 1; chunkZ++) {
+                    chunkScan(originalLocation, chunkX, chunkZ);
+                    if (highestScore > 50) break;
+                }
                 if (highestScore > 50) break;
             }
-            if (highestScore > 50) break;
-        }
 
         if (location == null) {
             //Bukkit.broadcastMessage("Yo your locations are whack!");

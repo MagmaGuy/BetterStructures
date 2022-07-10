@@ -10,6 +10,7 @@ import com.magmaguy.betterstructures.config.ValidWorldsConfig;
 import com.magmaguy.betterstructures.config.generators.GeneratorConfigFields;
 import com.magmaguy.betterstructures.schematics.SchematicContainer;
 import com.magmaguy.betterstructures.util.SimplexNoise;
+import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -32,6 +33,7 @@ public class NewChunkLoadEvent implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onChunkLoad(ChunkLoadEvent event) {
+        if (!event.isNewChunk()) return;
         if (loadingChunks.contains(event.getChunk())) return;
         //In some cases the same chunk gets loaded (at least at an event level) several times, this prevents the plugin from doing multiple scans and placing multiple builds, enhancing performance
         loadingChunks.add(event.getChunk());
@@ -41,21 +43,22 @@ public class NewChunkLoadEvent implements Listener {
                 loadingChunks.remove(event.getChunk());
             }
         }.runTaskLater(MetadataHandler.PLUGIN, 20L);
-        if (!event.isNewChunk()) return;
-        if (!ValidWorldsConfig.getValidWorlds().get(event.getWorld())) return;
-        if (random == null) {
-            random = new Random(event.getChunk().getWorld().getSeed());
-            surfaceOffset = random.nextInt(1, 1000000);
-            shallowUndergroundOffset = random.nextInt(1, 100000);
-            deepUndergroundOffset = random.nextInt(1, 10000);
-            airOffset = random.nextInt(1, 1000);
-            liquidOffset = random.nextInt(1, 100);
-        }
-        surfaceScanner(event.getChunk());
-        shallowUndergroundScanner(event.getChunk());
-        deepUndergroundScanner(event.getChunk());
-        skyScanner(event.getChunk());
-        liquidSurfaceScanner(event.getChunk());
+        Bukkit.getScheduler().runTaskAsynchronously(MetadataHandler.PLUGIN, bukkitTask -> {
+            if (!ValidWorldsConfig.getValidWorlds().get(event.getWorld())) return;
+            if (random == null) {
+                random = new Random(event.getChunk().getWorld().getSeed());
+                surfaceOffset = random.nextInt(1, 1000000);
+                shallowUndergroundOffset = random.nextInt(1, 100000);
+                deepUndergroundOffset = random.nextInt(1, 10000);
+                airOffset = random.nextInt(1, 1000);
+                liquidOffset = random.nextInt(1, 100);
+            }
+            surfaceScanner(event.getChunk());
+            shallowUndergroundScanner(event.getChunk());
+            deepUndergroundScanner(event.getChunk());
+            skyScanner(event.getChunk());
+            liquidSurfaceScanner(event.getChunk());
+        } );
     }
 
     private void surfaceScanner(Chunk chunk) {
@@ -80,14 +83,14 @@ public class NewChunkLoadEvent implements Listener {
 
     private void skyScanner(Chunk chunk) {
         if (SchematicContainer.getSchematics().get(GeneratorConfigFields.StructureType.SKY).isEmpty()) return;
-        if (!seededSimplexRandomization(chunk, 0.98, airOffset)) return;
+        if (!seededSimplexRandomization(chunk, 0.99, airOffset)) return;
         new FitAirBuilding(chunk);
     }
 
     private void liquidSurfaceScanner(Chunk chunk) {
         if (SchematicContainer.getSchematics().get(GeneratorConfigFields.StructureType.LIQUID_SURFACE).isEmpty())
             return;
-        if (!seededSimplexRandomization(chunk, 0.98, liquidOffset))
+        if (!seededSimplexRandomization(chunk, 0.99, liquidOffset))
             return;
         new FitLiquidBuilding(chunk);
     }

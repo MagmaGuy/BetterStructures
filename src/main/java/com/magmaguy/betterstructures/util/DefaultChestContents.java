@@ -6,9 +6,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class DefaultChestContents {
-    private static double normalChance = 0.01;
-    private static double lowChance = 0.005;
-    private static double extraRare = 0.001;
+    private static double normalChance = 0.02;
+    private static double lowChance = 0.01;
+    private static double extraRare = 0.002;
 
     public static List<String> overworldContents() {
         List<String> list = new ArrayList<>();

@@ -10,6 +10,7 @@ import cloud.commandframework.meta.CommandMeta;
 import cloud.commandframework.minecraft.extras.MinecraftExceptionHandler;
 import cloud.commandframework.minecraft.extras.MinecraftHelp;
 import com.magmaguy.betterstructures.MetadataHandler;
+import com.magmaguy.betterstructures.buildingfitter.FitAnything;
 import com.magmaguy.betterstructures.buildingfitter.FitSurfaceBuilding;
 import com.magmaguy.betterstructures.config.generators.GeneratorConfig;
 import com.magmaguy.betterstructures.config.generators.GeneratorConfigFields;
@@ -24,6 +25,7 @@ import org.bukkit.inventory.ItemStack;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.function.Function;
 
 import static net.kyori.adventure.text.Component.text;
@@ -99,17 +101,20 @@ public class CommandHandler {
 
         ArrayList<String> loadedSchematics = new ArrayList<>();
         SchematicContainer.getSchematics().values().forEach(schematicContainer -> loadedSchematics.add(schematicContainer.getClipboardFilename()));
-
+        ArrayList<String> schematictypes = new ArrayList<>(Arrays.asList(GeneratorConfigFields.StructureType.SURFACE.toString(), GeneratorConfigFields.StructureType.UNDERGROUND_SHALLOW.toString(), GeneratorConfigFields.StructureType.UNDERGROUND_DEEP.toString(), GeneratorConfigFields.StructureType.SKY.toString(), GeneratorConfigFields.StructureType.LIQUID_SURFACE.toString()));
         // /bs place <schematic>
         manager.command(builder.literal("place")
                 .senderType(Player.class)
                 .argument(StringArgument.<CommandSender>newBuilder("schematic")
                                 .withSuggestionsProvider(((objectCommandContext, s) -> loadedSchematics)),
                         ArgumentDescription.of("File name of the schematic"))
+                .argument(StringArgument.<CommandSender>newBuilder("schematicType")
+                                .withSuggestionsProvider(((objectCommandContext, s) -> schematictypes)),
+                        ArgumentDescription.of("Type of schematic placement"))
                 .meta(CommandMeta.DESCRIPTION, "Places the specified schematic at the target location")
                 .permission("betterstructures.*")
                 .handler(commandContext -> {
-                    placeSchematic(commandContext.get("schematic"), (Player) commandContext.getSender());
+                    placeSchematic(commandContext.get("schematic"), commandContext.get("schematicType"), (Player) commandContext.getSender());
                 }));
 
         // /em reload
@@ -141,7 +146,7 @@ public class CommandHandler {
                 }));
     }
 
-    private void placeSchematic(String schematicFile, Player player) {
+    private void placeSchematic(String schematicFile, String schematicType, Player player) {
         try {
             SchematicContainer commandSchematicContainer = null;
             for (SchematicContainer schematicContainer : SchematicContainer.getSchematics().values())
@@ -153,8 +158,15 @@ public class CommandHandler {
                 player.sendMessage("[BetterStructures] Invalid schematic!");
                 return;
             }
-
-            new FitSurfaceBuilding(player.getLocation().getChunk(), commandSchematicContainer);
+            GeneratorConfigFields.StructureType structureType;
+            try {
+                structureType = GeneratorConfigFields.StructureType.valueOf(schematicType);
+            } catch (Exception exception) {
+                player.sendMessage("[BetterStructures] Failed to get valid schematic type!");
+                return;
+            }
+            FitAnything.commandBasedCreation(player.getLocation().getChunk(), structureType, commandSchematicContainer);
+            //new FitSurfaceBuilding(player.getLocation().getChunk(), commandSchematicContainer);
             player.sendMessage("[BetterStructures] Attempted to place " + schematicFile + " !");
         } catch (Exception ex) {
             player.sendMessage("[BetterStructures] Invalid schematic!");

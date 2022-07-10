@@ -4,7 +4,6 @@ import com.google.common.collect.ArrayListMultimap;
 import com.magmaguy.betterstructures.config.generators.GeneratorConfigFields;
 import com.magmaguy.betterstructures.config.schematics.SchematicConfigField;
 import com.magmaguy.betterstructures.util.WarningMessage;
-import com.sk89q.worldedit.WorldEditException;
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
 import com.sk89q.worldedit.math.BlockVector3;
@@ -54,6 +53,9 @@ public class SchematicContainer {
             generatorConfigFields.getStructureTypes().forEach(structureType -> schematics.put(structureType, this));
         else
             schematics.put(GeneratorConfigFields.StructureType.UNDEFINED, this);
+        if (generatorConfigFields == null) {
+            new WarningMessage("Failed to assign generator for configuration of schematic " + schematicConfigField.getFilename() + " ! This means this structure will not appear in the world.");
+        }
         for (int x = 0; x <= clipboard.getDimensions().getX(); x++)
             for (int y = 0; y <= clipboard.getDimensions().getY(); y++)
                 for (int z = 0; z <= clipboard.getDimensions().getZ(); z++) {
