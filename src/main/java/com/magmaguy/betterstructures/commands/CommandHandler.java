@@ -121,7 +121,7 @@ public class CommandHandler {
         manager.command(builder.literal("reload")
                 .meta(CommandMeta.DESCRIPTION, "Reloads the plugin. Works almost every time.")
                 .senderType(CommandSender.class)
-                .permission("elitemobs.*")
+                .permission("betterstructures.*")
                 .handler(commandContext -> {
                     MetadataHandler.PLUGIN.onDisable();
                     MetadataHandler.PLUGIN.onLoad();

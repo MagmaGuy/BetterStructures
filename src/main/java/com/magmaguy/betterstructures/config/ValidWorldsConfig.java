@@ -61,15 +61,14 @@ public class ValidWorldsConfig {
         validWorlds.put(world, whitelistNewWorlds);
     }
 
-    public static Boolean isValidWorld(String worldname) {
-        for (World world : validWorlds.keySet())
-            if (world.getName().equals(worldname))
-                return validWorlds.get(world);
+    public static boolean isValidWorld(World world) {
+        if (validWorlds.get(world) != null)
+            return validWorlds.get(world);
         return false;
     }
 
     public static class ValidWorldsConfigEvents implements Listener {
-        @EventHandler(priority = EventPriority.LOWEST)
+        @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
         public void onWorldLoad(WorldLoadEvent event) {
             registerNewWorld(event.getWorld());
         }

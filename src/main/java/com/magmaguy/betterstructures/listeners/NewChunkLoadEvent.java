@@ -43,8 +43,8 @@ public class NewChunkLoadEvent implements Listener {
                 loadingChunks.remove(event.getChunk());
             }
         }.runTaskLater(MetadataHandler.PLUGIN, 20L);
+        if (!ValidWorldsConfig.isValidWorld(event.getWorld())) return;
         Bukkit.getScheduler().runTaskAsynchronously(MetadataHandler.PLUGIN, bukkitTask -> {
-            if (!ValidWorldsConfig.getValidWorlds().get(event.getWorld())) return;
             if (random == null) {
                 random = new Random(event.getChunk().getWorld().getSeed());
                 surfaceOffset = random.nextInt(1, 1000000);
@@ -58,7 +58,7 @@ public class NewChunkLoadEvent implements Listener {
             deepUndergroundScanner(event.getChunk());
             skyScanner(event.getChunk());
             liquidSurfaceScanner(event.getChunk());
-        } );
+        });
     }
 
     private void surfaceScanner(Chunk chunk) {

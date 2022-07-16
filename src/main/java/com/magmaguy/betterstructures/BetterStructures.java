@@ -20,6 +20,7 @@ public final class BetterStructures extends JavaPlugin {
         // Plugin startup logic
         Bukkit.getLogger().info("[BetterStructures] Initialized!");
         Bukkit.getPluginManager().registerEvents(new NewChunkLoadEvent(), this);
+        Bukkit.getPluginManager().registerEvents(new ValidWorldsConfig.ValidWorldsConfigEvents(), this);
         try {
             this.getConfig().save("config.yml");
         } catch (IOException e) {
@@ -36,6 +37,7 @@ public final class BetterStructures extends JavaPlugin {
     public void onDisable() {
         // Plugin shutdown logic
         SchematicContainer.shutdown();
+        Bukkit.getServer().getScheduler().cancelTasks(MetadataHandler.PLUGIN);
         Bukkit.getLogger().info("[BetterStructures] Shutdown!");
     }
 }
