@@ -29,6 +29,28 @@ public class DefaultConfig {
     private static int endAirBuildMinAltitude;
     @Getter
     private static int endAirBuildMaxAltitude;
+    /*
+    @Getter
+    private static double airStructureRarityMultiplier;
+    @Getter
+    private static double surfaceStructureRarityMultiplier;
+    @Getter
+    private static double shallowUndergroundStructureRarityMultiplier;
+    @Getter
+    private static double deepUndergroundStructureRarityMultiplier;
+    @Getter
+    private static double liquidSurfaceStructureRarityMultiplier;
+     */
+    @Getter
+    private static double airStructuresPerThousandChunks;
+    @Getter
+    private static double oceanStructuresPerThousandChunks;
+    @Getter
+    private static double landStructuresPerThousandChunks;
+    @Getter
+    private static double shallowUndergroundStructuresPerThousandChunks;
+    @Getter
+    private static double deepUndergroundStructuresPerThousandChunks;
 
 
     public static void initializeConfig() {
@@ -44,6 +66,19 @@ public class DefaultConfig {
         normalCustomAirBuildingMaxAltitude = ConfigurationEngine.setInt(fileConfiguration, "normalCustomAirBuildingMaxAltitude", 120);
         endAirBuildMinAltitude = ConfigurationEngine.setInt(fileConfiguration, "endAirBuildMinAltitude", 80);
         endAirBuildMaxAltitude = ConfigurationEngine.setInt(fileConfiguration, "endAirBuildMaxAltitude", 120);
+        /*
+        airStructureRarityMultiplier = ConfigurationEngine.setDouble(fileConfiguration, "airStructureRarityMultiplier", 1.5D);
+        surfaceStructureRarityMultiplier = ConfigurationEngine.setDouble(fileConfiguration, "surfaceStructureRarityMultiplier", .5D);
+        shallowUndergroundStructureRarityMultiplier = ConfigurationEngine.setDouble(fileConfiguration, "shallowUndergroundStructureRarityMultiplier", .5D);
+        deepUndergroundStructureRarityMultiplier = ConfigurationEngine.setDouble(fileConfiguration, "deepUndergroundStructureRarityMultiplier", .5D);
+        liquidSurfaceStructureRarityMultiplier = ConfigurationEngine.setDouble(fileConfiguration, "liquidSurfaceStructureRarityMultiplier", 11D);
+         */
+        airStructuresPerThousandChunks = ConfigurationEngine.setDouble(fileConfiguration, "airStructuresPerThousandChunks", 0.5);
+        oceanStructuresPerThousandChunks = ConfigurationEngine.setDouble(fileConfiguration, "oceanStructuresPerThousandChunks", 0.5);
+        landStructuresPerThousandChunks = ConfigurationEngine.setDouble(fileConfiguration, "landStructuresPerThousandChunks", 2.0);
+        shallowUndergroundStructuresPerThousandChunks = ConfigurationEngine.setDouble(fileConfiguration, "shallowUndergroundStructuresPerThousandChunks", 2.0);
+        deepUndergroundStructuresPerThousandChunks = ConfigurationEngine.setDouble(fileConfiguration, "deepUndergroundStructuresPerThousandChunks", 2.0);
+
         ConfigurationEngine.fileSaverOnlyDefaults(fileConfiguration, file);
     }
 }

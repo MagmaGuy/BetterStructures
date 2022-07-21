@@ -151,7 +151,7 @@ public class FitAnything {
                         player.spigot().sendMessage(
                                 SpigotMessage.commandHoverMessage("[BetterStructures] New building generated! Click to teleport.",
                                         "Click to teleport to " + location.toString(),
-                                        "/tp " + location.getBlockX() + " " + location.getBlockY() + " " + location.getBlockZ())
+                                        "/betterstructures teleporttocoords "  + location.getWorld().getName() + " " + location.getBlockX() + " " + location.getBlockY() + " " + location.getBlockZ())
                         );
                 }
                 for (BlockVector3 blockVector3 : barrierBlocks) {

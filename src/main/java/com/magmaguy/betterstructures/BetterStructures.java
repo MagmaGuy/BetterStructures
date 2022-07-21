@@ -7,6 +7,7 @@ import com.magmaguy.betterstructures.config.generators.GeneratorConfig;
 import com.magmaguy.betterstructures.config.schematics.SchematicConfig;
 import com.magmaguy.betterstructures.listeners.NewChunkLoadEvent;
 import com.magmaguy.betterstructures.schematics.SchematicContainer;
+import com.magmaguy.betterstructures.util.VersionChecker;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -21,6 +22,7 @@ public final class BetterStructures extends JavaPlugin {
         Bukkit.getLogger().info("[BetterStructures] Initialized!");
         Bukkit.getPluginManager().registerEvents(new NewChunkLoadEvent(), this);
         Bukkit.getPluginManager().registerEvents(new ValidWorldsConfig.ValidWorldsConfigEvents(), this);
+        Bukkit.getPluginManager().registerEvents(new VersionChecker.VersionCheckerEvents(), this);
         try {
             this.getConfig().save("config.yml");
         } catch (IOException e) {
@@ -31,6 +33,7 @@ public final class BetterStructures extends JavaPlugin {
         new GeneratorConfig();
         new SchematicConfig();
         new CommandHandler();
+        VersionChecker.checkPluginVersion();
     }
 
     @Override

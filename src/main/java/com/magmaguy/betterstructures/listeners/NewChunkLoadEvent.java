@@ -6,10 +6,10 @@ import com.magmaguy.betterstructures.buildingfitter.FitLiquidBuilding;
 import com.magmaguy.betterstructures.buildingfitter.FitSurfaceBuilding;
 import com.magmaguy.betterstructures.buildingfitter.FitUndergroundShallowBuilding;
 import com.magmaguy.betterstructures.buildingfitter.util.FitUndergroundDeepBuilding;
+import com.magmaguy.betterstructures.config.DefaultConfig;
 import com.magmaguy.betterstructures.config.ValidWorldsConfig;
 import com.magmaguy.betterstructures.config.generators.GeneratorConfigFields;
 import com.magmaguy.betterstructures.schematics.SchematicContainer;
-import com.magmaguy.betterstructures.util.SimplexNoise;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.event.EventHandler;
@@ -20,6 +20,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.HashSet;
 import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class NewChunkLoadEvent implements Listener {
 
@@ -46,12 +47,15 @@ public class NewChunkLoadEvent implements Listener {
         if (!ValidWorldsConfig.isValidWorld(event.getWorld())) return;
         Bukkit.getScheduler().runTaskAsynchronously(MetadataHandler.PLUGIN, bukkitTask -> {
             if (random == null) {
+                random = new Random();
+                /*
                 random = new Random(event.getChunk().getWorld().getSeed());
                 surfaceOffset = random.nextInt(1, 1000000);
                 shallowUndergroundOffset = random.nextInt(1, 100000);
                 deepUndergroundOffset = random.nextInt(1, 10000);
                 airOffset = random.nextInt(1, 1000);
                 liquidOffset = random.nextInt(1, 100);
+                 */
             }
             surfaceScanner(event.getChunk());
             shallowUndergroundScanner(event.getChunk());
@@ -63,41 +67,50 @@ public class NewChunkLoadEvent implements Listener {
 
     private void surfaceScanner(Chunk chunk) {
         if (SchematicContainer.getSchematics().get(GeneratorConfigFields.StructureType.SURFACE).isEmpty()) return;
-        if (!seededSimplexRandomization(chunk, 0.95, surfaceOffset)) return;
+        //if (!seededSimplexRandomization(chunk, .99, surfaceOffset, DefaultConfig.getSurfaceStructureRarityMultiplier())) return;
+        if (ThreadLocalRandom.current().nextDouble() > DefaultConfig.getLandStructuresPerThousandChunks() / 1000D)
+            return;
         new FitSurfaceBuilding(chunk);
     }
 
     private void shallowUndergroundScanner(Chunk chunk) {
         if (SchematicContainer.getSchematics().get(GeneratorConfigFields.StructureType.UNDERGROUND_SHALLOW).isEmpty())
             return;
-        if (!seededSimplexRandomization(chunk, 0.95, shallowUndergroundOffset)) return;
+        //if (!seededSimplexRandomization(chunk, .99, shallowUndergroundOffset, DefaultConfig.getShallowUndergroundStructureRarityMultiplier())) return;
+        if (ThreadLocalRandom.current().nextDouble() > DefaultConfig.getShallowUndergroundStructuresPerThousandChunks() / 1000D)
+            return;
         FitUndergroundShallowBuilding.fit(chunk);
     }
 
     private void deepUndergroundScanner(Chunk chunk) {
         if (SchematicContainer.getSchematics().get(GeneratorConfigFields.StructureType.UNDERGROUND_DEEP).isEmpty())
             return;
-        if (!seededSimplexRandomization(chunk, 0.95, deepUndergroundOffset)) return;
+        //if (!seededSimplexRandomization(chunk, .99, deepUndergroundOffset, DefaultConfig.getDeepUndergroundStructureRarityMultiplier())) return;
+        if (ThreadLocalRandom.current().nextDouble() > DefaultConfig.getDeepUndergroundStructuresPerThousandChunks() / 1000D)
+            return;
         FitUndergroundDeepBuilding.fit(chunk);
     }
 
     private void skyScanner(Chunk chunk) {
         if (SchematicContainer.getSchematics().get(GeneratorConfigFields.StructureType.SKY).isEmpty()) return;
-        if (!seededSimplexRandomization(chunk, 0.99, airOffset)) return;
+        //if (!seededSimplexRandomization(chunk, .99, airOffset, DefaultConfig.getAirStructureRarityMultiplier())) return;
+        if (ThreadLocalRandom.current().nextDouble() > DefaultConfig.getAirStructuresPerThousandChunks() / 1000D)
+            return;
         new FitAirBuilding(chunk);
     }
 
     private void liquidSurfaceScanner(Chunk chunk) {
         if (SchematicContainer.getSchematics().get(GeneratorConfigFields.StructureType.LIQUID_SURFACE).isEmpty())
             return;
-        if (!seededSimplexRandomization(chunk, 0.99, liquidOffset))
+       // if (!seededSimplexRandomization(chunk, .99, liquidOffset, DefaultConfig.getLiquidSurfaceStructureRarityMultiplier())) return;
+        if (ThreadLocalRandom.current().nextDouble() > DefaultConfig.getOceanStructuresPerThousandChunks() / 1000D)
             return;
         new FitLiquidBuilding(chunk);
     }
 
-
-    private boolean seededSimplexRandomization(Chunk chunk, double strictness, int offset) {
-        return (SimplexNoise.noise(chunk.getX() + (double) offset, chunk.getZ() + (double) offset) > strictness);
+/* this has issues when you try to integrate customization options
+    private boolean seededSimplexRandomization(Chunk chunk, double strictness, int offset, double rarityMultiplier) {
+        return (SimplexNoise.noise(rarityMultiplier * chunk.getX() + (double) offset, rarityMultiplier * chunk.getZ() + (double) offset) > strictness);
     }
-
+ */
 }
