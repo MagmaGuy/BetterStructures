@@ -11,7 +11,6 @@ import cloud.commandframework.minecraft.extras.MinecraftExceptionHandler;
 import cloud.commandframework.minecraft.extras.MinecraftHelp;
 import com.magmaguy.betterstructures.MetadataHandler;
 import com.magmaguy.betterstructures.buildingfitter.FitAnything;
-import com.magmaguy.betterstructures.buildingfitter.FitSurfaceBuilding;
 import com.magmaguy.betterstructures.config.generators.GeneratorConfig;
 import com.magmaguy.betterstructures.config.generators.GeneratorConfigFields;
 import com.magmaguy.betterstructures.schematics.SchematicContainer;
@@ -19,6 +18,9 @@ import com.magmaguy.betterstructures.util.ItemStackSerialization;
 import com.magmaguy.betterstructures.util.WarningMessage;
 import net.kyori.adventure.platform.bukkit.BukkitAudiences;
 import net.kyori.adventure.text.format.NamedTextColor;
+import org.bukkit.Bukkit;
+import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -144,6 +146,26 @@ public class CommandHandler {
                 .handler(commandContext -> {
                     lootify(commandContext.get("generator"), commandContext.get("minAmount"), commandContext.get("maxAmount"), commandContext.get("chance"), (Player) commandContext.getSender());
                 }));
+
+        manager.command(builder.literal("teleporttocoords")
+                .senderType(Player.class)
+                .argument(StringArgument.<CommandSender>newBuilder("worldname"))
+                .argument(StringArgument.<CommandSender>newBuilder("x"))
+                .argument(StringArgument.<CommandSender>newBuilder("y"))
+                .argument(StringArgument.<CommandSender>newBuilder("z"))
+                .permission("betterstructures.*")
+                .handler(commandContext -> {
+                    try {
+                        World world = Bukkit.getWorld((String) commandContext.get("worldname"));
+                        double x = Double.parseDouble(commandContext.get("x"));
+                        double y = Double.parseDouble(commandContext.get("y"));
+                        double z = Double.parseDouble(commandContext.get("z"));
+                        ((Player) commandContext.getSender()).teleport(new Location(world, x, y, z));
+                    } catch (Exception ex) {
+                        commandContext.getSender().sendMessage("[BetterStructures] Failed to teleport to location because the location wasn't valid!");
+                    }
+                })
+        );
     }
 
     private void placeSchematic(String schematicFile, String schematicType, Player player) {
