@@ -10,6 +10,6 @@ public class GeneratorSkyNetherWastesConfig extends GeneratorConfigFields {
     public GeneratorSkyNetherWastesConfig(){
         super("generator_sky_nether_wastes", true, Arrays.asList(StructureType.SKY));
         setValidBiomes(Arrays.asList(Biome.NETHER_WASTES));
-        setChestEntries(DefaultChestContents.netherContents());
+        setTreasureFilename("treasure_nether.yml");
     }
 }

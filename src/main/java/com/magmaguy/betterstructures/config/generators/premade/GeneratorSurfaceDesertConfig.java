@@ -12,6 +12,6 @@ public class GeneratorSurfaceDesertConfig extends GeneratorConfigFields {
         setValidBiomes(Arrays.asList(
                 Biome.DESERT
         ));
-        setChestEntries(DefaultChestContents.overworldContents());
+        setTreasureFilename("treasure_overworld_surface.yml");
     }
 }

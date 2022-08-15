@@ -10,6 +10,6 @@ public class GeneratorLiquidOverworld extends GeneratorConfigFields {
     public GeneratorLiquidOverworld() {
         super("generator_liquid_overworld", true, Arrays.asList(StructureType.LIQUID_SURFACE));
         setValidWorldEnvironments(Arrays.asList(World.Environment.NORMAL, World.Environment.CUSTOM));
-        setChestEntries(DefaultChestContents.overworldContents());
+        setTreasureFilename("treasure_overworld_underground.yml");
     }
 }

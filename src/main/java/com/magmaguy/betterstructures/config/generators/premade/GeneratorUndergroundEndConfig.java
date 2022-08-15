@@ -10,6 +10,6 @@ public class GeneratorUndergroundEndConfig extends GeneratorConfigFields {
     public GeneratorUndergroundEndConfig() {
         super("generator_underground_end", true, Arrays.asList(StructureType.UNDERGROUND_SHALLOW));
         setValidWorldEnvironments(Arrays.asList(World.Environment.THE_END));
-        setChestEntries(DefaultChestContents.overworldUndergroundContents());
+        setTreasureFilename("treasure_end.yml");
     }
 }
