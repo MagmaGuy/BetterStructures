@@ -4,9 +4,7 @@ import com.magmaguy.betterstructures.config.generators.GeneratorConfigFields;
 import com.magmaguy.betterstructures.util.ItemStackSerialization;
 import com.magmaguy.betterstructures.util.WarningMessage;
 import lombok.Getter;
-import org.bukkit.Bukkit;
 import org.bukkit.Material;
-import org.bukkit.block.Chest;
 import org.bukkit.block.Container;
 import org.bukkit.inventory.ItemStack;
 
@@ -22,6 +20,7 @@ public class ChestContents {
     Entry format: - material=MATERIAL:amount=AMOUNT_MIN-AMOUNT_MAX:chance=CHANCE
      */
     public ChestContents(List<String> rawContents, GeneratorConfigFields generatorConfigFields) {
+        if (rawContents == null) return;
         for (String string : rawContents) {
             String[] sections = string.split(":");
             Material material = null;
@@ -41,9 +40,10 @@ public class ChestContents {
                         break;
                     case "serialized":
                         try {
-                            itemStack = ItemStackSerialization.itemStackArrayFromBase64(subsection[1]);
+                            itemStack = ItemStackSerialization.itemStackArrayFromBase64(section.replace("serialized=", ""));
                         } catch (Exception ex) {
                             new WarningMessage("Invalid serialized value detected for generator  " + generatorConfigFields.getFilename() + " ! Problematic entry: " + subsection[0]);
+                            ex.printStackTrace();
                             continue;
                         }
                         break;
@@ -67,6 +67,9 @@ public class ChestContents {
                         } catch (Exception exception) {
                             new WarningMessage("Invalid chance detected for generator  " + generatorConfigFields.getFilename() + " ! Problematic entry: " + subsection[0]);
                         }
+                        break;
+                    case "info":
+                        //This is purely visual, helps document serialized entries!
                         break;
                     default:
                         new WarningMessage("Failed to parse chest entry for generator " + generatorConfigFields.getFilename() + " ! Problematic entry: " + subsection[0]);

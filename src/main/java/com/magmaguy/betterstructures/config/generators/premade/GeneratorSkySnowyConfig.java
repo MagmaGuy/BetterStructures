@@ -16,6 +16,6 @@ public class GeneratorSkySnowyConfig extends GeneratorConfigFields {
                 Biome.SNOWY_SLOPES,
                 Biome.ICE_SPIKES
         ));
-        setChestEntries(DefaultChestContents.overworldContents());
+        setTreasureFilename("treasure_overworld_surface.yml");
     }
 }

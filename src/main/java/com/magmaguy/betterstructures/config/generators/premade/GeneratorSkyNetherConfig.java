@@ -10,6 +10,6 @@ public class GeneratorSkyNetherConfig extends GeneratorConfigFields {
     public GeneratorSkyNetherConfig(){
         super("generator_sky_nether", true, Arrays.asList(StructureType.SKY));
         setValidWorldEnvironments(Arrays.asList(World.Environment.NETHER));
-        setChestEntries(DefaultChestContents.netherContents());
+        setTreasureFilename("treasure_nether.yml");
     }
 }

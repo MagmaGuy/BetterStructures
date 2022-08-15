@@ -10,6 +10,6 @@ public class GeneratorSurfaceNetherConfig extends GeneratorConfigFields {
     public GeneratorSurfaceNetherConfig() {
         super("generator_surface_nether", true, Arrays.asList(StructureType.SURFACE));
         setValidWorldEnvironments(Arrays.asList(World.Environment.NETHER));
-        setChestEntries(DefaultChestContents.netherContents());
+        setTreasureFilename("treasure_nether.yml");
     }
 }

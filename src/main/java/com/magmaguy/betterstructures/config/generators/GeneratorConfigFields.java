@@ -1,13 +1,14 @@
 package com.magmaguy.betterstructures.config.generators;
 
-import com.magmaguy.betterstructures.MetadataHandler;
 import com.magmaguy.betterstructures.chests.ChestContents;
 import com.magmaguy.betterstructures.config.CustomConfigFields;
+import com.magmaguy.betterstructures.config.treasures.TreasureConfig;
+import com.magmaguy.betterstructures.config.treasures.TreasureConfigFields;
+import com.magmaguy.betterstructures.util.WarningMessage;
 import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.World;
 import org.bukkit.block.Biome;
-import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -35,16 +36,18 @@ public class GeneratorConfigFields extends CustomConfigFields {
     private int highestYLevel = 320;
     @Getter
     @Setter
-    private List<World> validWorlds = new ArrayList<>();
+    private List<World> validWorlds = null;
     @Getter
     @Setter
-    private List<World.Environment> validWorldEnvironments = new ArrayList<>();
+    private List<World.Environment> validWorldEnvironments = null;
     @Getter
     @Setter
-    private List<Biome> validBiomes = new ArrayList<>();
+    private List<Biome> validBiomes = null;
     @Getter
     @Setter
-    List<String> chestEntries = new ArrayList<>();
+    private String treasureFilename = null;
+    @Getter
+    List<String> chestEntries = null;
     @Getter
     private ChestContents chestContents = null;
 
@@ -73,22 +76,14 @@ public class GeneratorConfigFields extends CustomConfigFields {
         this.validWorlds = processWorldList("validWorlds", validWorlds, new ArrayList<>(), false);
         this.validWorldEnvironments = processEnumList("validWorldEnvironments", validWorldEnvironments, null, World.Environment.class, false);
         this.validBiomes = processEnumList("validBiomes", validBiomes, new ArrayList<>(), Biome.class, false);
-        this.chestEntries = processStringList("chestEntries", chestEntries, new ArrayList<>(), false);
-        chestContents = new ChestContents(chestEntries, this);
+        this.treasureFilename = processString("treasureFilename", treasureFilename, null, false);
+        TreasureConfigFields treasureConfig = TreasureConfig.getConfigFields(treasureFilename);
+        if (treasureConfig != null) {
+            this.chestEntries = treasureConfig.getRawLoot();
+            chestContents = new ChestContents(chestEntries, this);
+        }
+        else new WarningMessage("No valid treasure config file found for generator " + filename + " ! This will not spawn loot in chests until fixed.");
+
     }
 
-    public void addChestEntry(String entry, Player player) {
-        chestEntries.add(entry);
-        fileConfiguration.set("chestEntries", chestEntries);
-        try {
-            fileConfiguration.save(file);
-        } catch (Exception ex) {
-            player.sendMessage("[BetterStructures] Failed to save entry to file! Report this to the developer.");
-            return;
-        }
-        MetadataHandler.PLUGIN.onDisable();
-        MetadataHandler.PLUGIN.onLoad();
-        MetadataHandler.PLUGIN.onEnable();
-        player.sendMessage("[BetterStructures] Reloaded plugin to add chest entry! It should now be live.");
-    }
 }

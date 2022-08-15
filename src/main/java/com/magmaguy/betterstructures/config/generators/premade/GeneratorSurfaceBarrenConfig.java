@@ -16,6 +16,6 @@ public class GeneratorSurfaceBarrenConfig extends GeneratorConfigFields {
                 Biome.WINDSWEPT_SAVANNA,
                 Biome.MUSHROOM_FIELDS
         ));
-        setChestEntries(DefaultChestContents.overworldContents());
+        setTreasureFilename("treasure_overworld_surface.yml");
     }
 }

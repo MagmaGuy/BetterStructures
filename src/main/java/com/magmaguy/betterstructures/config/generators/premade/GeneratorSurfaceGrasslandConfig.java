@@ -25,6 +25,6 @@ public class GeneratorSurfaceGrasslandConfig extends GeneratorConfigFields {
                 Biome.WINDSWEPT_FOREST,
                 Biome.WINDSWEPT_HILLS
                 ));
-        setChestEntries(DefaultChestContents.overworldContents());
+        setTreasureFilename("treasure_overworld_surface.yml");
     }
 }

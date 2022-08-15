@@ -11,8 +11,9 @@ import cloud.commandframework.minecraft.extras.MinecraftExceptionHandler;
 import cloud.commandframework.minecraft.extras.MinecraftHelp;
 import com.magmaguy.betterstructures.MetadataHandler;
 import com.magmaguy.betterstructures.buildingfitter.FitAnything;
-import com.magmaguy.betterstructures.config.generators.GeneratorConfig;
 import com.magmaguy.betterstructures.config.generators.GeneratorConfigFields;
+import com.magmaguy.betterstructures.config.treasures.TreasureConfig;
+import com.magmaguy.betterstructures.config.treasures.TreasureConfigFields;
 import com.magmaguy.betterstructures.schematics.SchematicContainer;
 import com.magmaguy.betterstructures.util.ItemStackSerialization;
 import com.magmaguy.betterstructures.util.WarningMessage;
@@ -131,12 +132,12 @@ public class CommandHandler {
                     commandContext.getSender().sendMessage("[BetterStructures] Reload attempted. This may not 100% work. Restart instead if it didn't!!");
                 }));
 
-        ArrayList<String> generators = new ArrayList<>(GeneratorConfig.getGeneratorConfigurations().keySet());
+        ArrayList<String> treasures = new ArrayList<>(TreasureConfig.getTreasureConfigurations().keySet());
 
         manager.command(builder.literal("lootify")
                 .senderType(Player.class)
                 .argument(StringArgument.<CommandSender>newBuilder("generator")
-                                .withSuggestionsProvider(((objectCommandContext, s) -> generators)),
+                                .withSuggestionsProvider(((objectCommandContext, s) -> treasures)),
                         ArgumentDescription.of("File name of the generator"))
                 .meta(CommandMeta.DESCRIPTION, "Adds a held item to the loot settings of a generator")
                 .argument(StringArgument.<CommandSender>newBuilder("minAmount"))
@@ -196,8 +197,8 @@ public class CommandHandler {
     }
 
     private void lootify(String generator, String minAmount, String maxAmount, String chance, Player player) {
-        GeneratorConfigFields generatorConfigFields = GeneratorConfig.getConfigFields(generator);
-        if (generatorConfigFields == null) {
+        TreasureConfigFields treasureConfigFields = TreasureConfig.getConfigFields(generator);
+        if (treasureConfigFields == null) {
             player.sendMessage("[BetterStructures] Not a valid generator! Try again.");
             return;
         }
@@ -239,7 +240,14 @@ public class CommandHandler {
             player.sendMessage("[BetterStructures] You need to be holding an item in order to register the item you're holding! This value will not be saved.");
             return;
         }
-        String configString = "serialized=" + ItemStackSerialization.toBase64(itemStack) + ":amount=" + minAmount + "-" + maxAmount + ":chance=" + chance;
-        generatorConfigFields.addChestEntry(configString, player);
+        String info;
+        if (itemStack.hasItemMeta() && itemStack.getItemMeta().hasDisplayName())
+            info = itemStack.getItemMeta().getDisplayName().replace(" ", "_");
+        else if (itemStack.hasItemMeta() && itemStack.getItemMeta().hasLocalizedName())
+            info = itemStack.getItemMeta().getLocalizedName();
+        else
+            info = itemStack.getType().toString();
+        String configString = "serialized=" + ItemStackSerialization.toBase64(itemStack) + ":amount=" + minAmount + "-" + maxAmount + ":chance=" + chance + ":info=" + info;
+        treasureConfigFields.addChestEntry(configString, player);
     }
 }

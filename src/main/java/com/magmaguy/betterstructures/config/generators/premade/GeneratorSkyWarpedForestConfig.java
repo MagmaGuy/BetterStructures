@@ -10,6 +10,6 @@ public class GeneratorSkyWarpedForestConfig extends GeneratorConfigFields {
     public GeneratorSkyWarpedForestConfig() {
         super("generator_sky_warped_forest", true, Arrays.asList(StructureType.SKY));
         setValidBiomes(Arrays.asList(Biome.WARPED_FOREST));
-        setChestEntries(DefaultChestContents.netherContents());
+        setTreasureFilename("treasure_nether.yml");
     }
 }

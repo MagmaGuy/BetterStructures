@@ -5,6 +5,7 @@ import com.magmaguy.betterstructures.config.DefaultConfig;
 import com.magmaguy.betterstructures.config.ValidWorldsConfig;
 import com.magmaguy.betterstructures.config.generators.GeneratorConfig;
 import com.magmaguy.betterstructures.config.schematics.SchematicConfig;
+import com.magmaguy.betterstructures.config.treasures.TreasureConfig;
 import com.magmaguy.betterstructures.listeners.NewChunkLoadEvent;
 import com.magmaguy.betterstructures.schematics.SchematicContainer;
 import com.magmaguy.betterstructures.util.VersionChecker;
@@ -30,6 +31,7 @@ public final class BetterStructures extends JavaPlugin {
         }
         DefaultConfig.initializeConfig();
         ValidWorldsConfig.initializeConfig();
+        new TreasureConfig();
         new GeneratorConfig();
         new SchematicConfig();
         new CommandHandler();

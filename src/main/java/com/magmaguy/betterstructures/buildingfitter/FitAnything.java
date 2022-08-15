@@ -22,9 +22,7 @@ import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.Container;
 import org.bukkit.block.data.BlockData;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.LivingEntity;
-import org.bukkit.entity.Player;
+import org.bukkit.entity.*;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 
@@ -284,6 +282,10 @@ public class FitAnything {
             entity.setPersistent(true);
             if (entity instanceof LivingEntity) {
                 ((LivingEntity) entity).setRemoveWhenFarAway(false);
+            }
+            if (entity.getType().equals(EntityType.ENDER_CRYSTAL)){
+                EnderCrystal enderCrystal = (EnderCrystal) entity;
+                enderCrystal.setShowingBottom(false);
             }
         }
     }

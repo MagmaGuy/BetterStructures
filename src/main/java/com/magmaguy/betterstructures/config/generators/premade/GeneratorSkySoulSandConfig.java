@@ -10,6 +10,6 @@ public class GeneratorSkySoulSandConfig extends GeneratorConfigFields {
     public GeneratorSkySoulSandConfig() {
         super("generator_sky_soul_sand", true, Arrays.asList(StructureType.SKY));
         setValidBiomes(Arrays.asList(Biome.SOUL_SAND_VALLEY));
-        setChestEntries(DefaultChestContents.netherContents());
+        setTreasureFilename("treasure_nether.yml");
     }
 }

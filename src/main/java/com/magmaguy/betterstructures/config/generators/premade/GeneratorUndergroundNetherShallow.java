@@ -10,6 +10,6 @@ public class GeneratorUndergroundNetherShallow extends GeneratorConfigFields {
     public GeneratorUndergroundNetherShallow() {
         super("generator_underground_nether_shallow", true, Arrays.asList(StructureType.UNDERGROUND_SHALLOW));
         setValidWorldEnvironments(Arrays.asList(World.Environment.NETHER));
-        setChestEntries(DefaultChestContents.netherContents());
+        setTreasureFilename("treasure_nether.yml");
     }
 }
