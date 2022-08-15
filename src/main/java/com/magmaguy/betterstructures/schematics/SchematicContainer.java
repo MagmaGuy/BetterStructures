@@ -108,11 +108,15 @@ public class SchematicContainer {
     }
 
     public boolean isValidEnvironment(World.Environment environment) {
-        return generatorConfigFields.getValidWorldEnvironments().isEmpty() || generatorConfigFields.getValidWorldEnvironments().contains(environment);
+        return generatorConfigFields.getValidWorldEnvironments() == null ||
+                generatorConfigFields.getValidWorldEnvironments().isEmpty() ||
+                generatorConfigFields.getValidWorldEnvironments().contains(environment);
     }
 
     public boolean isValidBiome(Biome biome) {
-        return generatorConfigFields.getValidBiomes().isEmpty() || generatorConfigFields.getValidBiomes().contains(biome);
+        return generatorConfigFields.getValidBiomes() == null ||
+                generatorConfigFields.getValidBiomes().isEmpty() ||
+                generatorConfigFields.getValidBiomes().contains(biome);
     }
 
     public boolean isValidYLevel(int yLevel) {
