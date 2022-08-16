@@ -47,8 +47,6 @@ public class GeneratorConfigFields extends CustomConfigFields {
     @Setter
     private String treasureFilename = null;
     @Getter
-    List<String> chestEntries = null;
-    @Getter
     private ChestContents chestContents = null;
 
 
@@ -78,11 +76,10 @@ public class GeneratorConfigFields extends CustomConfigFields {
         this.validBiomes = processEnumList("validBiomes", validBiomes, new ArrayList<>(), Biome.class, false);
         this.treasureFilename = processString("treasureFilename", treasureFilename, null, false);
         TreasureConfigFields treasureConfig = TreasureConfig.getConfigFields(treasureFilename);
-        if (treasureConfig != null) {
-            this.chestEntries = treasureConfig.getRawLoot();
-            chestContents = new ChestContents(chestEntries, this);
-        }
-        else new WarningMessage("No valid treasure config file found for generator " + filename + " ! This will not spawn loot in chests until fixed.");
+        if (treasureConfig != null)
+            this.chestContents = new ChestContents(treasureConfig);
+        else
+            new WarningMessage("No valid treasure config file found for generator " + filename + " ! This will not spawn loot in chests until fixed.");
 
     }
 

@@ -1,6 +1,7 @@
 package com.magmaguy.betterstructures.config.treasures;
 
 import com.magmaguy.betterstructures.MetadataHandler;
+import com.magmaguy.betterstructures.chests.ChestContents;
 import com.magmaguy.betterstructures.config.CustomConfigFields;
 import lombok.Getter;
 import lombok.Setter;
@@ -13,6 +14,9 @@ public class TreasureConfigFields extends CustomConfigFields {
     @Getter
     @Setter
     private List<String> rawLoot = null;
+    @Getter
+    @Setter
+    private ChestContents chestContents = null;
 
     public TreasureConfigFields(String filename, boolean isEnabled) {
         super(filename, isEnabled);
@@ -22,6 +26,7 @@ public class TreasureConfigFields extends CustomConfigFields {
     public void processConfigFields() {
         this.isEnabled = processBoolean("isEnabled", isEnabled, true, true);
         this.rawLoot = processStringList("loot", rawLoot, null, true);
+        chestContents = new ChestContents(this);
     }
 
     public void addChestEntry(String entry, Player player) {
