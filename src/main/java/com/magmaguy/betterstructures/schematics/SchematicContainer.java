@@ -1,8 +1,11 @@
 package com.magmaguy.betterstructures.schematics;
 
 import com.google.common.collect.ArrayListMultimap;
+import com.magmaguy.betterstructures.chests.ChestContents;
 import com.magmaguy.betterstructures.config.generators.GeneratorConfigFields;
 import com.magmaguy.betterstructures.config.schematics.SchematicConfigField;
+import com.magmaguy.betterstructures.config.treasures.TreasureConfig;
+import com.magmaguy.betterstructures.config.treasures.TreasureConfigFields;
 import com.magmaguy.betterstructures.util.WarningMessage;
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
@@ -42,6 +45,8 @@ public class SchematicContainer {
     private final List<Vector> chestLocations = new ArrayList<>();
     @Getter
     private final HashMap<Vector, EntityType> vanillaSpawns = new HashMap<>();
+    @Getter
+    private ChestContents chestContents = null;
 
     public SchematicContainer(Clipboard clipboard, String clipboardFilename, SchematicConfigField schematicConfigField, String configFilename) {
         this.clipboard = clipboard;
@@ -55,6 +60,7 @@ public class SchematicContainer {
             schematics.put(GeneratorConfigFields.StructureType.UNDEFINED, this);
         if (generatorConfigFields == null) {
             new WarningMessage("Failed to assign generator for configuration of schematic " + schematicConfigField.getFilename() + " ! This means this structure will not appear in the world.");
+            return;
         }
         for (int x = 0; x <= clipboard.getDimensions().getX(); x++)
             for (int y = 0; y <= clipboard.getDimensions().getY(); y++)
@@ -105,6 +111,15 @@ public class SchematicContainer {
                         }
                     }
                 }
+        chestContents = generatorConfigFields.getChestContents();
+        if (schematicConfigField.getTreasureFile() != null && !schematicConfigField.getTreasureFile().isEmpty()) {
+            TreasureConfigFields treasureConfigFields = TreasureConfig.getConfigFields(schematicConfigField.getFilename());
+            if (treasureConfigFields == null) {
+                new WarningMessage("Failed to get treasure configuration " + schematicConfigField.getTreasureFile());
+                return;
+            }
+            chestContents = schematicConfigField.getChestContents();
+        }
     }
 
     public boolean isValidEnvironment(World.Environment environment) {

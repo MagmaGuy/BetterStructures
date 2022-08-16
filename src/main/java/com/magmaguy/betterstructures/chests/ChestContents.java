@@ -1,13 +1,15 @@
 package com.magmaguy.betterstructures.chests;
 
-import com.magmaguy.betterstructures.config.generators.GeneratorConfigFields;
+import com.magmaguy.betterstructures.config.treasures.TreasureConfigFields;
 import com.magmaguy.betterstructures.util.ItemStackSerialization;
 import com.magmaguy.betterstructures.util.WarningMessage;
 import lombok.Getter;
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.block.Container;
 import org.bukkit.inventory.ItemStack;
 
+import java.nio.Buffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -19,9 +21,15 @@ public class ChestContents {
     /*
     Entry format: - material=MATERIAL:amount=AMOUNT_MIN-AMOUNT_MAX:chance=CHANCE
      */
-    public ChestContents(List<String> rawContents, GeneratorConfigFields generatorConfigFields) {
-        if (rawContents == null) return;
-        for (String string : rawContents) {
+    public ChestContents(TreasureConfigFields treasureConfigFields) {
+        if (treasureConfigFields.getRawLoot() == null) return;
+        if (!processEntries(treasureConfigFields.getRawLoot()))
+            new WarningMessage("Treasure file " + treasureConfigFields.getFilename() + " has invalid treasure entries!");
+    }
+
+    private boolean processEntries(List<String> rawChestEntries) {
+        boolean noProblems = true;
+        for (String string : rawChestEntries) {
             String[] sections = string.split(":");
             Material material = null;
             ItemStack itemStack = null;
@@ -35,16 +43,17 @@ public class ChestContents {
                         try {
                             material = Material.getMaterial(subsection[1]);
                         } catch (Exception exception) {
-                            new WarningMessage("Invalid material detected for generator  " + generatorConfigFields.getFilename() + " ! Problematic entry: " + subsection[0]);
+                            new WarningMessage("Invalid material detected! Problematic entry: " + subsection[0]);
+                            noProblems = false;
                         }
                         break;
                     case "serialized":
                         try {
                             itemStack = ItemStackSerialization.itemStackArrayFromBase64(section.replace("serialized=", ""));
                         } catch (Exception ex) {
-                            new WarningMessage("Invalid serialized value detected for generator  " + generatorConfigFields.getFilename() + " ! Problematic entry: " + subsection[0]);
+                            new WarningMessage("Invalid serialized value detected! Problematic entry: " + subsection[0]);
                             ex.printStackTrace();
-                            continue;
+                            noProblems = false;
                         }
                         break;
                     case "amount":
@@ -58,21 +67,25 @@ public class ChestContents {
                                 amountMax = amountMin;
                             }
                         } catch (Exception exception) {
-                            new WarningMessage("Invalid amount detected for generator  " + generatorConfigFields.getFilename() + " ! Problematic entry: " + subsection[0]);
+                            new WarningMessage("Invalid amount detected! Problematic entry: " + subsection[0]);
+                            noProblems = false;
                         }
                         break;
                     case "chance":
                         try {
                             chance = Double.parseDouble(subsection[1]);
                         } catch (Exception exception) {
-                            new WarningMessage("Invalid chance detected for generator  " + generatorConfigFields.getFilename() + " ! Problematic entry: " + subsection[0]);
+                            new WarningMessage("Invalid chance detected! Problematic entry: " + subsection[0]);
+                            noProblems = false;
                         }
                         break;
                     case "info":
                         //This is purely visual, helps document serialized entries!
                         break;
-                    default:
-                        new WarningMessage("Failed to parse chest entry for generator " + generatorConfigFields.getFilename() + " ! Problematic entry: " + subsection[0]);
+                    default: {
+                        new WarningMessage("Failed to parse chest entry! Problematic entry: " + subsection[0]);
+                        noProblems = false;
+                    }
                 }
             }
 
@@ -81,6 +94,7 @@ public class ChestContents {
                 chestEntries.add(chestEntry);
             }
         }
+        return noProblems;
     }
 
     public void rollChestContents(Container chest) {
@@ -88,7 +102,6 @@ public class ChestContents {
             ItemStack itemStack = chestEntry.rollEntry();
             if (itemStack == null) continue;
             chest.getSnapshotInventory().addItem(itemStack);
-            chest.update(true);
         }
     }
 }

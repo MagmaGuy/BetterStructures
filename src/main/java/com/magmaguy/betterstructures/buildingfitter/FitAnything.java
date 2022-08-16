@@ -1,6 +1,8 @@
 package com.magmaguy.betterstructures.buildingfitter;
 
 import com.magmaguy.betterstructures.MetadataHandler;
+import com.magmaguy.betterstructures.api.BuildPlaceEvent;
+import com.magmaguy.betterstructures.api.ChestFillEvent;
 import com.magmaguy.betterstructures.buildingfitter.util.FitUndergroundDeepBuilding;
 import com.magmaguy.betterstructures.buildingfitter.util.LocationProjector;
 import com.magmaguy.betterstructures.buildingfitter.util.SchematicPicker;
@@ -15,6 +17,7 @@ import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
 import com.sk89q.worldedit.math.BlockVector3;
 import com.sk89q.worldedit.world.block.BlockState;
+import lombok.Getter;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
@@ -31,6 +34,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class FitAnything {
+    @Getter
     protected SchematicContainer schematicContainer;
     protected final double startingScore = 100;
     protected final int searchRadius = 1;
@@ -39,6 +43,7 @@ public class FitAnything {
     protected Vector schematicOffset;
     //At 10% it is assumed a fit is so bad it's better just to skip
     protected double highestScore = 10;
+    @Getter
     protected Location location = null;
 
     public static void commandBasedCreation(Chunk chunk, GeneratorConfigFields.StructureType structureType, SchematicContainer container) {
@@ -71,6 +76,9 @@ public class FitAnything {
 
 
     protected void paste(Location location) {
+        BuildPlaceEvent buildPlaceEvent = new BuildPlaceEvent(this);
+        if (buildPlaceEvent.isCancelled()) return;
+
         FitAnything fitAnything = this;
         new BukkitRunnable() {
             @Override
@@ -149,7 +157,7 @@ public class FitAnything {
                         player.spigot().sendMessage(
                                 SpigotMessage.commandHoverMessage("[BetterStructures] New building generated! Click to teleport.",
                                         "Click to teleport to " + location.toString(),
-                                        "/betterstructures teleporttocoords "  + location.getWorld().getName() + " " + location.getBlockX() + " " + location.getBlockY() + " " + location.getBlockZ())
+                                        "/betterstructures teleporttocoords " + location.getWorld().getName() + " " + location.getBlockX() + " " + location.getBlockY() + " " + location.getBlockZ())
                         );
                 }
                 for (BlockVector3 blockVector3 : barrierBlocks) {
@@ -266,10 +274,21 @@ public class FitAnything {
     }
 
     private void fillChests() {
-        for (Vector chestPosition : schematicContainer.getChestLocations()) {
-            Location chestLocation = LocationProjector.project(location, schematicOffset, chestPosition);
-            schematicContainer.getGeneratorConfigFields().getChestContents().rollChestContents((Container) chestLocation.getBlock().getState());
-        }
+        if (schematicContainer.getGeneratorConfigFields().getChestContents() != null)
+            for (Vector chestPosition : schematicContainer.getChestLocations()) {
+                Location chestLocation = LocationProjector.project(location, schematicOffset, chestPosition);
+                Container container = (Container) chestLocation.getBlock().getState();
+
+                if (schematicContainer.getChestContents() != null)
+                    schematicContainer.getChestContents().rollChestContents(container);
+                else
+                    schematicContainer.getGeneratorConfigFields().getChestContents().rollChestContents(container);
+
+                ChestFillEvent chestFillEvent = new ChestFillEvent(container);
+                Bukkit.getServer().getPluginManager().callEvent(chestFillEvent);
+                if (!chestFillEvent.isCancelled())
+                    container.update(true);
+            }
     }
 
     private void spawnEntities() {
@@ -277,13 +296,13 @@ public class FitAnything {
             Location signLocation = LocationProjector.project(location, schematicOffset, entityPosition).clone();
             signLocation.getBlock().setType(Material.AIR);
             //If mobs spawn in corners they might choke on adjacent walls
-            signLocation.clone().add(new Vector(0.5,0,0.5));
+            signLocation.clone().add(new Vector(0.5, 0, 0.5));
             Entity entity = signLocation.getWorld().spawnEntity(signLocation, schematicContainer.getVanillaSpawns().get(entityPosition));
             entity.setPersistent(true);
             if (entity instanceof LivingEntity) {
                 ((LivingEntity) entity).setRemoveWhenFarAway(false);
             }
-            if (entity.getType().equals(EntityType.ENDER_CRYSTAL)){
+            if (entity.getType().equals(EntityType.ENDER_CRYSTAL)) {
                 EnderCrystal enderCrystal = (EnderCrystal) entity;
                 enderCrystal.setShowingBottom(false);
             }
