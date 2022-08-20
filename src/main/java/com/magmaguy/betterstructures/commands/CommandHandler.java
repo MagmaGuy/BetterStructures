@@ -15,6 +15,7 @@ import com.magmaguy.betterstructures.config.generators.GeneratorConfigFields;
 import com.magmaguy.betterstructures.config.treasures.TreasureConfig;
 import com.magmaguy.betterstructures.config.treasures.TreasureConfigFields;
 import com.magmaguy.betterstructures.schematics.SchematicContainer;
+import com.magmaguy.betterstructures.util.ChatColorConverter;
 import com.magmaguy.betterstructures.util.ItemStackSerialization;
 import com.magmaguy.betterstructures.util.WarningMessage;
 import net.kyori.adventure.platform.bukkit.BukkitAudiences;
@@ -167,6 +168,16 @@ public class CommandHandler {
                     }
                 })
         );
+        // /bs version
+        manager.command(builder.literal("version")
+                .meta(CommandMeta.DESCRIPTION, "Gets the version of the plugin")
+                .senderType(CommandSender.class)
+                .permission("betterstructures.version")
+                .handler(commandContext ->
+                        commandContext.getSender().sendMessage(
+                                ChatColorConverter.convert("&8[BetterStructures] &aVersion " +
+                                        Bukkit.getPluginManager().getPlugin(
+                                                MetadataHandler.PLUGIN.getName()).getDescription().getVersion()))));
     }
 
     private void placeSchematic(String schematicFile, String schematicType, Player player) {

@@ -10,6 +10,6 @@ public class GeneratorSurfaceEndConfig extends GeneratorConfigFields {
     public GeneratorSurfaceEndConfig() {
         super("generator_surface_end", true, Arrays.asList(StructureType.SURFACE));
         setValidWorldEnvironments(Arrays.asList(World.Environment.THE_END));
-        setTreasureFilename("treasure_nether.yml");
+        setTreasureFilename("treasure_end.yml");
     }
 }
