@@ -40,4 +40,8 @@ public class BuildPlaceEvent extends Event implements Cancellable {
         return fitAnything;
     }
 
+    public static HandlerList getHandlerList() {
+        return handlers;
+    }
+
 }

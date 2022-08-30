@@ -1,6 +1,5 @@
 package com.magmaguy.betterstructures.buildingfitter;
 
-import com.magmaguy.betterstructures.MetadataHandler;
 import com.magmaguy.betterstructures.api.BuildPlaceEvent;
 import com.magmaguy.betterstructures.api.ChestFillEvent;
 import com.magmaguy.betterstructures.buildingfitter.util.FitUndergroundDeepBuilding;
@@ -8,7 +7,6 @@ import com.magmaguy.betterstructures.buildingfitter.util.LocationProjector;
 import com.magmaguy.betterstructures.buildingfitter.util.SchematicPicker;
 import com.magmaguy.betterstructures.config.generators.GeneratorConfigFields;
 import com.magmaguy.betterstructures.schematics.SchematicContainer;
-import com.magmaguy.betterstructures.util.ChunkLocationChecker;
 import com.magmaguy.betterstructures.util.SpigotMessage;
 import com.magmaguy.betterstructures.util.SurfaceMaterials;
 import com.magmaguy.betterstructures.util.WarningMessage;
@@ -27,7 +25,6 @@ import org.bukkit.block.Block;
 import org.bukkit.block.Container;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.*;
-import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 
 import java.util.HashMap;
@@ -79,128 +76,124 @@ public class FitAnything {
     protected void paste(Location location) {
         BuildPlaceEvent buildPlaceEvent = new BuildPlaceEvent(this);
         if (buildPlaceEvent.isCancelled()) return;
+        Bukkit.getServer().getPluginManager().callEvent(buildPlaceEvent);
 
         FitAnything fitAnything = this;
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                //Set pedestal material before the paste so bedrock blocks get replaced correctly
-                assignPedestalMaterial(location);
-                if (pedestalMaterial == null)
-                    switch (location.getWorld().getEnvironment()) {
-                        case NORMAL:
-                        case CUSTOM:
-                            pedestalMaterial = Material.STONE;
-                            break;
-                        case NETHER:
-                            pedestalMaterial = Material.NETHERRACK;
-                            break;
-                        case THE_END:
-                            pedestalMaterial = Material.END_STONE;
-                            break;
-                        default:
-                            pedestalMaterial = Material.STONE;
-                    }
-
-                //These blocks are dynamic and get replaced with world contents, need to be replaced back after the paste to preserve the mechanic
-                Set<BlockVector3> barrierBlocks = new HashSet<>();
-                Set<BlockVector3> bedrockBlocks = new HashSet<>();
-                BlockData barrierBlock = null;
-                BlockData bedrockBlock = null;
-
-
-                //adjusts the offset just for the prescan, not needed for worldedit as that figures it out on its own
-                Location adjustedLocation = location.clone().add(schematicOffset);
-                for (int x = 0; x < schematicClipboard.getDimensions().getX(); x++)
-                    for (int y = 0; y < schematicClipboard.getDimensions().getY(); y++)
-                        for (int z = 0; z < schematicClipboard.getDimensions().getZ(); z++) {
-                            BlockVector3 adjustedClipboardLocation = BlockVector3.at(
-                                    x + schematicClipboard.getMinimumPoint().getX(),
-                                    y + schematicClipboard.getMinimumPoint().getY(),
-                                    z + schematicClipboard.getMinimumPoint().getZ());
-                            BlockState blockState = schematicClipboard.getBlock(adjustedClipboardLocation);
-                            Material material = BukkitAdapter.adapt(blockState.getBlockType());
-                            Block worldBlock = adjustedLocation.clone().add(new Vector(x, y, z)).getBlock();
-                            if (material == Material.BARRIER) {
-                                //special behavior: do not replace
-                                try {
-                                    if (barrierBlock == null)
-                                        barrierBlock = BukkitAdapter.adapt(schematicClipboard.getBlock(adjustedClipboardLocation));
-                                    schematicClipboard.setBlock(adjustedClipboardLocation, BukkitAdapter.adapt(worldBlock.getBlockData()));
-                                    barrierBlocks.add(adjustedClipboardLocation);
-                                } catch (WorldEditException e) {
-                                    throw new RuntimeException(e);
-                                }
-                            } else if (material == Material.BEDROCK) {
-                                //special behavior: replace if air
-                                try {
-                                    if (bedrockBlock == null)
-                                        bedrockBlock = BukkitAdapter.adapt(schematicClipboard.getBlock(adjustedClipboardLocation));
-
-                                    worldBlock = adjustedLocation.clone().add(new Vector(x, y, z)).getBlock();
-                                    if (worldBlock.getType().isAir() || worldBlock.isLiquid()) {
-                                        //Case for air - replace with filler block
-                                        worldBlock.setType(pedestalMaterial);
-                                    }
-                                    //Case for any solid block - do not replace world block
-                                    schematicClipboard.setBlock(adjustedClipboardLocation, BukkitAdapter.adapt(worldBlock.getBlockData()));
-                                    bedrockBlocks.add(adjustedClipboardLocation);
-                                } catch (WorldEditException e) {
-                                    throw new RuntimeException(e);
-                                }
-                            }
-                        }
-
-
-                Schematic.paste(schematicClipboard, location);
-                for (Player player : Bukkit.getOnlinePlayers()) {
-                    if (player.hasPermission("betterstructures.warn"))
-                        player.spigot().sendMessage(
-                                SpigotMessage.commandHoverMessage("[BetterStructures] New building generated! Click to teleport.",
-                                        "Click to teleport to " + location.toString(),
-                                        "/betterstructures teleporttocoords " + location.getWorld().getName() + " " + location.getBlockX() + " " + location.getBlockY() + " " + location.getBlockZ())
-                        );
-                }
-                for (BlockVector3 blockVector3 : barrierBlocks) {
-                    try {
-                        schematicClipboard.setBlock(blockVector3, BukkitAdapter.adapt(barrierBlock));
-                    } catch (WorldEditException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-
-                for (BlockVector3 blockVector3 : bedrockBlocks) {
-                    try {
-                        schematicClipboard.setBlock(blockVector3, BukkitAdapter.adapt(bedrockBlock));
-                    } catch (WorldEditException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-
-                if (!(fitAnything instanceof FitAirBuilding)) {
-                    try {
-                        addPedestal(location);
-                    } catch (Exception exception) {
-                        new WarningMessage("Failed to correctly assign pedestal material!", true);
-                    }
-                    try {
-                        clearTrees(location);
-                    } catch (Exception exception) {
-                        new WarningMessage("Failed to correctly clear trees!", true);
-                    }
-                }
-                try {
-                    fillChests();
-                } catch (Exception exception) {
-                    new WarningMessage("Failed to correctly fill chests!", true);
-                }
-                try {
-                    spawnEntities();
-                } catch (Exception exception) {
-                    new WarningMessage("Failed to correctly spawn entities!", true);
-                }
+        //Set pedestal material before the paste so bedrock blocks get replaced correctly
+        assignPedestalMaterial(location);
+        if (pedestalMaterial == null)
+            switch (location.getWorld().getEnvironment()) {
+                case NORMAL:
+                case CUSTOM:
+                    pedestalMaterial = Material.STONE;
+                    break;
+                case NETHER:
+                    pedestalMaterial = Material.NETHERRACK;
+                    break;
+                case THE_END:
+                    pedestalMaterial = Material.END_STONE;
+                    break;
+                default:
+                    pedestalMaterial = Material.STONE;
             }
-        }.runTaskLater(MetadataHandler.PLUGIN, 0);
+
+        //These blocks are dynamic and get replaced with world contents, need to be replaced back after the paste to preserve the mechanic
+        Set<BlockVector3> barrierBlocks = new HashSet<>();
+        Set<BlockVector3> bedrockBlocks = new HashSet<>();
+        BlockData barrierBlock = null;
+        BlockData bedrockBlock = null;
+
+
+        //adjusts the offset just for the prescan, not needed for worldedit as that figures it out on its own
+        Location adjustedLocation = location.clone().add(schematicOffset);
+        for (int x = 0; x < schematicClipboard.getDimensions().getX(); x++)
+            for (int y = 0; y < schematicClipboard.getDimensions().getY(); y++)
+                for (int z = 0; z < schematicClipboard.getDimensions().getZ(); z++) {
+                    BlockVector3 adjustedClipboardLocation = BlockVector3.at(
+                            x + schematicClipboard.getMinimumPoint().getX(),
+                            y + schematicClipboard.getMinimumPoint().getY(),
+                            z + schematicClipboard.getMinimumPoint().getZ());
+                    BlockState blockState = schematicClipboard.getBlock(adjustedClipboardLocation);
+                    Material material = BukkitAdapter.adapt(blockState.getBlockType());
+                    Block worldBlock = adjustedLocation.clone().add(new Vector(x, y, z)).getBlock();
+                    if (material == Material.BARRIER) {
+                        //special behavior: do not replace
+                        try {
+                            if (barrierBlock == null)
+                                barrierBlock = BukkitAdapter.adapt(schematicClipboard.getBlock(adjustedClipboardLocation));
+                            schematicClipboard.setBlock(adjustedClipboardLocation, BukkitAdapter.adapt(worldBlock.getBlockData()));
+                            barrierBlocks.add(adjustedClipboardLocation);
+                        } catch (WorldEditException e) {
+                            throw new RuntimeException(e);
+                        }
+                    } else if (material == Material.BEDROCK) {
+                        //special behavior: replace if air
+                        try {
+                            if (bedrockBlock == null)
+                                bedrockBlock = BukkitAdapter.adapt(schematicClipboard.getBlock(adjustedClipboardLocation));
+
+                            worldBlock = adjustedLocation.clone().add(new Vector(x, y, z)).getBlock();
+                            if (worldBlock.getType().isAir() || worldBlock.isLiquid()) {
+                                //Case for air - replace with filler block
+                                worldBlock.setType(pedestalMaterial);
+                            }
+                            //Case for any solid block - do not replace world block
+                            schematicClipboard.setBlock(adjustedClipboardLocation, BukkitAdapter.adapt(worldBlock.getBlockData()));
+                            bedrockBlocks.add(adjustedClipboardLocation);
+                        } catch (WorldEditException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                }
+
+
+        Schematic.paste(schematicClipboard, location);
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            if (player.hasPermission("betterstructures.warn"))
+                player.spigot().sendMessage(
+                        SpigotMessage.commandHoverMessage("[BetterStructures] New building generated! Click to teleport.",
+                                "Click to teleport to " + location.toString(),
+                                "/betterstructures teleporttocoords " + location.getWorld().getName() + " " + location.getBlockX() + " " + location.getBlockY() + " " + location.getBlockZ())
+                );
+        }
+        for (BlockVector3 blockVector3 : barrierBlocks) {
+            try {
+                schematicClipboard.setBlock(blockVector3, BukkitAdapter.adapt(barrierBlock));
+            } catch (WorldEditException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        for (BlockVector3 blockVector3 : bedrockBlocks) {
+            try {
+                schematicClipboard.setBlock(blockVector3, BukkitAdapter.adapt(bedrockBlock));
+            } catch (WorldEditException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        if (!(fitAnything instanceof FitAirBuilding)) {
+            try {
+                addPedestal(location);
+            } catch (Exception exception) {
+                new WarningMessage("Failed to correctly assign pedestal material!", true);
+            }
+            try {
+                clearTrees(location);
+            } catch (Exception exception) {
+                new WarningMessage("Failed to correctly clear trees!", true);
+            }
+        }
+        try {
+            fillChests();
+        } catch (Exception exception) {
+            new WarningMessage("Failed to correctly fill chests!", true);
+        }
+        try {
+            spawnEntities();
+        } catch (Exception exception) {
+            new WarningMessage("Failed to correctly spawn entities!", true);
+        }
 
     }
 
