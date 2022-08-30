@@ -45,4 +45,8 @@ public class ChestFillEvent extends Event implements Cancellable {
         return container;
     }
 
+    public static HandlerList getHandlerList() {
+        return handlers;
+    }
+
 }

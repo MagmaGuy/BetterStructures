@@ -10,7 +10,6 @@ import com.magmaguy.betterstructures.config.DefaultConfig;
 import com.magmaguy.betterstructures.config.ValidWorldsConfig;
 import com.magmaguy.betterstructures.config.generators.GeneratorConfigFields;
 import com.magmaguy.betterstructures.schematics.SchematicContainer;
-import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -45,24 +44,15 @@ public class NewChunkLoadEvent implements Listener {
             }
         }.runTaskLater(MetadataHandler.PLUGIN, 20L);
         if (!ValidWorldsConfig.isValidWorld(event.getWorld())) return;
-        Bukkit.getScheduler().runTaskAsynchronously(MetadataHandler.PLUGIN, bukkitTask -> {
-            if (random == null) {
-                random = new Random();
-                /*
-                random = new Random(event.getChunk().getWorld().getSeed());
-                surfaceOffset = random.nextInt(1, 1000000);
-                shallowUndergroundOffset = random.nextInt(1, 100000);
-                deepUndergroundOffset = random.nextInt(1, 10000);
-                airOffset = random.nextInt(1, 1000);
-                liquidOffset = random.nextInt(1, 100);
-                 */
-            }
-            surfaceScanner(event.getChunk());
-            shallowUndergroundScanner(event.getChunk());
-            deepUndergroundScanner(event.getChunk());
-            skyScanner(event.getChunk());
-            liquidSurfaceScanner(event.getChunk());
-        });
+        if (random == null) {
+            random = new Random();
+        }
+        surfaceScanner(event.getChunk());
+        shallowUndergroundScanner(event.getChunk());
+        deepUndergroundScanner(event.getChunk());
+        skyScanner(event.getChunk());
+        liquidSurfaceScanner(event.getChunk());
+
     }
 
     private void surfaceScanner(Chunk chunk) {
@@ -102,7 +92,7 @@ public class NewChunkLoadEvent implements Listener {
     private void liquidSurfaceScanner(Chunk chunk) {
         if (SchematicContainer.getSchematics().get(GeneratorConfigFields.StructureType.LIQUID_SURFACE).isEmpty())
             return;
-       // if (!seededSimplexRandomization(chunk, .99, liquidOffset, DefaultConfig.getLiquidSurfaceStructureRarityMultiplier())) return;
+        // if (!seededSimplexRandomization(chunk, .99, liquidOffset, DefaultConfig.getLiquidSurfaceStructureRarityMultiplier())) return;
         if (ThreadLocalRandom.current().nextDouble() > DefaultConfig.getOceanStructuresPerThousandChunks() / 1000D)
             return;
         new FitLiquidBuilding(chunk);
