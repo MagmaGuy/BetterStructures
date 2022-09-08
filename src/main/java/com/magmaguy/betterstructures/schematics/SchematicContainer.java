@@ -68,6 +68,7 @@ public class SchematicContainer {
                     BlockVector3 translatedLocation = BlockVector3.at(x, y, z).add(clipboard.getMinimumPoint());
                     BlockState weBlockState = clipboard.getBlock(translatedLocation);
                     Material minecraftMaterial = BukkitAdapter.adapt(weBlockState.getBlockType());
+                    if (minecraftMaterial == null) continue;
                     //register chest location
                     if (minecraftMaterial.equals(Material.CHEST) ||
                             minecraftMaterial.equals(Material.TRAPPED_CHEST) ||
