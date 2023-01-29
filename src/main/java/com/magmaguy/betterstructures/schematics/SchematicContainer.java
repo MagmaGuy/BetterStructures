@@ -46,7 +46,11 @@ public class SchematicContainer {
     @Getter
     private final HashMap<Vector, EntityType> vanillaSpawns = new HashMap<>();
     @Getter
+    private final HashMap<Vector, String> eliteMobsSpawns = new HashMap<>();
+    @Getter
     private ChestContents chestContents = null;
+    @Getter
+    List<AbstractBlock> abstractBlocks = new ArrayList<>();
 
     public SchematicContainer(Clipboard clipboard, String clipboardFilename, SchematicConfigField schematicConfigField, String configFilename) {
         this.clipboard = clipboard;
@@ -108,7 +112,11 @@ public class SchematicContainer {
                             }
                             vanillaSpawns.put(new Vector(x, y, z), entityType);
                         } else if (line1.toLowerCase().contains("[elitemobs]")) {
-                            //todo: elitemobs integration goes here
+                            String filename = "";
+                            for (int i = 2; i < 5; i++)
+                                filename += baseBlock.getNbtData().getString("Text" + i)
+                                        .split(":")[1].replace("\"", "").replace("}", "");
+                            eliteMobsSpawns.put(new Vector(x, y, z), filename);
                         }
                     }
                 }
@@ -122,6 +130,17 @@ public class SchematicContainer {
             chestContents = schematicConfigField.getChestContents();
         }
     }
+
+    /* todo: coming soon
+    private void initializeAbstractBlocks() {
+        BlockVector3 dimensions = clipboard.getDimensions();
+        for (int x = 0; x < dimensions.getX(); x++)
+            for (int y = 0; y < dimensions.getY(); y++)
+                for (int z = 0; z < dimensions.getZ(); z++)
+                    new AbstractBlock(clipboard.getFullBlock().toBaseBlock().applyBlock())
+    }
+
+     */
 
     public boolean isValidEnvironment(World.Environment environment) {
         return generatorConfigFields.getValidWorldEnvironments() == null ||

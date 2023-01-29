@@ -5,7 +5,10 @@ import com.magmaguy.betterstructures.config.DefaultConfig;
 import com.magmaguy.betterstructures.config.generators.GeneratorConfigFields;
 import com.magmaguy.betterstructures.schematics.SchematicContainer;
 import com.magmaguy.betterstructures.util.WorldEditUtils;
-import org.bukkit.*;
+import org.bukkit.Chunk;
+import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.World;
 import org.bukkit.util.Vector;
 
 import java.util.concurrent.ThreadLocalRandom;
@@ -14,19 +17,19 @@ public class FitUndergroundBuilding extends FitAnything {
 
     private int lowestY;
     private int highestY;
-    private GeneratorConfigFields.StructureType structureType;
 
     //For commands
     public FitUndergroundBuilding(Chunk chunk, SchematicContainer schematicContainer, int lowestY, int highestY, GeneratorConfigFields.StructureType structureType) {
+        super.structureType = structureType;
         this.lowestY = lowestY;
         this.highestY = highestY;
         this.schematicContainer = schematicContainer;
         this.schematicClipboard = schematicContainer.getClipboard();
-        this.structureType = structureType;
         scan(chunk);
     }
 
     public FitUndergroundBuilding(Chunk chunk, int lowestY, int highestY, GeneratorConfigFields.StructureType structureType) {
+        super.structureType = structureType;
         this.lowestY = lowestY;
         this.highestY = highestY;
         this.structureType = structureType;

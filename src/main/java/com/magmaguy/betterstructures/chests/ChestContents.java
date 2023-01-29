@@ -4,12 +4,10 @@ import com.magmaguy.betterstructures.config.treasures.TreasureConfigFields;
 import com.magmaguy.betterstructures.util.ItemStackSerialization;
 import com.magmaguy.betterstructures.util.WarningMessage;
 import lombok.Getter;
-import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.block.Container;
 import org.bukkit.inventory.ItemStack;
 
-import java.nio.Buffer;
 import java.util.ArrayList;
 import java.util.List;
 

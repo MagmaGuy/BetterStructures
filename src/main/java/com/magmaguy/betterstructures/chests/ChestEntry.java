@@ -1,6 +1,5 @@
 package com.magmaguy.betterstructures.chests;
 
-import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 

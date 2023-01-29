@@ -1,6 +1,5 @@
 package com.magmaguy.betterstructures.util;
 
-import java.util.HashMap;
 import java.util.Map;
 
 public class WeighedProbability {

@@ -25,11 +25,6 @@ public class NewChunkLoadEvent implements Listener {
 
     private static HashSet<Chunk> loadingChunks = new HashSet<>();
     private static Random random = null;
-    private static int surfaceOffset;
-    private static int shallowUndergroundOffset;
-    private static int deepUndergroundOffset;
-    private static int airOffset;
-    private static int liquidOffset;
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onChunkLoad(ChunkLoadEvent event) {
@@ -57,7 +52,6 @@ public class NewChunkLoadEvent implements Listener {
 
     private void surfaceScanner(Chunk chunk) {
         if (SchematicContainer.getSchematics().get(GeneratorConfigFields.StructureType.SURFACE).isEmpty()) return;
-        //if (!seededSimplexRandomization(chunk, .99, surfaceOffset, DefaultConfig.getSurfaceStructureRarityMultiplier())) return;
         if (ThreadLocalRandom.current().nextDouble() > DefaultConfig.getLandStructuresPerThousandChunks() / 1000D)
             return;
         new FitSurfaceBuilding(chunk);
@@ -66,7 +60,6 @@ public class NewChunkLoadEvent implements Listener {
     private void shallowUndergroundScanner(Chunk chunk) {
         if (SchematicContainer.getSchematics().get(GeneratorConfigFields.StructureType.UNDERGROUND_SHALLOW).isEmpty())
             return;
-        //if (!seededSimplexRandomization(chunk, .99, shallowUndergroundOffset, DefaultConfig.getShallowUndergroundStructureRarityMultiplier())) return;
         if (ThreadLocalRandom.current().nextDouble() > DefaultConfig.getShallowUndergroundStructuresPerThousandChunks() / 1000D)
             return;
         FitUndergroundShallowBuilding.fit(chunk);
@@ -75,7 +68,6 @@ public class NewChunkLoadEvent implements Listener {
     private void deepUndergroundScanner(Chunk chunk) {
         if (SchematicContainer.getSchematics().get(GeneratorConfigFields.StructureType.UNDERGROUND_DEEP).isEmpty())
             return;
-        //if (!seededSimplexRandomization(chunk, .99, deepUndergroundOffset, DefaultConfig.getDeepUndergroundStructureRarityMultiplier())) return;
         if (ThreadLocalRandom.current().nextDouble() > DefaultConfig.getDeepUndergroundStructuresPerThousandChunks() / 1000D)
             return;
         FitUndergroundDeepBuilding.fit(chunk);
@@ -83,7 +75,6 @@ public class NewChunkLoadEvent implements Listener {
 
     private void skyScanner(Chunk chunk) {
         if (SchematicContainer.getSchematics().get(GeneratorConfigFields.StructureType.SKY).isEmpty()) return;
-        //if (!seededSimplexRandomization(chunk, .99, airOffset, DefaultConfig.getAirStructureRarityMultiplier())) return;
         if (ThreadLocalRandom.current().nextDouble() > DefaultConfig.getAirStructuresPerThousandChunks() / 1000D)
             return;
         new FitAirBuilding(chunk);
@@ -92,15 +83,8 @@ public class NewChunkLoadEvent implements Listener {
     private void liquidSurfaceScanner(Chunk chunk) {
         if (SchematicContainer.getSchematics().get(GeneratorConfigFields.StructureType.LIQUID_SURFACE).isEmpty())
             return;
-        // if (!seededSimplexRandomization(chunk, .99, liquidOffset, DefaultConfig.getLiquidSurfaceStructureRarityMultiplier())) return;
         if (ThreadLocalRandom.current().nextDouble() > DefaultConfig.getOceanStructuresPerThousandChunks() / 1000D)
             return;
         new FitLiquidBuilding(chunk);
     }
-
-/* this has issues when you try to integrate customization options
-    private boolean seededSimplexRandomization(Chunk chunk, double strictness, int offset, double rarityMultiplier) {
-        return (SimplexNoise.noise(rarityMultiplier * chunk.getX() + (double) offset, rarityMultiplier * chunk.getZ() + (double) offset) > strictness);
-    }
- */
 }

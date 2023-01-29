@@ -36,7 +36,8 @@ public class SchematicConfig extends CustomConfig {
             String configurationName = convertFromSchematicFilename(file.getName());
             SchematicConfigField schematicConfigField = new SchematicConfigField(configurationName, true);
             new CustomConfig(file.getParent().replace(MetadataHandler.PLUGIN.getDataFolder().getAbsolutePath() + File.separatorChar, ""), SchematicConfigField.class, schematicConfigField);
-            schematicConfigurations.put(configurationName, schematicConfigField);
+            if (schematicConfigField.isEnabled())
+                schematicConfigurations.put(configurationName, schematicConfigField);
         }
 
         for (SchematicConfigField schematicConfigField : schematicConfigurations.values()) {

@@ -1,11 +1,9 @@
 package com.magmaguy.betterstructures.buildingfitter.util;
 
-import com.magmaguy.betterstructures.util.ChunkLocationChecker;
 import com.magmaguy.betterstructures.util.SurfaceMaterials;
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
 import com.sk89q.worldedit.math.BlockVector3;
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.util.Vector;

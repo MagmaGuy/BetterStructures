@@ -4,7 +4,6 @@ import com.magmaguy.betterstructures.buildingfitter.util.TerrainAdequacy;
 import com.magmaguy.betterstructures.config.generators.GeneratorConfigFields;
 import com.magmaguy.betterstructures.schematics.SchematicContainer;
 import com.magmaguy.betterstructures.util.WorldEditUtils;
-import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -14,12 +13,14 @@ public class FitLiquidBuilding extends FitAnything {
 
     //For commands
     public FitLiquidBuilding(Chunk chunk, SchematicContainer schematicContainer) {
+        super.structureType = GeneratorConfigFields.StructureType.LIQUID_SURFACE;
         this.schematicContainer = schematicContainer;
         this.schematicClipboard = schematicContainer.getClipboard();
         scan(chunk);
     }
 
     public FitLiquidBuilding(Chunk chunk) {
+        super.structureType = GeneratorConfigFields.StructureType.LIQUID_SURFACE;
         scan(chunk);
     }
 

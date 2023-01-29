@@ -15,12 +15,14 @@ import java.util.concurrent.ThreadLocalRandom;
 public class FitAirBuilding extends FitAnything {
 
     public FitAirBuilding(Chunk chunk, SchematicContainer schematicContainer) {
+        super.structureType = GeneratorConfigFields.StructureType.SKY;
         this.schematicContainer = schematicContainer;
         this.schematicClipboard = schematicContainer.getClipboard();
         scan(chunk);
     }
 
     public FitAirBuilding(Chunk chunk) {
+        super.structureType = GeneratorConfigFields.StructureType.SKY;
         scan(chunk);
     }
 
