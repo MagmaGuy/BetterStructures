@@ -11,6 +11,7 @@ import cloud.commandframework.minecraft.extras.MinecraftExceptionHandler;
 import cloud.commandframework.minecraft.extras.MinecraftHelp;
 import com.magmaguy.betterstructures.MetadataHandler;
 import com.magmaguy.betterstructures.buildingfitter.FitAnything;
+import com.magmaguy.betterstructures.config.DefaultConfig;
 import com.magmaguy.betterstructures.config.generators.GeneratorConfigFields;
 import com.magmaguy.betterstructures.config.treasures.TreasureConfig;
 import com.magmaguy.betterstructures.config.treasures.TreasureConfigFields;
@@ -178,6 +179,15 @@ public class CommandHandler {
                                 ChatColorConverter.convert("&8[BetterStructures] &aVersion " +
                                         Bukkit.getPluginManager().getPlugin(
                                                 MetadataHandler.PLUGIN.getName()).getDescription().getVersion()))));
+        // /bs silent
+        manager.command(builder.literal("silent")
+                .meta(CommandMeta.DESCRIPTION, "Silences warning admins about new builds")
+                .senderType(CommandSender.class)
+                .permission("betterstructures.*")
+                .handler(commandContext -> {
+                    commandContext.getSender().sendMessage(
+                            ChatColorConverter.convert("&8[BetterStructures] &2Toggled build warnings to " + DefaultConfig.toggleWarnings() + "!"));
+                }));
     }
 
     private void placeSchematic(String schematicFile, String schematicType, Player player) {

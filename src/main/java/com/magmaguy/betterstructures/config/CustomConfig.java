@@ -3,7 +3,6 @@ package com.magmaguy.betterstructures.config;
 
 import com.magmaguy.betterstructures.MetadataHandler;
 import com.magmaguy.betterstructures.util.WarningMessage;
-import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.reflections.Reflections;

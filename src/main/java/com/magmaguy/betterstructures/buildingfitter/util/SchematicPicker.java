@@ -3,7 +3,6 @@ package com.magmaguy.betterstructures.buildingfitter.util;
 import com.magmaguy.betterstructures.config.generators.GeneratorConfigFields;
 import com.magmaguy.betterstructures.schematics.SchematicContainer;
 import com.magmaguy.betterstructures.util.WeighedProbability;
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
 
 import java.util.ArrayList;

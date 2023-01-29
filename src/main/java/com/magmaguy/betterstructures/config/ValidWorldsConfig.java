@@ -31,7 +31,7 @@ public class ValidWorldsConfig {
         file = ConfigurationEngine.fileCreator("ValidWorlds.yml");
         fileConfiguration = ConfigurationEngine.fileConfigurationCreator(file);
 
-        whitelistNewWorlds = true;
+        whitelistNewWorlds = ConfigurationEngine.setBoolean(fileConfiguration, "New worlds spawn structures", true);
 
         for (World world : Bukkit.getWorlds())
             ConfigurationEngine.setBoolean(fileConfiguration, "Valid worlds." + world.getName(), true);

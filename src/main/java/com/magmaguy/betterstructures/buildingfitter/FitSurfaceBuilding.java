@@ -7,18 +7,21 @@ import com.magmaguy.betterstructures.schematics.SchematicContainer;
 import com.magmaguy.betterstructures.util.WorldEditUtils;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.util.Vector;
 
 public class FitSurfaceBuilding extends FitAnything {
 
     //For commands
     public FitSurfaceBuilding(Chunk chunk, SchematicContainer schematicContainer) {
+        super.structureType = GeneratorConfigFields.StructureType.SURFACE;
         this.schematicContainer = schematicContainer;
         this.schematicClipboard = schematicContainer.getClipboard();
         scan(chunk);
     }
 
     public FitSurfaceBuilding(Chunk chunk) {
+        super.structureType = GeneratorConfigFields.StructureType.SURFACE;
         scan(chunk);
     }
 
@@ -38,6 +41,11 @@ public class FitSurfaceBuilding extends FitAnything {
         if (highestScore < 50)
             for (int chunkX = -searchRadius; chunkX < searchRadius + 1; chunkX++) {
                 for (int chunkZ = -searchRadius; chunkZ < searchRadius + 1; chunkZ++) {
+                    //Relief measure: instead of doing a 3x3 grid, this does a "+" shaped  pattern search - may want to remove this some day, if not optimal
+                    if (chunkX == -1 && chunkZ == -1 ||
+                            chunkX == 1 && chunkZ == 1 ||
+                            chunkX == -1 && chunkZ == 1 ||
+                            chunkX == 1 && chunkZ == -1) continue;
                     chunkScan(originalLocation, chunkX, chunkZ);
                     if (highestScore > 50) break;
                 }
@@ -57,6 +65,7 @@ public class FitSurfaceBuilding extends FitAnything {
     private void chunkScan(Location originalLocation, int chunkX, int chunkZ) {
         Location iteratedLocation = originalLocation.clone().add(new Vector(chunkX * 16, 0, chunkZ * 16));
 
+        if (originalLocation.getWorld().getEnvironment().equals(World.Environment.NETHER)) startingScore = 200;
         double score = Topology.scan(startingScore, scanStep, schematicClipboard, iteratedLocation, schematicOffset);
 
         //Continue to the next scan in case of poor fit

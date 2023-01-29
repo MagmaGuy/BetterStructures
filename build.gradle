@@ -6,7 +6,7 @@ plugins {
 }
 
 group = 'com.magmaguy'
-version = '1.3.5-SNAPSHOT'
+version = '1.4.0-SNAPSHOT'
 
 repositories {
     mavenCentral()
@@ -27,6 +27,8 @@ repositories {
 
     //CloudCommands
     maven { url = 'https://oss.sonatype.org/content/repositories/snapshots' }
+    //EliteMobs
+    maven { url = 'https://s01.oss.sonatype.org/content/repositories/snapshots' }
 }
 
 dependencies {
@@ -34,7 +36,9 @@ dependencies {
     //BStats API
     implementation group: 'org.bstats', name: 'bstats-bukkit', version: '2.2.1'
     //WorldGuard API
-    compileOnly group: 'com.sk89q.worldedit', name: 'worldedit-bukkit', version: '7.2.10'
+    compileOnly group: 'com.sk89q.worldguard', name: 'worldguard-bukkit', version: '7.0.7'
+    //WorldEdit API
+    compileOnly group: 'com.sk89q.worldedit', name: 'worldedit-bukkit', version: '7.2.13'
     //lombok
     compileOnly 'org.projectlombok:lombok:1.18.22'
     annotationProcessor 'org.projectlombok:lombok:1.18.22'
@@ -50,6 +54,8 @@ dependencies {
     implementation 'org.apache.commons:commons-lang3:3.9'
     //reflections - used for config initialization
     implementation group: 'org.reflections', name: 'reflections', version: '0.9.12'
+    //EliteMobs
+    compileOnly group: 'com.magmaguy', name: 'EliteMobs', version: '8.3.12-SNAPSHOT'
 
 }
 

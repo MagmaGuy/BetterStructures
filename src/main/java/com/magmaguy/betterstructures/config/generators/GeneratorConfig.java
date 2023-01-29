@@ -2,7 +2,6 @@ package com.magmaguy.betterstructures.config.generators;
 
 import com.magmaguy.betterstructures.config.CustomConfig;
 import lombok.Getter;
-import org.bukkit.Bukkit;
 
 import java.util.HashMap;
 
