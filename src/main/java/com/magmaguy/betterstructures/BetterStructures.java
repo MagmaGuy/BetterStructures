@@ -27,8 +27,6 @@ public final class BetterStructures extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(new NewChunkLoadEvent(), this);
         Bukkit.getPluginManager().registerEvents(new ValidWorldsConfig.ValidWorldsConfigEvents(), this);
         Bukkit.getPluginManager().registerEvents(new VersionChecker.VersionCheckerEvents(), this);
-        //Creates import folder if one doesn't exist, imports any content inside
-        Import.initialize();
         try {
             this.getConfig().save("config.yml");
         } catch (IOException e) {
@@ -36,6 +34,9 @@ public final class BetterStructures extends JavaPlugin {
         }
         DefaultConfig.initializeConfig();
         ValidWorldsConfig.initializeConfig();
+        //Creates import folder if one doesn't exist, imports any content inside
+        Import.initialize();
+
         new TreasureConfig();
         new GeneratorConfig();
         new SchematicConfig();
