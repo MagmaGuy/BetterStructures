@@ -7,13 +7,14 @@ import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.entity.Player;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class TreasureConfigFields extends CustomConfigFields {
 
     @Getter
     @Setter
-    private List<String> rawLoot = null;
+    private List<String> rawLoot = new ArrayList<>();
     @Getter
     @Setter
     private ChestContents chestContents = null;
@@ -25,7 +26,7 @@ public class TreasureConfigFields extends CustomConfigFields {
     @Override
     public void processConfigFields() {
         this.isEnabled = processBoolean("isEnabled", isEnabled, true, true);
-        this.rawLoot = processStringList("loot", rawLoot, null, true);
+        this.rawLoot = processStringList("loot", rawLoot, new ArrayList<>(), true);
         chestContents = new ChestContents(this);
     }
 

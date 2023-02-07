@@ -42,14 +42,16 @@ public final class BetterStructures extends JavaPlugin {
         new SchematicConfig();
         new CommandHandler();
         VersionChecker.checkPluginVersion();
-        if (Bukkit.getPluginManager().getPlugin("WorldGuard") != null)
+        if (Bukkit.getPluginManager().getPlugin("WorldGuard") != null &&
+                Bukkit.getPluginManager().getPlugin("EliteMobs") != null)
             Bukkit.getPluginManager().registerEvents(new WorldGuard(), this);
     }
 
     @Override
     public void onLoad() {
         try {
-            if (Bukkit.getPluginManager().getPlugin("WorldGuard") != null)
+            if (Bukkit.getPluginManager().getPlugin("WorldGuard") != null &&
+                    Bukkit.getPluginManager().getPlugin("EliteMobs") != null)
                 WorldGuard.initializeFlag();
             else
                 new InfoMessage("WorldGuard is not enabled! WorldGuard is recommended when using the EliteMobs integration.");

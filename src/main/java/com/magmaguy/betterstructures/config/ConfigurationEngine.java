@@ -29,7 +29,9 @@ public class ConfigurationEngine {
                 file.getParentFile().mkdirs();
                 file.createNewFile();
             } catch (IOException ex) {
-                Bukkit.getLogger().warning("[EliteMobs] Error generating the plugin file: " + file.getName());
+                Bukkit.getLogger().warning("[BetterStructures] Error generating the plugin file: " + file.getName());
+                Bukkit.getLogger().warning("[BetterStructures] Path: " + file.getAbsolutePath());
+                ex.printStackTrace();
             }
 
         return file;
