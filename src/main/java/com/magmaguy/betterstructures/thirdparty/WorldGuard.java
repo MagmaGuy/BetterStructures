@@ -74,6 +74,7 @@ public class WorldGuard implements Listener {
     }
 
     public static void Unprotect(CustomBossEntity customBossEntity) {
+        if (!customBossEntity.getCustomBossesConfigFields().isRemoveAfterDeath()) return;
         ProtectedRegion protectedRegion = com.sk89q.worldguard.WorldGuard.getInstance().getPlatform().getRegionContainer()
                 .get(BukkitAdapter.adapt(customBossEntity.getLocation().getWorld())).getRegion(
                         regionIDGenerator(

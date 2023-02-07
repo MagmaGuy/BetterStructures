@@ -7,6 +7,7 @@ import com.magmaguy.betterstructures.config.generators.GeneratorConfigFields;
 import com.magmaguy.betterstructures.config.treasures.TreasureConfig;
 import com.magmaguy.betterstructures.config.treasures.TreasureConfigFields;
 import com.magmaguy.betterstructures.util.WarningMessage;
+import com.magmaguy.elitemobs.utils.Developer;
 import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.Material;
@@ -49,11 +50,11 @@ public class SchematicConfigField extends CustomConfigFields {
         this.isEnabled = processBoolean("isEnabled", isEnabled, true, true);
         this.weight = processDouble("weight", weight, 1, true);
         this.pedestalMaterial = processEnum("pedestalMaterial", pedestalMaterial, null, Material.class, false);
-        this.generatorConfigFilename = processString("generatorConfigFilename", generatorConfigFilename, null, true);
+        this.generatorConfigFilename = processString("generatorConfigFilename", generatorConfigFilename, generatorConfigFilename, true);
         this.generatorConfigFields = GeneratorConfig.getConfigFields(generatorConfigFilename);
         this.treasureFile = processString("treasureFile", treasureFile, null, false);
         if (generatorConfigFields == null) {
-            new WarningMessage("Failed to assign a valid generator to " + filename + "! This will not spawn.");
+            new WarningMessage("Failed to assign a valid generator to " + filename + "! This will not spawn. Generator config name: " + generatorConfigFilename);
             return;
         }
         this.chestContents = generatorConfigFields.getChestContents();
