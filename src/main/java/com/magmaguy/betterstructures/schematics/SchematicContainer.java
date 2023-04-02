@@ -48,6 +48,8 @@ public class SchematicContainer {
     @Getter
     private final HashMap<Vector, String> eliteMobsSpawns = new HashMap<>();
     @Getter
+    private final HashMap<Vector, String> mythicMobsSpawns = new HashMap<>(); // carm - Support for MythicMobs
+    @Getter
     private ChestContents chestContents = null;
     @Getter
     List<AbstractBlock> abstractBlocks = new ArrayList<>();

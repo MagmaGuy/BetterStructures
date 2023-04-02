@@ -9,6 +9,7 @@ import com.magmaguy.betterstructures.config.DefaultConfig;
 import com.magmaguy.betterstructures.config.generators.GeneratorConfigFields;
 import com.magmaguy.betterstructures.schematics.SchematicContainer;
 import com.magmaguy.betterstructures.thirdparty.EliteMobs;
+import com.magmaguy.betterstructures.thirdparty.MythicMobs;
 import com.magmaguy.betterstructures.thirdparty.WorldGuard;
 import com.magmaguy.betterstructures.util.SpigotMessage;
 import com.magmaguy.betterstructures.util.SurfaceMaterials;
@@ -32,6 +33,7 @@ import org.bukkit.util.Vector;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 public class FitAnything {
@@ -334,6 +336,33 @@ public class FitAnything {
                 }
             }
         }
+
+        // carm start - Support for MythicMobs
+        for (Map.Entry<Vector, String> entry : schematicContainer.getMythicMobsSpawns().entrySet()) {
+            Location mobLocation = LocationProjector.project(location, schematicOffset, entry.getKey()).clone();
+            String conf = entry.getValue();
+
+            //If the spawn fails then don't continue
+            if (!MythicMobs.Spawn(mobLocation, conf)) return;
+
+            Location lowestCorner = location.clone().add(schematicOffset);
+            Location highestCorner = lowestCorner.clone().add(new Vector(schematicClipboard.getRegion().getWidth() - 1, schematicClipboard.getRegion().getHeight(), schematicClipboard.getRegion().getLength() - 1));
+
+            if (Bukkit.getPluginManager().getPlugin("WorldGuard") != null &&
+                    Bukkit.getPluginManager().getPlugin("MythicMobs") != null) {
+                WorldGuard.Protect(
+                        BlockVector3.at(lowestCorner.getX(), lowestCorner.getY(), lowestCorner.getZ()),
+                        BlockVector3.at(highestCorner.getX(), highestCorner.getY(), highestCorner.getZ()),
+                        conf, mobLocation);
+            } else {
+                if (!worldGuardWarn) {
+                    worldGuardWarn = true;
+                    new WarningMessage("You are not using WorldGuard, so BetterStructures could not protect a boss arena! Using WorldGuard is recommended to guarantee a fair combat experience.");
+                }
+            }
+        }
+        // carm end - Support for MythicMobs
+
     }
 
     public static boolean worldGuardWarn = false;
