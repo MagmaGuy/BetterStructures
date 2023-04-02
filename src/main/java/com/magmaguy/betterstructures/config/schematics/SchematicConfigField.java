@@ -7,7 +7,6 @@ import com.magmaguy.betterstructures.config.generators.GeneratorConfigFields;
 import com.magmaguy.betterstructures.config.treasures.TreasureConfig;
 import com.magmaguy.betterstructures.config.treasures.TreasureConfigFields;
 import com.magmaguy.betterstructures.util.WarningMessage;
-import com.magmaguy.elitemobs.utils.Developer;
 import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.Material;
