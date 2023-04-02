@@ -57,16 +57,15 @@ public class ChestContents {
                             noProblems = false;
                         }
                         break;
-
-
-                    case "mmoitems":  // carm start - Support for MMOItems
+                    case "mmoitem":  // carm start - Support for MMOItems
+                    case "mmoitems":
                         if (Bukkit.getPluginManager().getPlugin("MMOItems") == null) {
                             new WarningMessage("MMOItems plugin not found! Problematic entry: " + subsection[0]);
                             noProblems = false;
                             break;
                         }
                         try {
-                            String[] args = subsection[1].split(":");
+                            String[] args = subsection[1].split("@");
                             MMOItems mmo = MMOItems.plugin;
                             MMOItem mmoitem = mmo.getMMOItem(mmo.getTypes().get(args[0]), args[1]);
                             if (mmoitem == null) throw new NullPointerException("mmo item is null");
