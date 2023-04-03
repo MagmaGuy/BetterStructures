@@ -119,7 +119,11 @@ public class SchematicContainer {
                                 filename += baseBlock.getNbtData().getString("Text" + i)
                                         .split(":")[1].replace("\"", "").replace("}", "");
                             eliteMobsSpawns.put(new Vector(x, y, z), filename);
-                        }
+                        }else if (line1.toLowerCase().contains("[mythicmobs]")) { // carm start - Support MythicMobs
+                            String mob = baseBlock.getNbtData().getString("Text2").split(":")[1].replace("\"", "").replace("}", "");
+                            String level = baseBlock.getNbtData().getString("Text3").split(":")[1].replace("\"", "").replace("}", "");
+                            mythicMobsSpawns.put(new Vector(x, y, z), mob + (level.isEmpty() ? "" : ":" + level));
+                        } // carm end - Support MythicMobs
                     }
                 }
         chestContents = generatorConfigFields.getChestContents();
