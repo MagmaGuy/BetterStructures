@@ -341,13 +341,9 @@ public class FitAnything {
         for (Map.Entry<Vector, String> entry : schematicContainer.getMythicMobsSpawns().entrySet()) {
             Location mobLocation = LocationProjector.project(location, schematicOffset, entry.getKey()).clone();
             mobLocation.getBlock().setType(Material.AIR);
-            String conf = entry.getValue();
 
             //If the spawn fails then don't continue
-            if (!MythicMobs.Spawn(mobLocation, conf)) return;
-
-            Location lowestCorner = location.clone().add(schematicOffset);
-            Location highestCorner = lowestCorner.clone().add(new Vector(schematicClipboard.getRegion().getWidth() - 1, schematicClipboard.getRegion().getHeight(), schematicClipboard.getRegion().getLength() - 1));
+            if (!MythicMobs.Spawn(mobLocation, entry.getValue())) return;
         }
         // carm end - Support for MythicMobs
 
