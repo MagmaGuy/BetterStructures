@@ -340,6 +340,7 @@ public class FitAnything {
         // carm start - Support for MythicMobs
         for (Map.Entry<Vector, String> entry : schematicContainer.getMythicMobsSpawns().entrySet()) {
             Location mobLocation = LocationProjector.project(location, schematicOffset, entry.getKey()).clone();
+            mobLocation.getBlock().setType(Material.AIR);
             String conf = entry.getValue();
 
             //If the spawn fails then don't continue
