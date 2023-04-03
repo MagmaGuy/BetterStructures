@@ -347,19 +347,6 @@ public class FitAnything {
 
             Location lowestCorner = location.clone().add(schematicOffset);
             Location highestCorner = lowestCorner.clone().add(new Vector(schematicClipboard.getRegion().getWidth() - 1, schematicClipboard.getRegion().getHeight(), schematicClipboard.getRegion().getLength() - 1));
-
-            if (Bukkit.getPluginManager().getPlugin("WorldGuard") != null &&
-                    Bukkit.getPluginManager().getPlugin("MythicMobs") != null) {
-                WorldGuard.Protect(
-                        BlockVector3.at(lowestCorner.getX(), lowestCorner.getY(), lowestCorner.getZ()),
-                        BlockVector3.at(highestCorner.getX(), highestCorner.getY(), highestCorner.getZ()),
-                        conf, mobLocation);
-            } else {
-                if (!worldGuardWarn) {
-                    worldGuardWarn = true;
-                    new WarningMessage("You are not using WorldGuard, so BetterStructures could not protect a boss arena! Using WorldGuard is recommended to guarantee a fair combat experience.");
-                }
-            }
         }
         // carm end - Support for MythicMobs
 
