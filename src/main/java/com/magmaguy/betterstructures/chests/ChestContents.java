@@ -74,6 +74,7 @@ public class ChestContents {
                             new WarningMessage("Invalid mmo item detected! Problematic entry: " + subsection[0]);
                             noProblems = false;
                         }
+                        break;
                         // carm end - Support for MMOItems
                     case "amount":
                         try {
