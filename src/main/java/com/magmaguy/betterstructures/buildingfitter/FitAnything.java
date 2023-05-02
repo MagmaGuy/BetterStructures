@@ -81,8 +81,8 @@ public class FitAnything {
 
     protected void paste(Location location) {
         BuildPlaceEvent buildPlaceEvent = new BuildPlaceEvent(this);
-        if (buildPlaceEvent.isCancelled()) return;
         Bukkit.getServer().getPluginManager().callEvent(buildPlaceEvent);
+        if (buildPlaceEvent.isCancelled()) return;
 
         FitAnything fitAnything = this;
         //Set pedestal material before the paste so bedrock blocks get replaced correctly
