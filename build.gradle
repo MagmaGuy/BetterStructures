@@ -6,7 +6,7 @@ plugins {
 }
 
 group = 'com.magmaguy'
-version = '1.4.2-SNAPSHOT'
+version = '1.5.0-SNAPSHOT'
 
 repositories {
     mavenCentral()
@@ -69,7 +69,7 @@ dependencies {
     //MythicMobs
     compileOnly group: 'io.lumine', name: 'Mythic-Dist', version: '5.2.1'
     //MythicLib
-    compileOnly group: 'io.lumine', name: 'MythicLib-dist', version: '1.5.1-SNAPSHOT'
+    compileOnly group: 'io.lumine', name: 'MythicLib-dist', version: '1.5.2-SNAPSHOT'
     //MMOItems
     compileOnly group: 'net.Indyuce', name: 'MMOItems-API', version: '6.9.2-SNAPSHOT'
     // carm end - Support MMOItems and MythicMobs
