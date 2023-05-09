@@ -7,6 +7,7 @@ import com.magmaguy.betterstructures.config.schematics.SchematicConfigField;
 import com.magmaguy.betterstructures.config.treasures.TreasureConfig;
 import com.magmaguy.betterstructures.config.treasures.TreasureConfigFields;
 import com.magmaguy.betterstructures.util.WarningMessage;
+import com.magmaguy.elitemobs.utils.Developer;
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
 import com.sk89q.worldedit.math.BlockVector3;
@@ -115,9 +116,11 @@ public class SchematicContainer {
                             vanillaSpawns.put(new Vector(x, y, z), entityType);
                         } else if (line1.toLowerCase().contains("[elitemobs]")) {
                             String filename = "";
-                            for (int i = 2; i < 5; i++)
+                            for (int i = 2; i < 5; i++) {
+                                Developer.message("Raw text: " + baseBlock.getNbtData().getString("Text" + i));
                                 filename += baseBlock.getNbtData().getString("Text" + i)
                                         .split(":")[1].replace("\"", "").replace("}", "");
+                            }
                             eliteMobsSpawns.put(new Vector(x, y, z), filename);
                         }else if (line1.toLowerCase().contains("[mythicmobs]")) { // carm start - Support MythicMobs
                             String mob = baseBlock.getNbtData().getString("Text2").split(":")[1].replace("\"", "").replace("}", "");
