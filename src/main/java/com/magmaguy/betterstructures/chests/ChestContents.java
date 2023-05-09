@@ -4,6 +4,9 @@ import com.magmaguy.betterstructures.config.treasures.TreasureConfigFields;
 import com.magmaguy.betterstructures.util.ItemStackSerialization;
 import com.magmaguy.betterstructures.util.WarningMessage;
 import lombok.Getter;
+import net.Indyuce.mmoitems.MMOItems;
+import net.Indyuce.mmoitems.api.item.mmoitem.MMOItem;
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.block.Container;
 import org.bukkit.inventory.ItemStack;
@@ -54,6 +57,25 @@ public class ChestContents {
                             noProblems = false;
                         }
                         break;
+                    case "mmoitem":  // carm start - Support for MMOItems
+                    case "mmoitems":
+                        if (Bukkit.getPluginManager().getPlugin("MMOItems") == null) {
+                            new WarningMessage("MMOItems plugin not found! Problematic entry: " + subsection[0]);
+                            noProblems = false;
+                            break;
+                        }
+                        try {
+                            String[] args = subsection[1].split("@");
+                            MMOItems mmo = MMOItems.plugin;
+                            MMOItem mmoitem = mmo.getMMOItem(mmo.getTypes().get(args[0]), args[1]);
+                            if (mmoitem == null) throw new NullPointerException("mmo item is null");
+                            itemStack = mmoitem.newBuilder().build();
+                        } catch (Exception ex) {
+                            new WarningMessage("Invalid mmo item detected! Problematic entry: " + subsection[0]);
+                            noProblems = false;
+                        }
+                        break;
+                        // carm end - Support for MMOItems
                     case "amount":
                         try {
                             if (subsection[1].contains("-")) {

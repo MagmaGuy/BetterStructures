@@ -29,6 +29,13 @@ repositories {
     maven { url = 'https://oss.sonatype.org/content/repositories/snapshots' }
     //EliteMobs
     maven { url = 'https://s01.oss.sonatype.org/content/repositories/snapshots' }
+
+    // carm start - Support MMOItems and MythicMobs
+    //MMOItems
+    maven { url = 'https://nexus.phoenixdevt.fr/repository/maven-public/' }
+    //MythicMobs
+    maven { url = 'https://mvn.lumine.io/repository/maven-public/' }
+    // carm end - Support MMOItems and MythicMobs
 }
 
 dependencies {
@@ -56,6 +63,16 @@ dependencies {
     implementation group: 'org.reflections', name: 'reflections', version: '0.9.12'
     //EliteMobs
     compileOnly group: 'com.magmaguy', name: 'EliteMobs', version: '8.3.12-SNAPSHOT'
+
+
+    // carm start - Support MMOItems and MythicMobs
+    //MythicMobs
+    compileOnly group: 'io.lumine', name: 'Mythic-Dist', version: '5.2.1'
+    //MythicLib
+    compileOnly group: 'io.lumine', name: 'MythicLib-dist', version: '1.5.1-SNAPSHOT'
+    //MMOItems
+    compileOnly group: 'net.Indyuce', name: 'MMOItems-API', version: '6.9.2-SNAPSHOT'
+    // carm end - Support MMOItems and MythicMobs
 
 }
 
