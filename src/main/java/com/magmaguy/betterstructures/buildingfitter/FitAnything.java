@@ -9,6 +9,7 @@ import com.magmaguy.betterstructures.config.DefaultConfig;
 import com.magmaguy.betterstructures.config.generators.GeneratorConfigFields;
 import com.magmaguy.betterstructures.schematics.SchematicContainer;
 import com.magmaguy.betterstructures.thirdparty.EliteMobs;
+import com.magmaguy.betterstructures.thirdparty.MythicMobs;
 import com.magmaguy.betterstructures.thirdparty.WorldGuard;
 import com.magmaguy.betterstructures.util.SpigotMessage;
 import com.magmaguy.betterstructures.util.SurfaceMaterials;
@@ -32,6 +33,7 @@ import org.bukkit.util.Vector;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 public class FitAnything {
@@ -79,8 +81,8 @@ public class FitAnything {
 
     protected void paste(Location location) {
         BuildPlaceEvent buildPlaceEvent = new BuildPlaceEvent(this);
-        if (buildPlaceEvent.isCancelled()) return;
         Bukkit.getServer().getPluginManager().callEvent(buildPlaceEvent);
+        if (buildPlaceEvent.isCancelled()) return;
 
         FitAnything fitAnything = this;
         //Set pedestal material before the paste so bedrock blocks get replaced correctly
@@ -334,6 +336,17 @@ public class FitAnything {
                 }
             }
         }
+
+        // carm start - Support for MythicMobs
+        for (Map.Entry<Vector, String> entry : schematicContainer.getMythicMobsSpawns().entrySet()) {
+            Location mobLocation = LocationProjector.project(location, schematicOffset, entry.getKey()).clone();
+            mobLocation.getBlock().setType(Material.AIR);
+
+            //If the spawn fails then don't continue
+            if (!MythicMobs.Spawn(mobLocation, entry.getValue())) return;
+        }
+        // carm end - Support for MythicMobs
+
     }
 
     public static boolean worldGuardWarn = false;
