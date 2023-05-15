@@ -7,13 +7,13 @@ import com.magmaguy.betterstructures.config.schematics.SchematicConfigField;
 import com.magmaguy.betterstructures.config.treasures.TreasureConfig;
 import com.magmaguy.betterstructures.config.treasures.TreasureConfigFields;
 import com.magmaguy.betterstructures.util.WarningMessage;
-import com.magmaguy.elitemobs.utils.Developer;
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
 import com.sk89q.worldedit.math.BlockVector3;
 import com.sk89q.worldedit.world.block.BaseBlock;
 import com.sk89q.worldedit.world.block.BlockState;
 import lombok.Getter;
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Biome;
@@ -27,11 +27,6 @@ import java.util.List;
 public class SchematicContainer {
     @Getter
     private static final ArrayListMultimap<GeneratorConfigFields.StructureType, SchematicContainer> schematics = ArrayListMultimap.create();
-
-    public static void shutdown() {
-        schematics.clear();
-    }
-
     @Getter
     private final Clipboard clipboard;
     @Getter
@@ -51,9 +46,11 @@ public class SchematicContainer {
     @Getter
     private final HashMap<Vector, String> mythicMobsSpawns = new HashMap<>(); // carm - Support for MythicMobs
     @Getter
+    List<AbstractBlock> abstractBlocks = new ArrayList<>();
+    @Getter
     private ChestContents chestContents = null;
     @Getter
-    List<AbstractBlock> abstractBlocks = new ArrayList<>();
+    private boolean valid = true;
 
     public SchematicContainer(Clipboard clipboard, String clipboardFilename, SchematicConfigField schematicConfigField, String configFilename) {
         this.clipboard = clipboard;
@@ -61,10 +58,6 @@ public class SchematicContainer {
         this.schematicConfigField = schematicConfigField;
         this.configFilename = configFilename;
         generatorConfigFields = schematicConfigField.getGeneratorConfigFields();
-        if (generatorConfigFields != null)
-            generatorConfigFields.getStructureTypes().forEach(structureType -> schematics.put(structureType, this));
-        else
-            schematics.put(GeneratorConfigFields.StructureType.UNDEFINED, this);
         if (generatorConfigFields == null) {
             new WarningMessage("Failed to assign generator for configuration of schematic " + schematicConfigField.getFilename() + " ! This means this structure will not appear in the world.");
             return;
@@ -115,14 +108,25 @@ public class SchematicContainer {
                             }
                             vanillaSpawns.put(new Vector(x, y, z), entityType);
                         } else if (line1.toLowerCase().contains("[elitemobs]")) {
+                            if (Bukkit.getPluginManager().getPlugin("EliteMobs") == null) {
+                                Bukkit.getLogger().warning("[BetterStructures] " + configFilename + " uses EliteMobs bosses but you do not have EliteMobs installed! BetterStructures does not require EliteMobs to work, but if you want cool EliteMobs boss fights you will have to install EliteMobs here: https://www.spigotmc.org/resources/%E2%9A%94elitemobs%E2%9A%94.40090/");
+                                Bukkit.getLogger().warning("[BetterStructures] Since EliteMobs is not installed, " + configFilename + " will not be used.");
+                                valid = false;
+                                return;
+                            }
                             String filename = "";
                             for (int i = 2; i < 5; i++) {
-                                Developer.message("Raw text: " + baseBlock.getNbtData().getString("Text" + i));
                                 filename += baseBlock.getNbtData().getString("Text" + i)
                                         .split(":")[1].replace("\"", "").replace("}", "");
                             }
                             eliteMobsSpawns.put(new Vector(x, y, z), filename);
-                        }else if (line1.toLowerCase().contains("[mythicmobs]")) { // carm start - Support MythicMobs
+                        } else if (line1.toLowerCase().contains("[mythicmobs]")) { // carm start - Support MythicMobs
+                            if (Bukkit.getPluginManager().getPlugin("MythicMobs") == null) {
+                                Bukkit.getLogger().warning("[BetterStructures] " + configFilename + " uses MythicMobs bosses but you do not have MythicMobs installed! BetterStructures does not require MythicMobs to work, but if you want MythicMobs boss fights you will have to install MythicMobs.");
+                                Bukkit.getLogger().warning("[BetterStructures] Since MythicMobs is not installed, " + configFilename + " will not be used.");
+                                valid = false;
+                                return;
+                            }
                             String mob = baseBlock.getNbtData().getString("Text2").split(":")[1].replace("\"", "").replace("}", "");
                             String level = baseBlock.getNbtData().getString("Text3").split(":")[1].replace("\"", "").replace("}", "");
                             mythicMobsSpawns.put(new Vector(x, y, z), mob + (level.isEmpty() ? "" : ":" + level));
@@ -138,18 +142,13 @@ public class SchematicContainer {
             }
             chestContents = schematicConfigField.getChestContents();
         }
+        if (valid)
+            generatorConfigFields.getStructureTypes().forEach(structureType -> schematics.put(structureType, this));
     }
 
-    /* todo: coming soon
-    private void initializeAbstractBlocks() {
-        BlockVector3 dimensions = clipboard.getDimensions();
-        for (int x = 0; x < dimensions.getX(); x++)
-            for (int y = 0; y < dimensions.getY(); y++)
-                for (int z = 0; z < dimensions.getZ(); z++)
-                    new AbstractBlock(clipboard.getFullBlock().toBaseBlock().applyBlock())
+    public static void shutdown() {
+        schematics.clear();
     }
-
-     */
 
     public boolean isValidEnvironment(World.Environment environment) {
         return generatorConfigFields.getValidWorldEnvironments() == null ||
