@@ -12,3 +12,4 @@ public class UndergroundGeneratorGlobalConfig extends GeneratorConfigFields {
         setTreasureFilename("treasure_overworld_underground.yml");
     }
 }
+

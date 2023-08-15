@@ -1,5 +1,6 @@
 package com.magmaguy.betterstructures.config.treasures.premade;
 
+import com.magmaguy.betterstructures.config.DefaultConfig;
 import com.magmaguy.betterstructures.config.treasures.TreasureConfigFields;
 import com.magmaguy.betterstructures.util.DefaultChestContents;
 

@@ -31,6 +31,8 @@ import org.bukkit.inventory.ItemStack;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.Function;
 
 import static net.kyori.adventure.text.Component.text;
@@ -141,13 +143,15 @@ public class CommandHandler {
                 .argument(StringArgument.<CommandSender>newBuilder("generator")
                                 .withSuggestionsProvider(((objectCommandContext, s) -> treasures)),
                         ArgumentDescription.of("File name of the generator"))
+                .argument(StringArgument.<CommandSender>newBuilder("rarity"),
+                        ArgumentDescription.of("Name of the rarity in the loot table"))
                 .meta(CommandMeta.DESCRIPTION, "Adds a held item to the loot settings of a generator")
                 .argument(StringArgument.<CommandSender>newBuilder("minAmount"))
                 .argument(StringArgument.<CommandSender>newBuilder("maxAmount"))
                 .argument(StringArgument.<CommandSender>newBuilder("chance"))
                 .permission("betterstructures.*")
                 .handler(commandContext -> {
-                    lootify(commandContext.get("generator"), commandContext.get("minAmount"), commandContext.get("maxAmount"), commandContext.get("chance"), (Player) commandContext.getSender());
+                    lootify(commandContext.get("generator"), commandContext.get("rarity"),commandContext.get("minAmount"), commandContext.get("maxAmount"), commandContext.get("chance"), (Player) commandContext.getSender());
                 }));
 
         manager.command(builder.literal("teleporttocoords")
@@ -217,10 +221,15 @@ public class CommandHandler {
         }
     }
 
-    private void lootify(String generator, String minAmount, String maxAmount, String chance, Player player) {
+    private void lootify(String generator, String rarity, String minAmount, String maxAmount, String chance, Player player) {
         TreasureConfigFields treasureConfigFields = TreasureConfig.getConfigFields(generator);
         if (treasureConfigFields == null) {
             player.sendMessage("[BetterStructures] Not a valid generator! Try again.");
+            return;
+        }
+        //Verify loot table
+        if (treasureConfigFields.getRawLoot().get(rarity) == null) {
+            player.sendMessage("[BetterStructures] Not a valid rarity! Try again.");
             return;
         }
         int minAmountInt;
@@ -268,7 +277,11 @@ public class CommandHandler {
             info = itemStack.getItemMeta().getLocalizedName();
         else
             info = itemStack.getType().toString();
-        String configString = "serialized=" + ItemStackSerialization.toBase64(itemStack) + ":amount=" + minAmount + "-" + maxAmount + ":chance=" + chance + ":info=" + info;
-        treasureConfigFields.addChestEntry(configString, player);
+        Map<String, Object> configMap = new HashMap<>();
+        configMap.put("serialized", ItemStackSerialization.toBase64(itemStack));
+        configMap.put("amount", minAmount +"-"+maxAmount);
+        configMap.put("weight", chanceDouble);
+        configMap.put("info", info);
+        treasureConfigFields.addChestEntry(configMap, rarity, player);
     }
 }

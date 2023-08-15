@@ -5,15 +5,14 @@ import com.magmaguy.betterstructures.util.ChatColorConverter;
 import com.magmaguy.betterstructures.util.WarningMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.util.Vector;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
+import java.io.IOException;
+import java.util.*;
 
 public class CustomConfigFields implements CustomConfigFieldsInterface {
 
@@ -260,7 +259,7 @@ public class CustomConfigFields implements CustomConfigFieldsInterface {
             return value;
         }
         try {
-            return (T) Enum.valueOf(enumClass, fileConfiguration.getString(path).toUpperCase());
+            return Enum.valueOf(enumClass, fileConfiguration.getString(path).toUpperCase());
         } catch (Exception ex) {
             new WarningMessage("File " + filename + " has an incorrect entry for " + path);
             new WarningMessage("Entry: " + value);
@@ -271,6 +270,16 @@ public class CustomConfigFields implements CustomConfigFieldsInterface {
     private String itemStackDeserializer(ItemStack itemStack) {
         if (itemStack == null) return null;
         return itemStack.getType().toString();
+    }
+
+    public Map<String, Object> processMap(String path, Map<String, Object> value) {
+        if (!configHas(path) && value != null) {
+            fileConfiguration.addDefault(path, value);
+            fileConfiguration.createSection(path, value);
+        }
+        if (fileConfiguration.get(path) == null)
+            return Collections.emptyMap();
+        return fileConfiguration.getConfigurationSection(path).getValues(false);
     }
 
     protected org.bukkit.util.Vector processVector(String path, org.bukkit.util.Vector value, org.bukkit.util.Vector pluginDefault, boolean forceWriteDefault) {
