@@ -13,7 +13,8 @@ public class GeneratorSkyBarrenConfig extends GeneratorConfigFields {
                 Biome.SAVANNA,
                 Biome.SAVANNA_PLATEAU,
                 Biome.WINDSWEPT_SAVANNA,
-                Biome.MUSHROOM_FIELDS
+                Biome.MUSHROOM_FIELDS,
+                Biome.CUSTOM
         ));
         setTreasureFilename("treasure_overworld_surface.yml");
     }

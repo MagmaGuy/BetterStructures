@@ -9,7 +9,8 @@ public class GeneratorSkyDesertConfig extends GeneratorConfigFields {
     public GeneratorSkyDesertConfig(){
         super("generator_sky_desert", true, Arrays.asList(StructureType.SKY));
         setValidBiomes(Arrays.asList(
-                Biome.DESERT
+                Biome.DESERT,
+                Biome.CUSTOM
         ));
         setTreasureFilename("treasure_overworld_surface.yml");
     }

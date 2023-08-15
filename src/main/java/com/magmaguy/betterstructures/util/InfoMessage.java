@@ -4,6 +4,6 @@ import org.bukkit.Bukkit;
 
 public class InfoMessage {
     public InfoMessage(String message) {
-        Bukkit.getLogger().info("[EliteMobs] " + message);
+        Bukkit.getLogger().info("[BetterStructures] " + message);
     }
 }

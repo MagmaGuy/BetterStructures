@@ -22,7 +22,8 @@ public class GeneratorSurfaceGrasslandConfig extends GeneratorConfigFields {
                 Biome.OLD_GROWTH_BIRCH_FOREST,
                 Biome.SUNFLOWER_PLAINS,
                 Biome.WINDSWEPT_FOREST,
-                Biome.WINDSWEPT_HILLS
+                Biome.WINDSWEPT_HILLS,
+                Biome.CUSTOM
                 ));
         setTreasureFilename("treasure_overworld_surface.yml");
     }
