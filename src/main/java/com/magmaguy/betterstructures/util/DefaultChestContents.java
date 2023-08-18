@@ -39,7 +39,7 @@ public class DefaultChestContents {
         commonList.add(generateEntry(Material.BOOK, 1, 3, normalWeight));
         commonList.add(generateEntry(Material.BOW, 1, 1, normalWeight, true));
         commonList.add(generateEntry(Material.BREAD, 8, 16, normalWeight));
-        if (!VersionChecker.serverVersionOlderThan(1, 20))
+        if (!VersionChecker.serverVersionOlderThan(20, 0))
             commonList.add(generateEntry(Material.BRUSH, 1, 1, extraRareWeight));
         commonList.add(generateEntry(Material.BROWN_DYE, 1, 3, normalWeight));
         commonList.add(generateEntry(Material.BROWN_WOOL, 1, 6, normalWeight));
@@ -89,7 +89,7 @@ public class DefaultChestContents {
         commonList.add(generateEntry(Material.LEATHER_CHESTPLATE, 1, 1, rareWeight, true));
         commonList.add(generateEntry(Material.LIME_DYE, 1, 3, normalWeight));
         commonList.add(generateEntry(Material.MAGENTA_DYE, 1, 3, normalWeight));
-        if (!VersionChecker.serverVersionOlderThan(1, 19))
+        if (!VersionChecker.serverVersionOlderThan(19, 0))
             commonList.add(generateEntry(Material.MUSIC_DISC_5, 1, 1, extraRareWeight)); //1.19
         commonList.add(generateEntry(Material.MUSIC_DISC_11, 1, 1, extraRareWeight));
         commonList.add(generateEntry(Material.MUSIC_DISC_13, 1, 1, extraRareWeight));
@@ -99,7 +99,7 @@ public class DefaultChestContents {
         commonList.add(generateEntry(Material.MUSIC_DISC_FAR, 1, 1, extraRareWeight));
         commonList.add(generateEntry(Material.MUSIC_DISC_MALL, 1, 1, extraRareWeight));
         commonList.add(generateEntry(Material.MUSIC_DISC_MELLOHI, 1, 1, extraRareWeight));
-        if (!VersionChecker.serverVersionOlderThan(1, 18))
+        if (!VersionChecker.serverVersionOlderThan(18, 0))
             commonList.add(generateEntry(Material.MUSIC_DISC_OTHERSIDE, 1, 1, extraRareWeight)); //1.18
         commonList.add(generateEntry(Material.MUSIC_DISC_PIGSTEP, 1, 1, extraRareWeight));
         commonList.add(generateEntry(Material.MUSIC_DISC_STAL, 1, 1, extraRareWeight));
