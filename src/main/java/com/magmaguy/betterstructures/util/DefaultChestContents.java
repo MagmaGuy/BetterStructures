@@ -343,7 +343,8 @@ public class DefaultChestContents {
         rareList.add(generateEntry(Material.BUNDLE, 1, 1, rareWeight));
         epicList.add(generateEntry(Material.KNOWLEDGE_BOOK, 1, 1, extraRareWeight)); //Reveals all recipes
         epicList.add(generateEntry(Material.TNT_MINECART, 1, 1, normalWeight));
-        epicList.add(generateEntry(Material.SCULK, 1, 6, normalWeight)); //1.19
+        if (!VersionChecker.serverVersionOlderThan(19, 0))
+            epicList.add(generateEntry(Material.SCULK, 1, 6, normalWeight)); //1.19
         epicList.add(generateEntry(Material.TOTEM_OF_UNDYING, 1, 1, normalWeight));
         epicList.add(generateEntry(Material.DIAMOND_AXE, 1, 1, normalWeight));
         epicList.add(generateEntry(Material.DIAMOND_BOOTS, 1, 1, normalWeight));
