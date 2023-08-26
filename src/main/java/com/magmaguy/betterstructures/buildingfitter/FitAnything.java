@@ -208,6 +208,11 @@ public class FitAnything {
             //exception.printStackTrace();
         }
 
+        // clear unused spawns
+        for (Vector clearBlock : schematicContainer.getClearBlocks()) {
+            Location signLocation = LocationProjector.project(location, schematicOffset, clearBlock).clone();
+            signLocation.getBlock().setType(Material.AIR);
+        }
     }
 
     Material pedestalMaterial = null;

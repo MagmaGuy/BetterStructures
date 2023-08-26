@@ -46,6 +46,8 @@ public class SchematicContainer {
     @Getter
     private final HashMap<Vector, String> mythicMobsSpawns = new HashMap<>(); // carm - Support for MythicMobs
     @Getter
+    private final List<Vector> clearBlocks = new ArrayList<>();
+    @Getter
     List<AbstractBlock> abstractBlocks = new ArrayList<>();
     @Getter
     private ChestContents chestContents = null;
@@ -110,9 +112,9 @@ public class SchematicContainer {
                         } else if (line1.toLowerCase().contains("[elitemobs]")) {
                             if (Bukkit.getPluginManager().getPlugin("EliteMobs") == null) {
                                 Bukkit.getLogger().warning("[BetterStructures] " + configFilename + " uses EliteMobs bosses but you do not have EliteMobs installed! BetterStructures does not require EliteMobs to work, but if you want cool EliteMobs boss fights you will have to install EliteMobs here: https://www.spigotmc.org/resources/%E2%9A%94elitemobs%E2%9A%94.40090/");
-                                Bukkit.getLogger().warning("[BetterStructures] Since EliteMobs is not installed, " + configFilename + " will not be used.");
-                                valid = false;
-                                return;
+                                Bukkit.getLogger().warning("[BetterStructures] Since EliteMobs is not installed, " + configFilename + "'s elite mob spawning will be skipped.");
+                                clearBlocks.add(new Vector(x, y, z));
+                                continue;
                             }
                             String filename = "";
                             for (int i = 2; i < 5; i++) {
@@ -123,9 +125,9 @@ public class SchematicContainer {
                         } else if (line1.toLowerCase().contains("[mythicmobs]")) { // carm start - Support MythicMobs
                             if (Bukkit.getPluginManager().getPlugin("MythicMobs") == null) {
                                 Bukkit.getLogger().warning("[BetterStructures] " + configFilename + " uses MythicMobs bosses but you do not have MythicMobs installed! BetterStructures does not require MythicMobs to work, but if you want MythicMobs boss fights you will have to install MythicMobs.");
-                                Bukkit.getLogger().warning("[BetterStructures] Since MythicMobs is not installed, " + configFilename + " will not be used.");
-                                valid = false;
-                                return;
+                                Bukkit.getLogger().warning("[BetterStructures] Since MythicMobs is not installed, " + configFilename + " 's mythic mob spawning will be skipped.");
+                                clearBlocks.add(new Vector(x, y, z));
+                                continue;
                             }
                             String mob = baseBlock.getNbtData().getString("Text2").split(":")[1].replace("\"", "").replace("}", "");
                             String level = baseBlock.getNbtData().getString("Text3").split(":")[1].replace("\"", "").replace("}", "");
