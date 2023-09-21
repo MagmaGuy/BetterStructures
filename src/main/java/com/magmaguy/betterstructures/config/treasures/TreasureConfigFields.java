@@ -4,6 +4,7 @@ import com.magmaguy.betterstructures.MetadataHandler;
 import com.magmaguy.betterstructures.chests.ChestContents;
 import com.magmaguy.betterstructures.config.CustomConfigFields;
 import com.magmaguy.betterstructures.util.DefaultChestContents;
+import com.magmaguy.betterstructures.util.InfoMessage;
 import com.magmaguy.betterstructures.util.WarningMessage;
 import lombok.Getter;
 import lombok.Setter;
@@ -39,6 +40,7 @@ public class TreasureConfigFields extends CustomConfigFields {
     @Getter
     @Setter
     private double standardDeviation = 3;
+    private final List<String> seenInvalidKeys = new ArrayList<>();
 
     public TreasureConfigFields(String filename, boolean isEnabled) {
         super(filename, isEnabled);
@@ -66,8 +68,14 @@ public class TreasureConfigFields extends CustomConfigFields {
             Map<String, Object> enchantments = ((MemorySection) stringObjectEntry.getValue()).getValues(false);
             for (Map.Entry<String, Object> enchantmentsEntry : enchantments.entrySet()) {
                 Enchantment enchantment = Enchantment.getByKey(NamespacedKey.minecraft(enchantmentsEntry.getKey()));
-                if (enchantment == null) {
-                    new WarningMessage("Failed to get valid enchantment from key " + enchantmentsEntry.getKey() + " in configuration file " + filename);
+                if (enchantment == null && !seenInvalidKeys.contains(enchantmentsEntry.getKey())) {
+                    new InfoMessage("Failed to get valid enchantment from key " + enchantmentsEntry.getKey() +
+                            " in configuration file " + filename + " ! This is almost certainly because another plugin " +
+                            "is using enchantments that are pretending to be vanilla Minecraft enchantments, when they aren't, " +
+                            "and doing so in a way that doesn't allow items to be enchanted via normal means. This enchantment " +
+                            "will be ignored for generating items, you can ignore this warning if you didn't plan to use this " +
+                            "enchantment in the first place. Warnings about this specific enchantment will now be suppressed.");
+                    seenInvalidKeys.add(enchantmentsEntry.getKey());
                     continue;
                 }
                 int minLevel = 1;
@@ -101,6 +109,7 @@ public class TreasureConfigFields extends CustomConfigFields {
         HashMap map = new HashMap();
         map.put("items", mapList);
         fileConfiguration.createSection("items." + rarity, map);
+        fileConfiguration.set("items." + rarity, Map.of("weight", ((ConfigurationSection) rawLoot.get(rarity)).getDouble("weight")));
         try {
             fileConfiguration.save(file);
         } catch (Exception ex) {

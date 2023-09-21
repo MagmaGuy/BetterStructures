@@ -37,11 +37,12 @@ import java.util.Map;
 import java.util.Set;
 
 public class FitAnything {
+    public static boolean worldGuardWarn = false;
+    protected final int searchRadius = 1;
+    protected final int scanStep = 3;
     @Getter
     protected SchematicContainer schematicContainer;
     protected double startingScore = 100;
-    protected final int searchRadius = 1;
-    protected final int scanStep = 3;
     protected Clipboard schematicClipboard = null;
     protected Vector schematicOffset;
     //At 10% it is assumed a fit is so bad it's better just to skip
@@ -49,6 +50,7 @@ public class FitAnything {
     @Getter
     protected Location location = null;
     protected GeneratorConfigFields.StructureType structureType;
+    Material pedestalMaterial = null;
 
     public static void commandBasedCreation(Chunk chunk, GeneratorConfigFields.StructureType structureType, SchematicContainer container) {
         switch (structureType) {
@@ -77,7 +79,6 @@ public class FitAnything {
         if (schematicContainer != null)
             schematicClipboard = schematicContainer.getClipboard();
     }
-
 
     protected void paste(Location location) {
         BuildPlaceEvent buildPlaceEvent = new BuildPlaceEvent(this);
@@ -152,7 +153,6 @@ public class FitAnything {
                     }
                 }
 
-
         Schematic.paste(schematicClipboard, location);
         if (DefaultConfig.isNewBuildingWarn()) {
             String structureTypeString = fitAnything.structureType.toString().toLowerCase().replace("_", " ");
@@ -210,8 +210,6 @@ public class FitAnything {
 
     }
 
-    Material pedestalMaterial = null;
-
     private void assignPedestalMaterial(Location location) {
         if (this instanceof FitAirBuilding) return;
         pedestalMaterial = schematicContainer.getSchematicConfigField().getPedestalMaterial();
@@ -262,7 +260,6 @@ public class FitAnything {
             }
     }
 
-
     private void clearTrees(Location location) {
         Location highestCorner = location.clone().add(schematicOffset).add(new Vector(0, schematicClipboard.getDimensions().getY(), 0));
         boolean detectedTreeElement = true;
@@ -284,7 +281,10 @@ public class FitAnything {
         if (schematicContainer.getGeneratorConfigFields().getChestContents() != null)
             for (Vector chestPosition : schematicContainer.getChestLocations()) {
                 Location chestLocation = LocationProjector.project(location, schematicOffset, chestPosition);
-                Container container = (Container) chestLocation.getBlock().getState();
+                if (!(chestLocation.getBlock().getState() instanceof Container container)) {
+                    new WarningMessage("Expected a container for " + chestLocation.getBlock().getType() + " but didn't get it. Skipping this loot!");
+                    continue;
+                }
 
                 if (schematicContainer.getChestContents() != null)
                     schematicContainer.getChestContents().rollChestContents(container);
@@ -348,6 +348,4 @@ public class FitAnything {
         // carm end - Support for MythicMobs
 
     }
-
-    public static boolean worldGuardWarn = false;
 }

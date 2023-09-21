@@ -1,7 +1,6 @@
 package com.magmaguy.betterstructures.config.generators;
 
 import com.magmaguy.betterstructures.config.CustomConfig;
-import com.magmaguy.elitemobs.utils.Developer;
 import lombok.Getter;
 
 import java.util.HashMap;
