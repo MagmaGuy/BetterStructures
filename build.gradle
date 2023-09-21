@@ -6,7 +6,7 @@ plugins {
 }
 
 group = 'com.magmaguy'
-version = '1.6.2-SNAPSHOT'
+version = '1.6.3-SNAPSHOT'
 
 repositories {
     mavenCentral()
@@ -45,7 +45,7 @@ dependencies {
     //WorldGuard API
     compileOnly group: 'com.sk89q.worldguard', name: 'worldguard-bukkit', version: '7.0.7'
     //WorldEdit API
-    compileOnly group: 'com.sk89q.worldedit', name: 'worldedit-bukkit', version: '7.2.13'
+    compileOnly group: 'com.sk89q.worldedit', name: 'worldedit-bukkit', version: '7.2.14'
     //lombok
     compileOnly 'org.projectlombok:lombok:1.18.22'
     annotationProcessor 'org.projectlombok:lombok:1.18.22'
@@ -63,7 +63,6 @@ dependencies {
     implementation group: 'org.reflections', name: 'reflections', version: '0.9.12'
     //EliteMobs
     compileOnly group: 'com.magmaguy', name: 'EliteMobs', version: '8.3.12-SNAPSHOT'
-
 
     // carm start - Support MMOItems and MythicMobs
     //MythicMobs

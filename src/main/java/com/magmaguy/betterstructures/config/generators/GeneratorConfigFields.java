@@ -36,7 +36,7 @@ public class GeneratorConfigFields extends CustomConfigFields {
     private int highestYLevel = 320;
     @Getter
     @Setter
-    private List<World> validWorlds = null;
+    private List<String> validWorlds = null;
     @Getter
     @Setter
     private List<World.Environment> validWorldEnvironments = null;
@@ -71,7 +71,7 @@ public class GeneratorConfigFields extends CustomConfigFields {
         this.structureTypes = processEnumList("structureType", structureTypes, Arrays.asList(StructureType.UNDEFINED), StructureType.class, true);
         this.lowestYLevel = processInt("lowestYLevel", lowestYLevel, -59, false);
         this.highestYLevel = processInt("highestYLevel", highestYLevel, 320, false);
-        this.validWorlds = processWorldList("validWorlds", validWorlds, new ArrayList<>(), false);
+        this.validWorlds = processStringList("validWorlds", validWorlds, new ArrayList<>(), false);
         this.validWorldEnvironments = processEnumList("validWorldEnvironments", validWorldEnvironments, null, World.Environment.class, false);
         this.validBiomes = processEnumList("validBiomes", validBiomes, new ArrayList<>(), Biome.class, false);
         this.treasureFilename = processString("treasureFilename", treasureFilename, null, false);

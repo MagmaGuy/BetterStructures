@@ -160,7 +160,17 @@ public class ChestContents {
 
         for (int i = 0; i < amount; i++) {
             ItemStack itemStack = chestRarities.get(WeighedProbability.pickWeighedProbability(weightsMap)).rollLoot();
-            if (itemStack != null) chest.getSnapshotInventory().addItem(itemStack);
+            if (itemStack != null) {
+                int counter = 0;
+                while (counter < 100) {
+                    int randomizedIndex = ThreadLocalRandom.current().nextInt(0, chest.getSnapshotInventory().getSize());
+                    if (chest.getSnapshotInventory().getItem(randomizedIndex) == null) {
+                        chest.getSnapshotInventory().setItem(randomizedIndex, itemStack);
+                        break;
+                    }
+                    counter++;
+                }
+            }
         }
     }
 

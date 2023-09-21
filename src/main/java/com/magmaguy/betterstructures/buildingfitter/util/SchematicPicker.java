@@ -14,7 +14,8 @@ public class SchematicPicker {
         List<SchematicContainer> schematicContainers = new ArrayList<>(SchematicContainer.getSchematics().get(structureType));
         if (schematicContainers.isEmpty()) return null;
         schematicContainers.removeIf(schematicContainer ->
-                !schematicContainer.isValidEnvironment(naiveAnchorLocation.getWorld().getEnvironment()) ||
+                !schematicContainer.isValidWorld(naiveAnchorLocation.getWorld().getName()) ||
+                        !schematicContainer.isValidEnvironment(naiveAnchorLocation.getWorld().getEnvironment()) ||
                         !schematicContainer.isValidBiome(naiveAnchorLocation.getBlock().getBiome()) ||
                         !schematicContainer.isValidYLevel(naiveAnchorLocation.getBlockY()));
         if (schematicContainers.isEmpty()) return null;
