@@ -148,10 +148,10 @@ public class CommandHandler {
                 .meta(CommandMeta.DESCRIPTION, "Adds a held item to the loot settings of a generator")
                 .argument(StringArgument.<CommandSender>newBuilder("minAmount"))
                 .argument(StringArgument.<CommandSender>newBuilder("maxAmount"))
-                .argument(StringArgument.<CommandSender>newBuilder("chance"))
+                .argument(StringArgument.<CommandSender>newBuilder("weight"))
                 .permission("betterstructures.*")
                 .handler(commandContext -> {
-                    lootify(commandContext.get("generator"), commandContext.get("rarity"),commandContext.get("minAmount"), commandContext.get("maxAmount"), commandContext.get("chance"), (Player) commandContext.getSender());
+                    lootify(commandContext.get("generator"), commandContext.get("rarity"),commandContext.get("minAmount"), commandContext.get("maxAmount"), commandContext.get("weight"), (Player) commandContext.getSender());
                 }));
 
         manager.command(builder.literal("teleporttocoords")
@@ -221,7 +221,7 @@ public class CommandHandler {
         }
     }
 
-    private void lootify(String generator, String rarity, String minAmount, String maxAmount, String chance, Player player) {
+    private void lootify(String generator, String rarity, String minAmount, String maxAmount, String weight, Player player) {
         TreasureConfigFields treasureConfigFields = TreasureConfig.getConfigFields(generator);
         if (treasureConfigFields == null) {
             player.sendMessage("[BetterStructures] Not a valid generator! Try again.");
@@ -254,15 +254,11 @@ public class CommandHandler {
             player.sendMessage("[BetterStructures] Maximum amount should not be more than 64! If you want more than one stack, make multiple entries. This value will not be saved.");
             return;
         }
-        double chanceDouble;
+        double weightDouble;
         try {
-            chanceDouble = Double.parseDouble(chance);
+            weightDouble = Double.parseDouble(weight);
         } catch (Exception exception) {
-            player.sendMessage("[BetterStructures] Not a valid chance! Try again.");
-            return;
-        }
-        if (chanceDouble > 1) {
-            player.sendMessage("[BetterStructures] Chance should never be higher than 1.0! 1.0 is 100%, 0.0 is 0%, 0.5 is 50%! This value will not be saved.");
+            player.sendMessage("[BetterStructures] Not a valid weight! Try again.");
             return;
         }
         ItemStack itemStack = player.getInventory().getItemInMainHand();
@@ -280,7 +276,7 @@ public class CommandHandler {
         Map<String, Object> configMap = new HashMap<>();
         configMap.put("serialized", ItemStackSerialization.toBase64(itemStack));
         configMap.put("amount", minAmount +"-"+maxAmount);
-        configMap.put("weight", chanceDouble);
+        configMap.put("weight", weightDouble);
         configMap.put("info", info);
         treasureConfigFields.addChestEntry(configMap, rarity, player);
     }
