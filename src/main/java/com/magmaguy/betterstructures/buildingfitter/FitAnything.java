@@ -323,7 +323,8 @@ public class FitAnything {
             if (!EliteMobs.Spawn(eliteLocation, bossFilename)) return;
             Location lowestCorner = location.clone().add(schematicOffset);
             Location highestCorner = lowestCorner.clone().add(new Vector(schematicClipboard.getRegion().getWidth() - 1, schematicClipboard.getRegion().getHeight(), schematicClipboard.getRegion().getLength() - 1));
-            if (Bukkit.getPluginManager().getPlugin("WorldGuard") != null &&
+            if (DefaultConfig.isProtectEliteMobsRegions() &&
+                    Bukkit.getPluginManager().getPlugin("WorldGuard") != null &&
                     Bukkit.getPluginManager().getPlugin("EliteMobs") != null) {
                 WorldGuard.Protect(
                         BlockVector3.at(lowestCorner.getX(), lowestCorner.getY(), lowestCorner.getZ()),

@@ -26,6 +26,7 @@ public class TreasureConfigFields extends CustomConfigFields {
 
     @Getter
     private final Map<Material, List<ConfigurationEnchantment>> enchantmentSettings = new HashMap<>();
+    private final List<String> seenInvalidKeys = new ArrayList<>();
     @Getter
     @Setter
     private Map<String, Object> rawLoot = new HashMap();
@@ -40,7 +41,6 @@ public class TreasureConfigFields extends CustomConfigFields {
     @Getter
     @Setter
     private double standardDeviation = 3;
-    private final List<String> seenInvalidKeys = new ArrayList<>();
 
     public TreasureConfigFields(String filename, boolean isEnabled) {
         super(filename, isEnabled);
@@ -69,12 +69,7 @@ public class TreasureConfigFields extends CustomConfigFields {
             for (Map.Entry<String, Object> enchantmentsEntry : enchantments.entrySet()) {
                 Enchantment enchantment = Enchantment.getByKey(NamespacedKey.minecraft(enchantmentsEntry.getKey()));
                 if (enchantment == null && !seenInvalidKeys.contains(enchantmentsEntry.getKey())) {
-                    new InfoMessage("Failed to get valid enchantment from key " + enchantmentsEntry.getKey() +
-                            " in configuration file " + filename + " ! This is almost certainly because another plugin " +
-                            "is using enchantments that are pretending to be vanilla Minecraft enchantments, when they aren't, " +
-                            "and doing so in a way that doesn't allow items to be enchanted via normal means. This enchantment " +
-                            "will be ignored for generating items, you can ignore this warning if you didn't plan to use this " +
-                            "enchantment in the first place. Warnings about this specific enchantment will now be suppressed.");
+                    new InfoMessage("Failed to get valid enchantment from key " + enchantmentsEntry.getKey() + " in configuration file " + filename + " ! This is almost certainly because another plugin " + "is using enchantments that are pretending to be vanilla Minecraft enchantments, when they aren't, " + "and doing so in a way that doesn't allow items to be enchanted via normal means. This enchantment " + "will be ignored for generating items, you can ignore this warning if you didn't plan to use this " + "enchantment in the first place. Warnings about this specific enchantment will now be suppressed.");
                     seenInvalidKeys.add(enchantmentsEntry.getKey());
                     continue;
                 }
@@ -105,11 +100,7 @@ public class TreasureConfigFields extends CustomConfigFields {
     public void addChestEntry(Map<String, Object> entry, String rarity, Player player) {
         List<Map<?, ?>> mapList = ((ConfigurationSection) rawLoot.get(rarity)).getMapList("items");
         mapList.add(entry);
-        //fileConfiguration.set("items." + rarity + "items", mapList);
-        HashMap map = new HashMap();
-        map.put("items", mapList);
-        fileConfiguration.createSection("items." + rarity, map);
-        fileConfiguration.set("items." + rarity, Map.of("weight", ((ConfigurationSection) rawLoot.get(rarity)).getDouble("weight")));
+        fileConfiguration.set("items." + rarity, Map.of("weight", ((ConfigurationSection) rawLoot.get(rarity)).getDouble("weight"), "items", mapList));
         try {
             fileConfiguration.save(file);
         } catch (Exception ex) {
@@ -138,7 +129,7 @@ public class TreasureConfigFields extends CustomConfigFields {
         public void rollEnchantment(ItemMeta itemMeta) {
             if (ThreadLocalRandom.current().nextDouble() >= chance) return;
             int level = ThreadLocalRandom.current().nextInt(minLevel, maxLevel + 1);
-            itemMeta.addEnchant(enchantment, level, true);
+            if (itemMeta != null && enchantment != null) itemMeta.addEnchant(enchantment, level, true);
         }
     }
 }

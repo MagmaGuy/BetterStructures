@@ -6,9 +6,6 @@ import org.bukkit.configuration.file.FileConfiguration;
 import java.io.File;
 
 public class DefaultConfig {
-    private DefaultConfig() {
-    }
-
     @Getter
     private static int lowestYNormalCustom;
     @Getter
@@ -43,10 +40,12 @@ public class DefaultConfig {
     private static boolean newBuildingWarn;
     @Getter
     private static String regionProtectedMessage;
-
+    @Getter
+    private static boolean protectEliteMobsRegions;
     private static File file;
     private static FileConfiguration fileConfiguration;
-
+    private DefaultConfig() {
+    }
 
     public static void initializeConfig() {
         file = ConfigurationEngine.fileCreator("config.yml");
@@ -68,7 +67,7 @@ public class DefaultConfig {
         deepUndergroundStructuresPerThousandChunks = ConfigurationEngine.setDouble(fileConfiguration, "deepUndergroundStructuresPerThousandChunks", 2.0);
         newBuildingWarn = ConfigurationEngine.setBoolean(fileConfiguration, "warnAdminsAboutNewBuildings", true);
         regionProtectedMessage = ConfigurationEngine.setString(fileConfiguration, "regionProtectedMessage", "&8[BetterStructures] &cDefeat the zone's bosses to edit blocks!");
-
+        protectEliteMobsRegions = ConfigurationEngine.setBoolean(fileConfiguration, "protectEliteMobsRegions", true);
         ConfigurationEngine.fileSaverOnlyDefaults(fileConfiguration, file);
     }
 
