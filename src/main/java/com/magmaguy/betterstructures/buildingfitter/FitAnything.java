@@ -43,7 +43,9 @@ public class FitAnything {
     @Getter
     protected SchematicContainer schematicContainer;
     protected double startingScore = 100;
+    @Getter
     protected Clipboard schematicClipboard = null;
+    @Getter
     protected Vector schematicOffset;
     //At 10% it is assumed a fit is so bad it's better just to skip
     protected double highestScore = 10;
@@ -326,10 +328,7 @@ public class FitAnything {
             if (DefaultConfig.isProtectEliteMobsRegions() &&
                     Bukkit.getPluginManager().getPlugin("WorldGuard") != null &&
                     Bukkit.getPluginManager().getPlugin("EliteMobs") != null) {
-                WorldGuard.Protect(
-                        BlockVector3.at(lowestCorner.getX(), lowestCorner.getY(), lowestCorner.getZ()),
-                        BlockVector3.at(highestCorner.getX(), highestCorner.getY(), highestCorner.getZ()),
-                        bossFilename, eliteLocation);
+                WorldGuard.Protect(lowestCorner, highestCorner, bossFilename, eliteLocation);
             } else {
                 if (!worldGuardWarn) {
                     worldGuardWarn = true;

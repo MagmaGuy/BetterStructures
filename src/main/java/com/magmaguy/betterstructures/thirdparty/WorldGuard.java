@@ -1,5 +1,6 @@
 package com.magmaguy.betterstructures.thirdparty;
 
+import com.magmaguy.betterstructures.buildingfitter.FitAnything;
 import com.magmaguy.betterstructures.config.DefaultConfig;
 import com.magmaguy.betterstructures.util.InfoMessage;
 import com.magmaguy.elitemobs.api.EliteMobDeathEvent;
@@ -25,6 +26,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.util.Vector;
 
 public class WorldGuard implements Listener {
     private static StateFlag BETTERSTRUCTURES_PROTECTED = null;
@@ -60,6 +62,23 @@ public class WorldGuard implements Listener {
             Bukkit.getLogger().warning("[EliteMobs] Warning: flag betterstructures-protect already exists! This is normal if you've just now reloaded BetterStructures.");
             BETTERSTRUCTURES_PROTECTED = (StateFlag) registry.get("betterstructures-protect");
         }
+    }
+
+    /**
+     * Creates and returns a WorldGuard region, useful for API purposes
+     */
+    public static ProtectedRegion generateProtectedRegion(FitAnything fitAnything, String regionName){
+        Location lowestCorner = fitAnything.getLocation().clone().add(fitAnything.getSchematicOffset());
+        Location highestCorner = lowestCorner.clone().add(new Vector(fitAnything.getSchematicClipboard().getRegion().getWidth() - 1, fitAnything.getSchematicClipboard().getRegion().getHeight(), fitAnything.getSchematicClipboard().getRegion().getLength() - 1));
+        BlockVector3 min =  BlockVector3.at(lowestCorner.getX(), lowestCorner.getY(), lowestCorner.getZ());
+        BlockVector3 max = BlockVector3.at(highestCorner.getX(), highestCorner.getY(), highestCorner.getZ());
+        return new ProtectedCuboidRegion(regionName, min, max);
+    }
+
+    public static void Protect(Location lowestCorner, Location highestCorner, String bossFilename, Location spawnLocation) {
+        BlockVector3 min =  BlockVector3.at(lowestCorner.getX(), lowestCorner.getY(), lowestCorner.getZ());
+        BlockVector3 max = BlockVector3.at(highestCorner.getX(), highestCorner.getY(), highestCorner.getZ());
+        Protect(min, max, bossFilename, spawnLocation);
     }
 
     public static void Protect(BlockVector3 corner1, BlockVector3 corner2, String bossFilename, Location spawnLocation) {
