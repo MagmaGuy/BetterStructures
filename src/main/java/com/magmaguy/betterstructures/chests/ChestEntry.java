@@ -3,7 +3,6 @@ package com.magmaguy.betterstructures.chests;
 import com.magmaguy.betterstructures.config.treasures.TreasureConfigFields;
 import lombok.Getter;
 import org.bukkit.Material;
-import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 

@@ -1,7 +1,6 @@
 package com.magmaguy.betterstructures.util;
 
 import com.sk89q.jnbt.CompoundTag;
-import com.sk89q.jnbt.ListTag;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
 import com.sk89q.worldedit.world.block.BaseBlock;
 import org.bukkit.Bukkit;
@@ -59,12 +58,14 @@ public class WorldEditUtils {
                 values.add(s.replace("TAG_String(\"", "").replace("\")", ""));
             }
         }
-        // lines in versions below 1.20.4 duplicated twice
+        // lines in versions below 1.20.4 duplicated twice - note this is just for versions prior to 1.20.4
         if (data.toString().contains("{\"text\":")) {
-            for (int i = (values.size() / 2); i != values.size();) {
-                if (values.size() == 2) break;
-                values.remove(i);
-            }
+            //todo: this code was contributed but it doens't seem to check out, is this dependent on a specific WE version or something? remove later if not
+//            for (int i = (values.size() / 2); i != values.size();) {
+//                if (values.size() == 2) break;
+//                values.remove(i);
+//            }
+
             Collections.reverse(values);
         }
 

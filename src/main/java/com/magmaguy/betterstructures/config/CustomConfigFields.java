@@ -5,13 +5,11 @@ import com.magmaguy.betterstructures.util.ChatColorConverter;
 import com.magmaguy.betterstructures.util.WarningMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
-import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.util.Vector;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.*;
 
 public class CustomConfigFields implements CustomConfigFieldsInterface {
