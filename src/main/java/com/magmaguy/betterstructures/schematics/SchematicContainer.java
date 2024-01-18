@@ -7,7 +7,7 @@ import com.magmaguy.betterstructures.config.schematics.SchematicConfigField;
 import com.magmaguy.betterstructures.config.treasures.TreasureConfig;
 import com.magmaguy.betterstructures.config.treasures.TreasureConfigFields;
 import com.magmaguy.betterstructures.util.WarningMessage;
-import com.sk89q.jnbt.ListTag;
+import com.magmaguy.betterstructures.util.WorldEditUtils;
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
 import com.sk89q.worldedit.math.BlockVector3;
@@ -24,7 +24,6 @@ import org.bukkit.util.Vector;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class SchematicContainer {
     @Getter
@@ -95,11 +94,11 @@ public class SchematicContainer {
                             minecraftMaterial.equals(Material.WARPED_WALL_SIGN)) {
                         BaseBlock baseBlock = clipboard.getFullBlock(translatedLocation);
                         //For future reference, I don't know how to get the data in any other way than parsing the string. Sorry!
-                        String line1 = getLine(baseBlock, 1);
+                        String line1 = WorldEditUtils.getLine(baseBlock, 1);
 
                         //Case for spawning a vanilla mob
                         if (line1.toLowerCase().contains("[spawn]")) {
-                            String line2 = getLine(baseBlock, 2).toUpperCase();
+                            String line2 = WorldEditUtils.getLine(baseBlock, 2).toUpperCase();
                             EntityType entityType;
                             try {
                                 entityType = EntityType.valueOf(line2);
@@ -116,7 +115,7 @@ public class SchematicContainer {
                                 return;
                             }
                             String filename = "";
-                            for (int i = 2; i < 5; i++) filename += getLine(baseBlock, i);
+                            for (int i = 2; i < 5; i++) filename += WorldEditUtils.getLine(baseBlock, i);
                             eliteMobsSpawns.put(new Vector(x, y, z), filename);
                         } else if (line1.toLowerCase().contains("[mythicmobs]")) { // carm start - Support MythicMobs
                             if (Bukkit.getPluginManager().getPlugin("MythicMobs") == null) {
@@ -125,8 +124,8 @@ public class SchematicContainer {
                                 valid = false;
                                 return;
                             }
-                            String mob = getLine(baseBlock, 2);
-                            String level = getLine(baseBlock, 3);
+                            String mob = WorldEditUtils.getLine(baseBlock, 2);
+                            String level = WorldEditUtils.getLine(baseBlock, 3);
                             mythicMobsSpawns.put(new Vector(x, y, z), mob + (level.isEmpty() ? "" : ":" + level));
                         } // carm end - Support MythicMobs
                     }
@@ -142,48 +141,6 @@ public class SchematicContainer {
         }
         if (valid)
             generatorConfigFields.getStructureTypes().forEach(structureType -> schematics.put(structureType, this));
-    }
-
-    /**
-     * As of Minecraft 1.20 Minecraft / WorldEdit have changed the format for the signs. This just bruteforces it.
-     *
-     * @param line
-     * @return
-     */
-    private static String getLine(BaseBlock baseBlock, int line) {
-        String finalLine = "";
-        try {
-            finalLine = cleanLine(baseBlock.getNbtData().getString("Text" + line));
-        } catch (Exception e) {
-            //meh
-        }
-        if (!finalLine.isEmpty()) return finalLine;
-
-        try {
-            finalLine = cleanLine(((ListTag) ((Map) baseBlock.getNbtData().getValue().get("front_text").getValue()).get("messages")).getString(line - 1));
-        } catch (Exception e) {
-            //meh
-        }
-        if (!finalLine.isEmpty()) return finalLine;
-
-        try {
-            finalLine = cleanLine(((ListTag) ((Map) baseBlock.getNbtData().getValue().get("back_text").getValue()).get("messages")).getString(line));
-        } catch (Exception e) {
-            //meh
-        }
-
-        return finalLine;
-    }
-
-    /**
-     * Removes the JSON formatting
-     *
-     * @param jsonLine String to clean
-     * @return A value that can be read directly
-     */
-    private static String cleanLine(String jsonLine) {
-        if (jsonLine.split(":").length < 2) return "";
-        return jsonLine.split(":")[1].replace("\"", "").replace("}", "");
     }
 
     public static void shutdown() {
