@@ -306,6 +306,8 @@ public class FitAnything {
             signLocation.getBlock().setType(Material.AIR);
             //If mobs spawn in corners they might choke on adjacent walls
             signLocation.add(new Vector(0.5, 0, 0.5));
+            //I think FAWE is messing with this
+            signLocation.getChunk().load();
             Entity entity = signLocation.getWorld().spawnEntity(signLocation, schematicContainer.getVanillaSpawns().get(entityPosition));
             entity.setPersistent(true);
             if (entity instanceof LivingEntity) {

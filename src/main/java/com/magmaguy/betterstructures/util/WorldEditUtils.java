@@ -60,12 +60,11 @@ public class WorldEditUtils {
         }
         // lines in versions below 1.20.4 duplicated twice - note this is just for versions prior to 1.20.4
         if (data.toString().contains("{\"text\":")) {
-            //todo: this code was contributed but it doens't seem to check out, is this dependent on a specific WE version or something? remove later if not
-//            for (int i = (values.size() / 2); i != values.size();) {
-//                if (values.size() == 2) break;
-//                values.remove(i);
-//            }
-
+            Matcher matcher = Pattern.compile("Text[1-4]=LinStringTag\\[\\{\"text\":\"(.*?)\"").matcher(data.toString());
+            while (matcher.find()) {
+                if (!matcher.group(1).isEmpty() && !matcher.group(1).isBlank())
+                    values.add(matcher.group(1));
+            }
             Collections.reverse(values);
         }
 
@@ -89,7 +88,7 @@ public class WorldEditUtils {
         Matcher matcher = Pattern.compile("value=\"\\\\\\\\\"(.*?)\\\\\\\\\"\"")
                 .matcher(str);
 
-        while (values.size() < 2 && matcher.find()) {
+        while (values.size() < 5 && matcher.find()) {
             String match = matcher.group(1);
             if (match.isEmpty()) continue;
             values.add(match);
