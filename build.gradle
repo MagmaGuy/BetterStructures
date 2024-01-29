@@ -6,7 +6,7 @@ plugins {
 }
 
 group = 'com.magmaguy'
-version = '1.6.7-SNAPSHOT'
+version = '1.6.8-SNAPSHOT'
 
 repositories {
     mavenCentral()
