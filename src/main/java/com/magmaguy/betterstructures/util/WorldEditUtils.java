@@ -54,16 +54,16 @@ public class WorldEditUtils {
         for (String s : lines) {
             s = s.trim().replace("{\"text\":", "").replace("}", ""); // support for versions below 1.20.4
 
-            if (s.startsWith("TAG_String(\"") && !s.equals("TAG_String(\"\")")) {
+            if (s.startsWith("TAG_String(\"")) {
                 values.add(s.replace("TAG_String(\"", "").replace("\")", ""));
+                if (values.size() > 3) break;
             }
         }
         // lines in versions below 1.20.4 duplicated twice - note this is just for versions prior to 1.20.4
         if (data.toString().contains("{\"text\":")) {
             Matcher matcher = Pattern.compile("Text[1-4]=LinStringTag\\[\\{\"text\":\"(.*?)\"").matcher(data.toString());
             while (matcher.find()) {
-                if (!matcher.group(1).isEmpty() && !matcher.group(1).isBlank())
-                    values.add(matcher.group(1));
+                values.add(matcher.group(1));
             }
             Collections.reverse(values);
         }
