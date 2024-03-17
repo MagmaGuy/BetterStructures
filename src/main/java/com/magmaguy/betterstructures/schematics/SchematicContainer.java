@@ -98,7 +98,7 @@ public class SchematicContainer {
 
                         //Case for spawning a vanilla mob
                         if (line1.toLowerCase().contains("[spawn]")) {
-                            String line2 = WorldEditUtils.getLine(baseBlock, 2).toUpperCase();
+                            String line2 = WorldEditUtils.getLine(baseBlock, 2).toUpperCase().replaceAll("\"", "");
                             EntityType entityType;
                             try {
                                 entityType = EntityType.valueOf(line2);
