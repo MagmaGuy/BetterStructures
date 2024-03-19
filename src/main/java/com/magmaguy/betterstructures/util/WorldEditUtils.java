@@ -75,18 +75,17 @@ public class WorldEditUtils {
 
     private static String getNewWEFormat(@NotNull CompoundTag data, @Positive int line) {
         try {
-            Bukkit.getLogger().warning("Attempting modern read");
             //Get front text
             CompoundTag frontText = (CompoundTag) data.getValue().get("front_text");
-            Bukkit.getLogger().warning("Attempting modern read 2");
             //Get messages
             ListTag messages = (ListTag) frontText.getValue().get("messages");
-            Bukkit.getLogger().warning("Attempting modern read 3");
             //Get the line
-            String text = messages.getString(line-1);
-            Bukkit.getLogger().warning("Attempting modern read 4");
+            String text = messages.getString(line - 1);
 
-            Bukkit.getLogger().warning("text: " + text);
+            if (text.contains("\"text\":")) text = text.split("text\":\"")[1].split("\"")[0];
+            text = text.replaceAll("\"", "");
+            if (text.contains("test")) Bukkit.getLogger().warning("boss name:" + text);
+
             return text;
 
         } catch (Exception ex) {

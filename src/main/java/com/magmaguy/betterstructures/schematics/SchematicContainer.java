@@ -118,12 +118,12 @@ public class SchematicContainer {
                             for (int i = 2; i < 5; i++) filename += WorldEditUtils.getLine(baseBlock, i);
                             eliteMobsSpawns.put(new Vector(x, y, z), filename);
                         } else if (line1.toLowerCase().contains("[mythicmobs]")) { // carm start - Support MythicMobs
-                            if (Bukkit.getPluginManager().getPlugin("MythicMobs") == null) {
-                                Bukkit.getLogger().warning("[BetterStructures] " + configFilename + " uses MythicMobs bosses but you do not have MythicMobs installed! BetterStructures does not require MythicMobs to work, but if you want MythicMobs boss fights you will have to install MythicMobs.");
-                                Bukkit.getLogger().warning("[BetterStructures] Since MythicMobs is not installed, " + configFilename + " will not be used.");
-                                valid = false;
-                                return;
-                            }
+//                            if (Bukkit.getPluginManager().getPlugin("MythicMobs") == null) {
+//                                Bukkit.getLogger().warning("[BetterStructures] " + configFilename + " uses MythicMobs bosses but you do not have MythicMobs installed! BetterStructures does not require MythicMobs to work, but if you want MythicMobs boss fights you will have to install MythicMobs.");
+//                                Bukkit.getLogger().warning("[BetterStructures] Since MythicMobs is not installed, " + configFilename + " will not be used.");
+//                                valid = false;
+//                                return;
+//                            }
                             String mob = WorldEditUtils.getLine(baseBlock, 2);
                             String level = WorldEditUtils.getLine(baseBlock, 3);
                             mythicMobsSpawns.put(new Vector(x, y, z), mob + (level.isEmpty() ? "" : ":" + level));
