@@ -1,11 +1,12 @@
 name: BetterStructures
-version: '1.6.10'
+version: '1.6.11'
 main: com.magmaguy.betterstructures.BetterStructures
 api-version: 1.14
 depend: [ WorldEdit ]
 softdepend:
   - EliteMobs
   - WorldGuard
+  - WorldEdit
 authors: [ MagmaGuy ]
 description: A plugin that adds random structures to your Minecraft world!
 website: magmaguy.com

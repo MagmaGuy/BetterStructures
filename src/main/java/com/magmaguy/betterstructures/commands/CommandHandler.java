@@ -274,7 +274,7 @@ public class CommandHandler {
         else
             info = itemStack.getType().toString();
         Map<String, Object> configMap = new HashMap<>();
-        configMap.put("serialized", ItemStackSerialization.toBase64(itemStack));
+        configMap.put("serialized", ItemStackSerialization.deserializeItem(itemStack));
         configMap.put("amount", minAmount +"-"+maxAmount);
         configMap.put("weight", weightDouble);
         configMap.put("info", info);

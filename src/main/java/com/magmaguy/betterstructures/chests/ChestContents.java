@@ -72,9 +72,9 @@ public class ChestContents {
         }
     }
 
-    private ItemStack getSerializedItemStack(String string) {
+    private ItemStack getSerializedItemStack(Map<String, Object> deserializedItemStack, String string) {
         try {
-            return ItemStackSerialization.itemStackArrayFromBase64(string.replace("serialized=", ""));
+            return ItemStackSerialization.serializeItem(deserializedItemStack);
         } catch (Exception ex) {
             new WarningMessage("Invalid serialized value detected! Problematic entry: " + string + " for configuration file " + treasureConfigFields.getFilename());
             ex.printStackTrace();
@@ -135,7 +135,7 @@ public class ChestContents {
                     case "weight" -> weight = getWeight(value);
                     //Support for MMOItems - og code by Carm
                     case "mmoitem", "mmoitems" -> itemStack = getMMOItemsItemStack(value);
-                    case "serialized" -> itemStack = getSerializedItemStack(value);
+                    case "serialized" -> itemStack = getSerializedItemStack((Map<String, Object>) entry.getValue(), value);
                     case "procedurallygenerateenchantments" -> procedurallyGeneratedEnchantments = getProcedurallyGeneratedEnchantments(value);
                     case "info" -> {
                     }
