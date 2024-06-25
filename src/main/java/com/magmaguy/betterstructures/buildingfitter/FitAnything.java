@@ -13,6 +13,7 @@ import com.magmaguy.betterstructures.thirdparty.MythicMobs;
 import com.magmaguy.betterstructures.thirdparty.WorldGuard;
 import com.magmaguy.betterstructures.util.SpigotMessage;
 import com.magmaguy.betterstructures.util.SurfaceMaterials;
+import com.magmaguy.betterstructures.util.VersionChecker;
 import com.magmaguy.betterstructures.util.WarningMessage;
 import com.magmaguy.betterstructures.worldedit.Schematic;
 import com.sk89q.worldedit.WorldEditException;
@@ -313,7 +314,9 @@ public class FitAnything {
             if (entity instanceof LivingEntity) {
                 ((LivingEntity) entity).setRemoveWhenFarAway(false);
             }
-            if (entity.getType().equals(EntityType.ENDER_CRYSTAL)) {
+
+            if (!VersionChecker.serverVersionOlderThan(21,0) &&
+                    entity.getType().equals(EntityType.END_CRYSTAL)) {
                 EnderCrystal enderCrystal = (EnderCrystal) entity;
                 enderCrystal.setShowingBottom(false);
             }

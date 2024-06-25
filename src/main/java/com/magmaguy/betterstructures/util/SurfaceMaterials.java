@@ -115,7 +115,6 @@ public class SurfaceMaterials {
             case WARPED_FENCE:
             case WARPED_FENCE_GATE:
             case FERN:
-            case GRASS:
             case LILAC:
             case SNOW_BLOCK:
             case POWDER_SNOW:
@@ -142,6 +141,11 @@ public class SurfaceMaterials {
             case LARGE_FERN:
                 return true;
             default:
+                if (!VersionChecker.serverVersionOlderThan(21,0) && material.equals(Material.GRASS_BLOCK))
+                    return true;
+                else if (material.getKey().getKey().contains("grass"))
+                    //GRASS_BLOCK used to be GRASS, this is a bit of a hack to try to make it backwards compatible
+                    return true;
                 return false;
         }
     }
