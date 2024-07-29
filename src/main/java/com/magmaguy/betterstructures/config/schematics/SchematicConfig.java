@@ -1,9 +1,9 @@
 package com.magmaguy.betterstructures.config.schematics;
 
 import com.magmaguy.betterstructures.MetadataHandler;
-import com.magmaguy.betterstructures.config.CustomConfig;
 import com.magmaguy.betterstructures.schematics.SchematicContainer;
 import com.magmaguy.betterstructures.worldedit.Schematic;
+import com.magmaguy.magmacore.config.CustomConfig;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
 import lombok.Getter;
 
@@ -12,10 +12,10 @@ import java.util.HashMap;
 
 public class SchematicConfig extends CustomConfig {
     @Getter
-    private static HashMap<String, SchematicConfigField> schematicConfigurations = new HashMap<>();
+    private static final HashMap<String, SchematicConfigField> schematicConfigurations = new HashMap<>();
 
     public SchematicConfig() {
-        super("schematics", "", SchematicConfigField.class);
+        super("schematics", SchematicConfigField.class);
         schematicConfigurations.clear();
 
         File readMeFile = new File(MetadataHandler.PLUGIN.getDataFolder(), "schematics" + File.separatorChar + "ReadMe.txt");
@@ -35,7 +35,9 @@ public class SchematicConfig extends CustomConfig {
         for (File file : clipboards.keySet()) {
             String configurationName = convertFromSchematicFilename(file.getName());
             SchematicConfigField schematicConfigField = new SchematicConfigField(configurationName, true);
-            new CustomConfig(file.getParent().replace(MetadataHandler.PLUGIN.getDataFolder().getAbsolutePath() + File.separatorChar, ""), SchematicConfigField.class, schematicConfigField);
+            new CustomConfig(file.getParent().replace(
+                    MetadataHandler.PLUGIN.getDataFolder().getAbsolutePath() + File.separatorChar, ""),
+                    SchematicConfigField.class, schematicConfigField);
             if (schematicConfigField.isEnabled())
                 schematicConfigurations.put(configurationName, schematicConfigField);
         }

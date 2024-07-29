@@ -2,10 +2,9 @@ package com.magmaguy.betterstructures.config.treasures;
 
 import com.magmaguy.betterstructures.MetadataHandler;
 import com.magmaguy.betterstructures.chests.ChestContents;
-import com.magmaguy.betterstructures.config.CustomConfigFields;
 import com.magmaguy.betterstructures.util.DefaultChestContents;
-import com.magmaguy.betterstructures.util.InfoMessage;
-import com.magmaguy.betterstructures.util.WarningMessage;
+import com.magmaguy.magmacore.config.CustomConfigFields;
+import com.magmaguy.magmacore.util.Logger;
 import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.Material;
@@ -16,10 +15,7 @@ import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.meta.ItemMeta;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class TreasureConfigFields extends CustomConfigFields {
@@ -61,7 +57,7 @@ public class TreasureConfigFields extends CustomConfigFields {
         for (Map.Entry<String, Object> stringObjectEntry : rawEnchantmentSettings.entrySet()) {
             Material material = Material.matchMaterial(stringObjectEntry.getKey());
             if (material == null) {
-                new WarningMessage("Incorrect material entry for enchantment settings of the configuration file " + filename);
+                Logger.warn("Incorrect material entry for enchantment settings of the configuration file " + filename);
                 continue;
             }
             List<ConfigurationEnchantment> configurationEnchantments = new ArrayList<>();
@@ -69,7 +65,7 @@ public class TreasureConfigFields extends CustomConfigFields {
             for (Map.Entry<String, Object> enchantmentsEntry : enchantments.entrySet()) {
                 Enchantment enchantment = Enchantment.getByKey(NamespacedKey.minecraft(enchantmentsEntry.getKey()));
                 if (enchantment == null && !seenInvalidKeys.contains(enchantmentsEntry.getKey())) {
-                    new InfoMessage("Failed to get valid enchantment from key " + enchantmentsEntry.getKey() + " in configuration file " + filename + " ! This is almost certainly because another plugin " + "is using enchantments that are pretending to be vanilla Minecraft enchantments, when they aren't, " + "and doing so in a way that doesn't allow items to be enchanted via normal means. This enchantment " + "will be ignored for generating items, you can ignore this warning if you didn't plan to use this " + "enchantment in the first place. Warnings about this specific enchantment will now be suppressed.");
+                    Logger.info("Failed to get valid enchantment from key " + enchantmentsEntry.getKey() + " in configuration file " + filename + " ! This is almost certainly because another plugin " + "is using enchantments that are pretending to be vanilla Minecraft enchantments, when they aren't, " + "and doing so in a way that doesn't allow items to be enchanted via normal means. This enchantment " + "will be ignored for generating items, you can ignore this warning if you didn't plan to use this " + "enchantment in the first place. Warnings about this specific enchantment will now be suppressed.");
                     seenInvalidKeys.add(enchantmentsEntry.getKey());
                     continue;
                 }
@@ -77,7 +73,7 @@ public class TreasureConfigFields extends CustomConfigFields {
                 int maxLevel = 1;
                 double chance = 0;
                 for (Map.Entry<String, Object> enchantmentValue : ((ConfigurationSection) (enchantmentsEntry.getValue())).getValues(false).entrySet()) {
-                    switch (enchantmentValue.getKey().toLowerCase()) {
+                    switch (enchantmentValue.getKey().toLowerCase(Locale.ROOT)) {
                         case "minlevel":
                             minLevel = Integer.parseInt(enchantmentValue.getValue().toString());
                             break;
@@ -88,7 +84,7 @@ public class TreasureConfigFields extends CustomConfigFields {
                             chance = Double.parseDouble(enchantmentValue.getValue().toString());
                             break;
                         default:
-                            new WarningMessage("Invalid key for setting " + enchantmentValue.getKey() + " in file " + filename);
+                            Logger.warn("Invalid key for setting " + enchantmentValue.getKey() + " in file " + filename);
                     }
                 }
                 configurationEnchantments.add(new ConfigurationEnchantment(enchantment, minLevel, maxLevel, chance));

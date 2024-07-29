@@ -1,11 +1,10 @@
 package com.magmaguy.betterstructures.config;
 
+import com.magmaguy.magmacore.config.ConfigurationEngine;
+import com.magmaguy.magmacore.config.ConfigurationFile;
 import lombok.Getter;
-import org.bukkit.configuration.file.FileConfiguration;
 
-import java.io.File;
-
-public class DefaultConfig {
+public class DefaultConfig extends ConfigurationFile {
     @Getter
     private static int lowestYNormalCustom;
     @Getter
@@ -42,14 +41,21 @@ public class DefaultConfig {
     private static String regionProtectedMessage;
     @Getter
     private static boolean protectEliteMobsRegions;
-    private static File file;
-    private static FileConfiguration fileConfiguration;
-    private DefaultConfig() {
+    private static DefaultConfig instance;
+
+    public DefaultConfig() {
+        super("config.yml");
+        instance = this;
     }
 
-    public static void initializeConfig() {
-        file = ConfigurationEngine.fileCreator("config.yml");
-        fileConfiguration = ConfigurationEngine.fileConfigurationCreator(file);
+    public static boolean toggleWarnings() {
+        newBuildingWarn = !newBuildingWarn;
+        ConfigurationEngine.writeValue(newBuildingWarn, instance.file, instance.fileConfiguration, "warnAdminsAboutNewBuildings");
+        return newBuildingWarn;
+    }
+
+    @Override
+    public void initializeValues() {
         lowestYNormalCustom = ConfigurationEngine.setInt(fileConfiguration, "lowestYNormalCustom", -60);
         highestYNormalCustom = ConfigurationEngine.setInt(fileConfiguration, "highestYNormalCustom", 320);
         lowestYNether = ConfigurationEngine.setInt(fileConfiguration, "lowestYNether", 4);
@@ -70,12 +76,5 @@ public class DefaultConfig {
         protectEliteMobsRegions = ConfigurationEngine.setBoolean(fileConfiguration, "protectEliteMobsRegions", true);
         ConfigurationEngine.fileSaverOnlyDefaults(fileConfiguration, file);
     }
-
-    public static boolean toggleWarnings() {
-        newBuildingWarn = !newBuildingWarn;
-        ConfigurationEngine.writeValue(newBuildingWarn, file, fileConfiguration, "warnAdminsAboutNewBuildings");
-        return newBuildingWarn;
-    }
-
 }
 

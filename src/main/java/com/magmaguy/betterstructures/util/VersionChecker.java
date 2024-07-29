@@ -1,6 +1,7 @@
 package com.magmaguy.betterstructures.util;
 
 import com.magmaguy.betterstructures.MetadataHandler;
+import com.magmaguy.magmacore.util.Logger;
 import org.bukkit.Bukkit;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -59,7 +60,7 @@ public class VersionChecker {
                 if (!snapshot)
                     Bukkit.getLogger().info("[BetterStructures] You are running the latest version!");
                 else
-                    new InfoMessage("You are running a snapshot version! You can check for updates in the #releases channel on the BetterStructures Discord!");
+                    Logger.info("You are running a snapshot version! You can check for updates in the #releases channel on the BetterStructures Discord!");
 
                 pluginIsUpToDate = true;
             }
@@ -106,7 +107,7 @@ public class VersionChecker {
 
     private static void outOfDateHandler() {
 
-        new WarningMessage("[BetterStructures] A newer version of this plugin is available for download!");
+        Logger.warn("[BetterStructures] A newer version of this plugin is available for download!");
         pluginIsUpToDate = false;
 
     }
@@ -122,8 +123,8 @@ public class VersionChecker {
                 public void run() {
                     if (!event.getPlayer().isOnline()) return;
                     if (!pluginIsUpToDate)
-                        event.getPlayer().sendMessage(ChatColorConverter.convert("&a[BetterStructures] &cYour version of BetterStructures is outdated." +
-                                " &aYou can download the latest version from &3&n&ohttps://www.spigotmc.org/resources/betterstructures.103241/"));
+                        Logger.sendMessage(event.getPlayer(), "&cYour version of BetterStructures is outdated." +
+                                " &aYou can download the latest version from &3&n&ohttps://www.spigotmc.org/resources/betterstructures.103241/");
                 }
             }.runTaskLater(MetadataHandler.PLUGIN, 20L * 3);
 

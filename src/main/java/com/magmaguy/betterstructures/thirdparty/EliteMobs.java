@@ -1,9 +1,8 @@
 package com.magmaguy.betterstructures.thirdparty;
 
-import com.magmaguy.betterstructures.util.ChatColorConverter;
-import com.magmaguy.betterstructures.util.WarningMessage;
-import com.magmaguy.elitemobs.commands.admin.ReloadCommand;
+import com.magmaguy.elitemobs.commands.ReloadCommand;
 import com.magmaguy.elitemobs.mobconstructor.custombosses.RegionalBossEntity;
+import com.magmaguy.magmacore.util.Logger;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -19,7 +18,7 @@ public class EliteMobs {
         if (Bukkit.getPluginManager().getPlugin("EliteMobs") != null) {
             RegionalBossEntity regionalBossEntity = RegionalBossEntity.SpawnRegionalBoss(filename, location);
             if (regionalBossEntity == null) {
-                new WarningMessage("Failed to spawn regional boss " + filename + "! The filename for this boss probably does not match the filename that should be in ~/plugins/EliteMobs/custombosses/");
+                Logger.warn("Failed to spawn regional boss " + filename + "! The filename for this boss probably does not match the filename that should be in ~/plugins/EliteMobs/custombosses/");
                 return false;
             } else {
                 regionalBossEntity.spawn(false);
@@ -28,9 +27,8 @@ public class EliteMobs {
         } else {
             for (Player player : Bukkit.getOnlinePlayers())
                 if (player.hasPermission("betterstructures.*"))
-                    player.sendMessage(ChatColorConverter.convert(
-                            "&8[BetterStructures] &cOne of your packs uses the EliteMobs plugin &4but EliteMobs is not currently installed on your server&c!" +
-                                    " &2You can download it here: &9https://www.spigotmc.org/resources/%E2%9A%94elitemobs%E2%9A%94.40090/"));
+                    Logger.sendMessage(player, "&cOne of your packs uses the EliteMobs plugin &4but EliteMobs is not currently installed on your server&c!" +
+                            " &2You can download it here: &9https://www.spigotmc.org/resources/%E2%9A%94elitemobs%E2%9A%94.40090/");
             return false;
         }
     }

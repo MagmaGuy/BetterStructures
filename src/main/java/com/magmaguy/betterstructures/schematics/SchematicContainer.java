@@ -6,8 +6,8 @@ import com.magmaguy.betterstructures.config.generators.GeneratorConfigFields;
 import com.magmaguy.betterstructures.config.schematics.SchematicConfigField;
 import com.magmaguy.betterstructures.config.treasures.TreasureConfig;
 import com.magmaguy.betterstructures.config.treasures.TreasureConfigFields;
-import com.magmaguy.betterstructures.util.WarningMessage;
 import com.magmaguy.betterstructures.util.WorldEditUtils;
+import com.magmaguy.magmacore.util.Logger;
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
 import com.sk89q.worldedit.math.BlockVector3;
@@ -24,6 +24,7 @@ import org.bukkit.util.Vector;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 
 public class SchematicContainer {
     @Getter
@@ -60,7 +61,7 @@ public class SchematicContainer {
         this.configFilename = configFilename;
         generatorConfigFields = schematicConfigField.getGeneratorConfigFields();
         if (generatorConfigFields == null) {
-            new WarningMessage("Failed to assign generator for configuration of schematic " + schematicConfigField.getFilename() + " ! This means this structure will not appear in the world.");
+            Logger.warn("Failed to assign generator for configuration of schematic " + schematicConfigField.getFilename() + " ! This means this structure will not appear in the world.");
             return;
         }
         for (int x = 0; x <= clipboard.getDimensions().getX(); x++)
@@ -97,17 +98,17 @@ public class SchematicContainer {
                         String line1 = WorldEditUtils.getLine(baseBlock, 1);
 
                         //Case for spawning a vanilla mob
-                        if (line1.toLowerCase().contains("[spawn]")) {
-                            String line2 = WorldEditUtils.getLine(baseBlock, 2).toUpperCase().replaceAll("\"", "");
+                        if (line1.toLowerCase(Locale.ROOT).contains("[spawn]")) {
+                            String line2 = WorldEditUtils.getLine(baseBlock, 2).toUpperCase(Locale.ROOT).replaceAll("\"", "");
                             EntityType entityType;
                             try {
                                 entityType = EntityType.valueOf(line2);
                             } catch (Exception ex) {
-                                new WarningMessage("Failed to determine entity type for sign! Entry was " + line2 + " in schematic " + clipboardFilename + " ! Fix this by inputting a valid entity type!");
+                                Logger.warn("Failed to determine entity type for sign! Entry was " + line2 + " in schematic " + clipboardFilename + " ! Fix this by inputting a valid entity type!");
                                 continue;
                             }
                             vanillaSpawns.put(new Vector(x, y, z), entityType);
-                        } else if (line1.toLowerCase().contains("[elitemobs]")) {
+                        } else if (line1.toLowerCase(Locale.ROOT).contains("[elitemobs]")) {
                             if (Bukkit.getPluginManager().getPlugin("EliteMobs") == null) {
                                 Bukkit.getLogger().warning("[BetterStructures] " + configFilename + " uses EliteMobs bosses but you do not have EliteMobs installed! BetterStructures does not require EliteMobs to work, but if you want cool EliteMobs boss fights you will have to install EliteMobs here: https://www.spigotmc.org/resources/%E2%9A%94elitemobs%E2%9A%94.40090/");
                                 Bukkit.getLogger().warning("[BetterStructures] Since EliteMobs is not installed, " + configFilename + " will not be used.");
@@ -117,7 +118,7 @@ public class SchematicContainer {
                             String filename = "";
                             for (int i = 2; i < 5; i++) filename += WorldEditUtils.getLine(baseBlock, i);
                             eliteMobsSpawns.put(new Vector(x, y, z), filename);
-                        } else if (line1.toLowerCase().contains("[mythicmobs]")) { // carm start - Support MythicMobs
+                        } else if (line1.toLowerCase(Locale.ROOT).contains("[mythicmobs]")) { // carm start - Support MythicMobs
                             if (Bukkit.getPluginManager().getPlugin("MythicMobs") == null) {
                                 Bukkit.getLogger().warning("[BetterStructures] " + configFilename + " uses MythicMobs bosses but you do not have MythicMobs installed! BetterStructures does not require MythicMobs to work, but if you want MythicMobs boss fights you will have to install MythicMobs.");
                                 Bukkit.getLogger().warning("[BetterStructures] Since MythicMobs is not installed, " + configFilename + " will not be used.");
@@ -134,7 +135,7 @@ public class SchematicContainer {
         if (schematicConfigField.getTreasureFile() != null && !schematicConfigField.getTreasureFile().isEmpty()) {
             TreasureConfigFields treasureConfigFields = TreasureConfig.getConfigFields(schematicConfigField.getFilename());
             if (treasureConfigFields == null) {
-                new WarningMessage("Failed to get treasure configuration " + schematicConfigField.getTreasureFile());
+                Logger.warn("Failed to get treasure configuration " + schematicConfigField.getTreasureFile());
                 return;
             }
             chestContents = schematicConfigField.getChestContents();

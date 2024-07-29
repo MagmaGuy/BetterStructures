@@ -1,6 +1,6 @@
 package com.magmaguy.betterstructures.config.treasures;
 
-import com.magmaguy.betterstructures.config.CustomConfig;
+import com.magmaguy.magmacore.config.CustomConfig;
 import lombok.Getter;
 
 import java.util.HashMap;
