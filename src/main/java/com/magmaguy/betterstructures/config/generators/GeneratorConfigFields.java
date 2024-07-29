@@ -1,10 +1,10 @@
 package com.magmaguy.betterstructures.config.generators;
 
 import com.magmaguy.betterstructures.chests.ChestContents;
-import com.magmaguy.betterstructures.config.CustomConfigFields;
 import com.magmaguy.betterstructures.config.treasures.TreasureConfig;
 import com.magmaguy.betterstructures.config.treasures.TreasureConfigFields;
-import com.magmaguy.betterstructures.util.WarningMessage;
+import com.magmaguy.magmacore.config.CustomConfigFields;
+import com.magmaguy.magmacore.util.Logger;
 import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.World;
@@ -79,7 +79,7 @@ public class GeneratorConfigFields extends CustomConfigFields {
         if (treasureConfig != null)
             this.chestContents = new ChestContents(treasureConfig);
         else
-            new WarningMessage("No valid treasure config file found for generator " + filename + " ! This will not spawn loot in chests until fixed.");
+            Logger.warn("No valid treasure config file found for generator " + filename + " ! This will not spawn loot in chests until fixed.");
 
     }
 

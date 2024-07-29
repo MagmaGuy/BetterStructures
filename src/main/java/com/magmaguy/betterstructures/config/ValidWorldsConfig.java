@@ -1,5 +1,7 @@
 package com.magmaguy.betterstructures.config;
 
+import com.magmaguy.magmacore.config.ConfigurationEngine;
+import com.magmaguy.magmacore.config.ConfigurationFile;
 import lombok.Getter;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
@@ -15,22 +17,37 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-public class ValidWorldsConfig {
+public class ValidWorldsConfig extends ConfigurationFile {
     @Getter
     private static HashMap<World, Boolean> validWorlds = new HashMap<>();
     @Getter
-    private static FileConfiguration fileConfiguration;
-    @Getter
     private static boolean whitelistNewWorlds;
-    private static File file;
+    private static ValidWorldsConfig instance;
 
-    private ValidWorldsConfig() {
+    public ValidWorldsConfig() {
+        super("ValidWorlds.yml");
+        instance = this;
     }
 
-    public static void initializeConfig() {
-        file = ConfigurationEngine.fileCreator("ValidWorlds.yml");
-        fileConfiguration = ConfigurationEngine.fileConfigurationCreator(file);
+    public static void registerNewWorld(World world) {
+        if (instance.fileConfiguration.getKeys(true).contains("Valid worlds." + world.getName())) {
+            validWorlds.put(world, instance.fileConfiguration.getBoolean("Valid worlds." + world.getName()));
+            return;
+        }
 
+        ConfigurationEngine.setBoolean(instance.fileConfiguration, "Valid worlds." + world.getName(), whitelistNewWorlds);
+        ConfigurationEngine.fileSaverOnlyDefaults(instance.fileConfiguration, instance.file);
+        validWorlds.put(world, whitelistNewWorlds);
+    }
+
+    public static boolean isValidWorld(World world) {
+        if (validWorlds.get(world) != null)
+            return validWorlds.get(world);
+        return false;
+    }
+
+    @Override
+    public void initializeValues() {
         whitelistNewWorlds = ConfigurationEngine.setBoolean(fileConfiguration, "New worlds spawn structures", true);
 
         for (World world : Bukkit.getWorlds())
@@ -48,23 +65,6 @@ public class ValidWorldsConfig {
             validWorlds.put(world, enabledWorlds.contains(world.getName()));
 
         ConfigurationEngine.fileSaverOnlyDefaults(fileConfiguration, file);
-    }
-
-    public static void registerNewWorld(World world) {
-        if (fileConfiguration.getKeys(true).contains("Valid worlds." + world.getName())) {
-            validWorlds.put(world, fileConfiguration.getBoolean("Valid worlds." + world.getName()));
-            return;
-        }
-
-        ConfigurationEngine.setBoolean(fileConfiguration, "Valid worlds." + world.getName(), whitelistNewWorlds);
-        ConfigurationEngine.fileSaverOnlyDefaults(fileConfiguration, file);
-        validWorlds.put(world, whitelistNewWorlds);
-    }
-
-    public static boolean isValidWorld(World world) {
-        if (validWorlds.get(world) != null)
-            return validWorlds.get(world);
-        return false;
     }
 
     public static class ValidWorldsConfigEvents implements Listener {

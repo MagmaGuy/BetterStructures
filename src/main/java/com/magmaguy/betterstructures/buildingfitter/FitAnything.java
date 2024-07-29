@@ -11,11 +11,11 @@ import com.magmaguy.betterstructures.schematics.SchematicContainer;
 import com.magmaguy.betterstructures.thirdparty.EliteMobs;
 import com.magmaguy.betterstructures.thirdparty.MythicMobs;
 import com.magmaguy.betterstructures.thirdparty.WorldGuard;
-import com.magmaguy.betterstructures.util.SpigotMessage;
 import com.magmaguy.betterstructures.util.SurfaceMaterials;
 import com.magmaguy.betterstructures.util.VersionChecker;
-import com.magmaguy.betterstructures.util.WarningMessage;
 import com.magmaguy.betterstructures.worldedit.Schematic;
+import com.magmaguy.magmacore.util.Logger;
+import com.magmaguy.magmacore.util.SpigotMessage;
 import com.sk89q.worldedit.WorldEditException;
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
@@ -32,10 +32,7 @@ import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.*;
 import org.bukkit.util.Vector;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class FitAnything {
     public static boolean worldGuardWarn = false;
@@ -158,13 +155,13 @@ public class FitAnything {
 
         Schematic.paste(schematicClipboard, location);
         if (DefaultConfig.isNewBuildingWarn()) {
-            String structureTypeString = fitAnything.structureType.toString().toLowerCase().replace("_", " ");
+            String structureTypeString = fitAnything.structureType.toString().toLowerCase(Locale.ROOT).replace("_", " ");
             for (Player player : Bukkit.getOnlinePlayers())
                 if (player.hasPermission("betterstructures.warn"))
                     player.spigot().sendMessage(
                             SpigotMessage.commandHoverMessage("[BetterStructures] New " + structureTypeString + " building generated! Click to teleport. Do \"/betterstructures silent\" to stop getting warnings!",
                                     "Click to teleport to " + location.getWorld().getName() + ", " + location.getBlockX() + ", " + location.getBlockY() + ", " + location.getBlockZ() + "\n Schem name: " + schematicContainer.getConfigFilename(),
-                                    "/betterstructures teleporttocoords " + location.getWorld().getName() + " " + location.getBlockX() + " " + location.getBlockY() + " " + location.getBlockZ())
+                                    "/betterstructures teleport " + location.getWorld().getName() + " " + location.getBlockX() + " " + location.getBlockY() + " " + location.getBlockZ())
                     );
         }
 
@@ -188,26 +185,26 @@ public class FitAnything {
             try {
                 addPedestal(location);
             } catch (Exception exception) {
-                new WarningMessage("Failed to correctly assign pedestal material!");
+                Logger.warn("Failed to correctly assign pedestal material!");
                 exception.printStackTrace();
             }
             try {
                 clearTrees(location);
             } catch (Exception exception) {
-                new WarningMessage("Failed to correctly clear trees!");
+                Logger.warn("Failed to correctly clear trees!");
                 exception.printStackTrace();
             }
         }
         try {
             fillChests();
         } catch (Exception exception) {
-            new WarningMessage("Failed to correctly fill chests!");
+            Logger.warn("Failed to correctly fill chests!");
             exception.printStackTrace();
         }
         try {
             spawnEntities();
         } catch (Exception exception) {
-            new WarningMessage("Failed to correctly spawn entities!");
+            Logger.warn("Failed to correctly spawn entities!");
             //exception.printStackTrace();
         }
 
@@ -285,7 +282,7 @@ public class FitAnything {
             for (Vector chestPosition : schematicContainer.getChestLocations()) {
                 Location chestLocation = LocationProjector.project(location, schematicOffset, chestPosition);
                 if (!(chestLocation.getBlock().getState() instanceof Container container)) {
-                    new WarningMessage("Expected a container for " + chestLocation.getBlock().getType() + " but didn't get it. Skipping this loot!");
+                    Logger.warn("Expected a container for " + chestLocation.getBlock().getType() + " but didn't get it. Skipping this loot!");
                     continue;
                 }
 
@@ -337,7 +334,7 @@ public class FitAnything {
             } else {
                 if (!worldGuardWarn) {
                     worldGuardWarn = true;
-                    new WarningMessage("You are not using WorldGuard, so BetterStructures could not protect a boss arena! Using WorldGuard is recommended to guarantee a fair combat experience.");
+                    Logger.warn("You are not using WorldGuard, so BetterStructures could not protect a boss arena! Using WorldGuard is recommended to guarantee a fair combat experience.");
                 }
             }
         }

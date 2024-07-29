@@ -3,7 +3,7 @@ package com.magmaguy.betterstructures.buildingfitter.util;
 import com.magmaguy.betterstructures.buildingfitter.FitUndergroundBuilding;
 import com.magmaguy.betterstructures.config.generators.GeneratorConfigFields;
 import com.magmaguy.betterstructures.schematics.SchematicContainer;
-import com.magmaguy.betterstructures.util.WarningMessage;
+import com.magmaguy.magmacore.util.Logger;
 import org.bukkit.Chunk;
 
 public class FitUndergroundDeepBuilding {
@@ -24,7 +24,7 @@ public class FitUndergroundDeepBuilding {
                 //The nether has no "deep" underground area, it's floating islands
                 break;
             default:
-                new WarningMessage("Unexpected environment type: " + chunk.getWorld().getEnvironment());
+                Logger.warn("Unexpected environment type: " + chunk.getWorld().getEnvironment());
         }
     }
 
@@ -42,7 +42,7 @@ public class FitUndergroundDeepBuilding {
                 //The nether has no "deep" underground area, it's floating islands
                 break;
             default:
-                new WarningMessage("Unexpected environment type: " + chunk.getWorld().getEnvironment());
+                Logger.warn("Unexpected environment type: " + chunk.getWorld().getEnvironment());
         }
     }
 }

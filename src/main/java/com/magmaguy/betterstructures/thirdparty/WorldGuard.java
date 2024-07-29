@@ -2,11 +2,10 @@ package com.magmaguy.betterstructures.thirdparty;
 
 import com.magmaguy.betterstructures.buildingfitter.FitAnything;
 import com.magmaguy.betterstructures.config.DefaultConfig;
-import com.magmaguy.betterstructures.util.InfoMessage;
 import com.magmaguy.elitemobs.api.EliteMobDeathEvent;
 import com.magmaguy.elitemobs.mobconstructor.custombosses.CustomBossEntity;
 import com.magmaguy.elitemobs.mobconstructor.custombosses.RegionalBossEntity;
-import com.magmaguy.elitemobs.utils.WarningMessage;
+import com.magmaguy.magmacore.util.Logger;
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.math.BlockVector3;
 import com.sk89q.worldguard.protection.ApplicableRegionSet;
@@ -43,12 +42,12 @@ public class WorldGuard implements Listener {
         try {
             registry = com.sk89q.worldguard.WorldGuard.getInstance().getFlagRegistry();
         } catch (Exception ex) {
-            new WarningMessage("Something went wrong while loading WorldGuard. Are you using the right WorldGuard version?");
+            Logger.warn("Something went wrong while loading WorldGuard. Are you using the right WorldGuard version?");
             return;
         }
 
         if (BETTERSTRUCTURES_PROTECTED != null) {
-            new InfoMessage("Flag betterstructures-protect is already registered, this is normal if the plugin or server have just been reloaded.");
+            Logger.info("Flag betterstructures-protect is already registered, this is normal if the plugin or server have just been reloaded.");
             return;
         }
 

@@ -2,8 +2,8 @@ package com.magmaguy.betterstructures.chests;
 
 import com.magmaguy.betterstructures.config.treasures.TreasureConfigFields;
 import com.magmaguy.betterstructures.util.ItemStackSerialization;
-import com.magmaguy.betterstructures.util.WarningMessage;
 import com.magmaguy.betterstructures.util.WeighedProbability;
+import com.magmaguy.magmacore.util.Logger;
 import lombok.Getter;
 import net.Indyuce.mmoitems.MMOItems;
 import net.Indyuce.mmoitems.api.item.mmoitem.MMOItem;
@@ -12,10 +12,7 @@ import org.bukkit.block.Container;
 import org.bukkit.configuration.MemorySection;
 import org.bukkit.inventory.ItemStack;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class ChestContents {
@@ -41,9 +38,9 @@ public class ChestContents {
 
     private Material getMaterial(String string) {
         try {
-            return Material.getMaterial(string.toUpperCase());
+            return Material.getMaterial(string.toUpperCase(Locale.ROOT));
         } catch (Exception exception) {
-            new WarningMessage("Invalid material detected! Problematic entry: " + string + " in configuration file " + treasureConfigFields.getFilename());
+            Logger.warn("Invalid material detected! Problematic entry: " + string + " in configuration file " + treasureConfigFields.getFilename());
             return null;
         }
     }
@@ -52,7 +49,7 @@ public class ChestContents {
         try {
             return Double.parseDouble(string);
         } catch (Exception exception) {
-            new WarningMessage("Invalid double value detected! Problematic entry: " + string + " in configuration file " + treasureConfigFields.getFilename());
+            Logger.warn("Invalid double value detected! Problematic entry: " + string + " in configuration file " + treasureConfigFields.getFilename());
             return -1;
         }
     }
@@ -62,10 +59,10 @@ public class ChestContents {
             double weight = -1;
             List<ChestEntry> chestEntries = null;
             for (Map.Entry<String, Object> innerEntry : ((MemorySection) entry.getValue()).getValues(false).entrySet()) {
-                switch (innerEntry.getKey().toLowerCase()) {
+                switch (innerEntry.getKey().toLowerCase(Locale.ROOT)) {
                     case "weight" -> weight = getWeight(innerEntry.getValue().toString());
                     case "items" -> chestEntries = processEntries((List<Map<String, ?>>) innerEntry.getValue());
-                    default -> new WarningMessage("Failed to read key " + innerEntry.getKey() + " for configuration file " + treasureConfigFields.getFilename());
+                    default -> Logger.warn("Failed to read key " + innerEntry.getKey() + " for configuration file " + treasureConfigFields.getFilename());
                 }
             }
             if (weight > 0 && chestEntries != null) chestRarities.add(new ChestRarity(weight, chestEntries));
@@ -76,7 +73,7 @@ public class ChestContents {
         try {
             return ItemStackSerialization.serializeItem(deserializedItemStack);
         } catch (Exception ex) {
-            new WarningMessage("Invalid serialized value detected! Problematic entry: " + string + " for configuration file " + treasureConfigFields.getFilename());
+            Logger.warn("Invalid serialized value detected! Problematic entry: " + string + " for configuration file " + treasureConfigFields.getFilename());
             ex.printStackTrace();
             return null;
         }
@@ -86,7 +83,7 @@ public class ChestContents {
         try {
             return Boolean.parseBoolean(string);
         } catch (Exception ex) {
-            new WarningMessage("Invalid boolean value detected! Problematic entry: " + string + " for configuration file " + treasureConfigFields.getFilename());
+            Logger.warn("Invalid boolean value detected! Problematic entry: " + string + " for configuration file " + treasureConfigFields.getFilename());
             ex.printStackTrace();
             return false;
         }
@@ -100,7 +97,7 @@ public class ChestContents {
             if (mmoitem == null) throw new NullPointerException("mmo item is null");
             return mmoitem.newBuilder().build();
         } catch (Exception ex) {
-            new WarningMessage("Invalid mmo item detected! Problematic entry: " + string + " in " + treasureConfigFields.getFilename());
+            Logger.warn("Invalid mmo item detected! Problematic entry: " + string + " in " + treasureConfigFields.getFilename());
             return null;
         }
     }
@@ -116,7 +113,7 @@ public class ChestContents {
             ItemStack itemStack = null;
             for (Map.Entry<String, ?> entry : rawChestEntry.entrySet()) {
                 String value = entry.getValue().toString();
-                switch (entry.getKey().toLowerCase()) {
+                switch (entry.getKey().toLowerCase(Locale.ROOT)) {
                     case "material" -> material = getMaterial(value);
                     case "amount" -> {
                         try {
@@ -129,7 +126,7 @@ public class ChestContents {
                                 maxAmount = minAmount;
                             }
                         } catch (Exception exception) {
-                            new WarningMessage("Invalid amount detected! Problematic entry: " + value + " in file " + treasureConfigFields.getFilename());
+                            Logger.warn("Invalid amount detected! Problematic entry: " + value + " in file " + treasureConfigFields.getFilename());
                         }
                     }
                     case "weight" -> weight = getWeight(value);
@@ -139,7 +136,7 @@ public class ChestContents {
                     case "procedurallygenerateenchantments" -> procedurallyGeneratedEnchantments = getProcedurallyGeneratedEnchantments(value);
                     case "info" -> {
                     }
-                    default -> new WarningMessage("Failed to read key " + entry.getKey() + " for configuration file " + treasureConfigFields.getFilename());
+                    default -> Logger.warn("Failed to read key " + entry.getKey() + " for configuration file " + treasureConfigFields.getFilename());
                 }
             }
             if (material != null || itemStack != null) {
