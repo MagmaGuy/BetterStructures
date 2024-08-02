@@ -28,7 +28,7 @@ public class TeleportCommand extends AdvancedCommand {
     @Override
     public void execute(CommandData commandData) {
         try {
-            World world = Bukkit.getWorld(commandData.getStringArgument("worldname"));
+            World world = Bukkit.getWorld(commandData.getStringArgument("world"));
             double x = Double.parseDouble(commandData.getStringArgument("x"));
             double y = Double.parseDouble(commandData.getStringArgument("y"));
             double z = Double.parseDouble(commandData.getStringArgument("z"));
