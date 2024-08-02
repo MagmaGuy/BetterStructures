@@ -15,6 +15,7 @@ import com.magmaguy.magmacore.command.CommandManager;
 import com.magmaguy.magmacore.util.Logger;
 import org.bstats.bukkit.Metrics;
 import org.bukkit.Bukkit;
+import org.bukkit.event.HandlerList;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.IOException;
@@ -31,7 +32,6 @@ public final class BetterStructures extends JavaPlugin {
         Bukkit.getLogger().info("/_____/\\___/\\__/\\__/\\___/_/   /____/\\__/_/   \\__,_/\\___/\\__/\\__,_/_/   \\___/____/");
         // Plugin startup logic
         Bukkit.getLogger().info("[BetterStructures] Initialized version " + this.getDescription().getVersion() + "!");
-        MagmaCore.createInstance(this);
         Bukkit.getPluginManager().registerEvents(new NewChunkLoadEvent(), this);
         Bukkit.getPluginManager().registerEvents(new ValidWorldsConfig.ValidWorldsConfigEvents(), this);
         Bukkit.getPluginManager().registerEvents(new VersionChecker.VersionCheckerEvents(), this);
@@ -66,6 +66,7 @@ public final class BetterStructures extends JavaPlugin {
 
     @Override
     public void onLoad() {
+        MagmaCore.createInstance(this);
         try {
             if (Bukkit.getPluginManager().getPlugin("WorldGuard") != null &&
                     Bukkit.getPluginManager().getPlugin("EliteMobs") != null)
@@ -83,6 +84,7 @@ public final class BetterStructures extends JavaPlugin {
         SchematicContainer.shutdown();
         Bukkit.getServer().getScheduler().cancelTasks(MetadataHandler.PLUGIN);
         MagmaCore.shutdown();
+        HandlerList.unregisterAll(MetadataHandler.PLUGIN);
         Bukkit.getLogger().info("[BetterStructures] Shutdown!");
     }
 }
