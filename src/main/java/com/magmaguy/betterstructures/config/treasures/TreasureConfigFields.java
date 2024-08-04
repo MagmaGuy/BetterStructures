@@ -45,8 +45,8 @@ public class TreasureConfigFields extends CustomConfigFields {
     @Override
     public void processConfigFields() {
         this.isEnabled = processBoolean("isEnabled", isEnabled, true, true);
-        this.rawLoot = processMap("items", rawLoot);
-        this.rawEnchantmentSettings = processMap("procedurallyGeneratedItemSettings", DefaultChestContents.generateProcedurallyGeneratedItems());
+        this.rawLoot = processMapWithKey("items", rawLoot);
+        this.rawEnchantmentSettings = processMapWithKey("procedurallyGeneratedItemSettings", DefaultChestContents.generateProcedurallyGeneratedItems());
         this.mean = processDouble("mean", mean, 4, true);
         this.standardDeviation = processDouble("standardDeviation", standardDeviation, 3, true);
         chestContents = new ChestContents(this);
