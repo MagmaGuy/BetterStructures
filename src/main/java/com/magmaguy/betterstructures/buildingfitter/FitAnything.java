@@ -13,6 +13,7 @@ import com.magmaguy.betterstructures.thirdparty.MythicMobs;
 import com.magmaguy.betterstructures.thirdparty.WorldGuard;
 import com.magmaguy.betterstructures.util.SurfaceMaterials;
 import com.magmaguy.betterstructures.util.VersionChecker;
+import com.magmaguy.betterstructures.util.WeighedProbability;
 import com.magmaguy.betterstructures.worldedit.Schematic;
 import com.magmaguy.magmacore.util.Logger;
 import com.magmaguy.magmacore.util.SpigotMessage;
@@ -27,12 +28,14 @@ import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.block.Container;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.*;
 import org.bukkit.util.Vector;
 
 import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class FitAnything {
     public static boolean worldGuardWarn = false;
@@ -51,6 +54,8 @@ public class FitAnything {
     protected Location location = null;
     protected GeneratorConfigFields.StructureType structureType;
     Material pedestalMaterial = null;
+    private final HashMap<Material, Integer> undergroundPedestalMaterials = new HashMap<>();
+    private final HashMap<Material, Integer> surfacePedestalMaterials = new HashMap<>();
 
     public static void commandBasedCreation(Chunk chunk, GeneratorConfigFields.StructureType structureType, SchematicContainer container) {
         switch (structureType) {
@@ -122,6 +127,7 @@ public class FitAnything {
                             z + schematicClipboard.getMinimumPoint().getZ());
                     BlockState blockState = schematicClipboard.getBlock(adjustedClipboardLocation);
                     Material material = BukkitAdapter.adapt(blockState.getBlockType());
+                    boolean isGround =  !BukkitAdapter.adapt(schematicClipboard.getBlock(BlockVector3.at(adjustedClipboardLocation.getX(), adjustedLocation.getY(), adjustedLocation.getZ()).add(0,1,0)).getBlockType()).isSolid();
                     Block worldBlock = adjustedLocation.clone().add(new Vector(x, y, z)).getBlock();
                     if (material == Material.BARRIER) {
                         //special behavior: do not replace
@@ -142,7 +148,7 @@ public class FitAnything {
                             worldBlock = adjustedLocation.clone().add(new Vector(x, y, z)).getBlock();
                             if (worldBlock.getType().isAir() || worldBlock.isLiquid()) {
                                 //Case for air - replace with filler block
-                                worldBlock.setType(pedestalMaterial);
+                                worldBlock.setType(getPedestalMaterial(isGround));
                             }
                             //Case for any solid block - do not replace world block
                             schematicClipboard.setBlock(adjustedClipboardLocation, BukkitAdapter.adapt(worldBlock.getBlockData()));
@@ -213,32 +219,65 @@ public class FitAnything {
     private void assignPedestalMaterial(Location location) {
         if (this instanceof FitAirBuilding) return;
         pedestalMaterial = schematicContainer.getSchematicConfigField().getPedestalMaterial();
-        //If the pedestal material is null, fill in with the most common sampled ground source
-        if (pedestalMaterial != null) return;
         Location lowestCorner = location.clone().add(schematicOffset);
-        HashMap<Material, Integer> materials = new HashMap<>();
-        for (int x = 0; x < schematicClipboard.getDimensions().getX(); x += 3)
-            for (int z = 0; z < schematicClipboard.getDimensions().getZ(); z += 3)
-                for (int y = -1; y > -3; y--) {
-                    Block groundBlock = lowestCorner.clone().add(new Vector(x, 0, z)).getBlock();
-                    if (SurfaceMaterials.isPedestalMaterial(groundBlock.getType()))
-                        if (materials.get(groundBlock.getType()) != null)
-                            materials.
-                                    put(groundBlock.getType(), materials.get(groundBlock.getType()) + 1);
-                        else
-                            materials.put(groundBlock.getType(), 1);
+
+        int maxSurfaceHeightScan = 20;
+
+        //get underground pedestal blocks
+        for (int x = 0; x < schematicClipboard.getDimensions().getX(); x++)
+            for (int z = 0; z < schematicClipboard.getDimensions().getZ(); z++)
+                for (int y = 0; y < schematicClipboard.getDimensions().getY(); y++) {
+                    Block groundBlock = lowestCorner.clone().add(new Vector(x, y, z)).getBlock();
+                    Block aboveBlock = groundBlock.getRelative(BlockFace.UP);
+
+                    if (aboveBlock.getType().isSolid() && groundBlock.getType().isSolid() && !SurfaceMaterials.ignorable(groundBlock.getType()))
+                        undergroundPedestalMaterials.merge(groundBlock.getType(), 1, Integer::sum);
                 }
-        //Case for if all blocks were air, this should be impossible
-        if (materials.isEmpty()) pedestalMaterial = Material.DIRT;
-        Material mostCommonMaterial = null;
-        int highestScore = 0;
-        for (Material material : materials.keySet()) {
-            if (highestScore < materials.get(material)) {
-                highestScore = materials.get(material);
-                mostCommonMaterial = material;
+
+        //get above ground pedestal blocks, if any
+        for (int x = 0; x < schematicClipboard.getDimensions().getX(); x++)
+            for (int z = 0; z < schematicClipboard.getDimensions().getZ(); z++) {
+                boolean scanUp = lowestCorner.clone().add(new Vector(x, schematicClipboard.getDimensions().getY(), z)).getBlock().getType().isSolid();
+                for (int y = 0; y < maxSurfaceHeightScan; y++) {
+                    Block groundBlock = lowestCorner.clone().add(new Vector(x, scanUp ? y : -y, z)).getBlock();
+                    Block aboveBlock = groundBlock.getRelative(BlockFace.UP);
+
+                    if (!aboveBlock.getType().isSolid() && groundBlock.getType().isSolid()) {
+                        surfacePedestalMaterials.merge(groundBlock.getType(), 1, Integer::sum);
+                        break;
+                    }
+                }
+            }
+    }
+
+    private Material getPedestalMaterial(boolean isPedestalSurface) {
+        if (isPedestalSurface){
+            if (surfacePedestalMaterials.isEmpty()) return pedestalMaterial;
+            return getRandomMaterialBasedOnWeight(surfacePedestalMaterials);
+        } else {
+            if (undergroundPedestalMaterials.isEmpty()) return pedestalMaterial;
+            return getRandomMaterialBasedOnWeight(undergroundPedestalMaterials);
+        }
+    }
+
+    public Material getRandomMaterialBasedOnWeight(HashMap<Material, Integer> weightedMaterials) {
+        // Calculate the total weight
+        int totalWeight = weightedMaterials.values().stream().mapToInt(Integer::intValue).sum();
+
+        // Generate a random number in the range of 0 (inclusive) to totalWeight (exclusive)
+        int randomNumber = ThreadLocalRandom.current().nextInt(totalWeight);
+
+        // Iterate through the materials and pick one based on the random number
+        int cumulativeWeight = 0;
+        for (Map.Entry<Material, Integer> entry : weightedMaterials.entrySet()) {
+            cumulativeWeight += entry.getValue();
+            if (randomNumber < cumulativeWeight) {
+                return entry.getKey();
             }
         }
-        pedestalMaterial = mostCommonMaterial;
+
+        // Fallback return, should not occur if the map is not empty and weights are positive
+        throw new IllegalStateException("Weighted random selection failed.");
     }
 
     private void addPedestal(Location location) {
@@ -252,10 +291,11 @@ public class FitAnything {
                 for (int y = -1; y > -11; y--) {
                     Block block = lowestCorner.clone().add(new Vector(x, y, z)).getBlock();
                     if (SurfaceMaterials.ignorable(block.getType()))
-                        block.setType(pedestalMaterial);
-                    else
+                        block.setType(getPedestalMaterial(!block.getRelative(BlockFace.UP).getType().isSolid()));
+                    else {
                         //Pedestal only fills until it hits the first solid block
                         break;
+                    }
                 }
             }
     }
@@ -312,7 +352,7 @@ public class FitAnything {
                 ((LivingEntity) entity).setRemoveWhenFarAway(false);
             }
 
-            if (!VersionChecker.serverVersionOlderThan(21,0) &&
+            if (!VersionChecker.serverVersionOlderThan(21, 0) &&
                     entity.getType().equals(EntityType.END_CRYSTAL)) {
                 EnderCrystal enderCrystal = (EnderCrystal) entity;
                 enderCrystal.setShowingBottom(false);

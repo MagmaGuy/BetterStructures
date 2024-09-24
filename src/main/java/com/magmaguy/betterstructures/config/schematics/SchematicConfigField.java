@@ -11,8 +11,9 @@ import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.Material;
 
-public class SchematicConfigField extends CustomConfigFields {
+import java.io.IOException;
 
+public class SchematicConfigField extends CustomConfigFields {
 
     @Getter
     @Setter
@@ -64,6 +65,16 @@ public class SchematicConfigField extends CustomConfigFields {
                 return;
             }
             this.chestContents = treasureConfigFields.getChestContents();
+        }
+    }
+
+    public void toggleEnabled(boolean enabled) {
+        this.isEnabled = enabled;
+        fileConfiguration.set("isEnabled", enabled);
+        try {
+            fileConfiguration.save(file);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 }

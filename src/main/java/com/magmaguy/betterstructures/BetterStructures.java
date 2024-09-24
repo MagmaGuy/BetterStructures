@@ -3,9 +3,12 @@ package com.magmaguy.betterstructures;
 import com.magmaguy.betterstructures.commands.*;
 import com.magmaguy.betterstructures.config.DefaultConfig;
 import com.magmaguy.betterstructures.config.ValidWorldsConfig;
+import com.magmaguy.betterstructures.config.contentpackages.ContentPackageConfig;
 import com.magmaguy.betterstructures.config.generators.GeneratorConfig;
 import com.magmaguy.betterstructures.config.schematics.SchematicConfig;
 import com.magmaguy.betterstructures.config.treasures.TreasureConfig;
+import com.magmaguy.betterstructures.content.BSPackage;
+import com.magmaguy.betterstructures.listeners.FirstTimeSetupWarner;
 import com.magmaguy.betterstructures.listeners.NewChunkLoadEvent;
 import com.magmaguy.betterstructures.schematics.SchematicContainer;
 import com.magmaguy.betterstructures.thirdparty.WorldGuard;
@@ -33,6 +36,7 @@ public final class BetterStructures extends JavaPlugin {
         // Plugin startup logic
         Bukkit.getLogger().info("[BetterStructures] Initialized version " + this.getDescription().getVersion() + "!");
         Bukkit.getPluginManager().registerEvents(new NewChunkLoadEvent(), this);
+        Bukkit.getPluginManager().registerEvents(new FirstTimeSetupWarner(), this);
         Bukkit.getPluginManager().registerEvents(new ValidWorldsConfig.ValidWorldsConfigEvents(), this);
         Bukkit.getPluginManager().registerEvents(new VersionChecker.VersionCheckerEvents(), this);
         try {
@@ -43,12 +47,13 @@ public final class BetterStructures extends JavaPlugin {
         new DefaultConfig();
         new ValidWorldsConfig();
         //Creates import folder if one doesn't exist, imports any content inside
-//        Import.initialize();
         MagmaCore.initializeImporter();
+        MagmaCore.onEnable();
 
         new TreasureConfig();
         new GeneratorConfig();
         new SchematicConfig();
+        new ContentPackageConfig();
         CommandManager commandManager = new CommandManager(this, "betterstructures");
         commandManager.registerCommand(new LootifyCommand());
         commandManager.registerCommand(new PlaceCommand());
@@ -56,6 +61,8 @@ public final class BetterStructures extends JavaPlugin {
         commandManager.registerCommand(new SilentCommand());
         commandManager.registerCommand(new TeleportCommand());
         commandManager.registerCommand(new VersionCommand());
+        commandManager.registerCommand(new SetupCommand());
+        commandManager.registerCommand(new FirstTimeSetupCommand());
 
         VersionChecker.checkPluginVersion();
         if (Bukkit.getPluginManager().getPlugin("WorldGuard") != null &&
@@ -85,6 +92,7 @@ public final class BetterStructures extends JavaPlugin {
         Bukkit.getServer().getScheduler().cancelTasks(MetadataHandler.PLUGIN);
         MagmaCore.shutdown();
         HandlerList.unregisterAll(MetadataHandler.PLUGIN);
+        BSPackage.shutdown();
         Bukkit.getLogger().info("[BetterStructures] Shutdown!");
     }
 }

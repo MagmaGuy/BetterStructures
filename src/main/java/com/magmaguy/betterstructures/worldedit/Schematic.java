@@ -1,5 +1,6 @@
 package com.magmaguy.betterstructures.worldedit;
 
+import com.magmaguy.magmacore.util.Logger;
 import com.sk89q.worldedit.EditSession;
 import com.sk89q.worldedit.WorldEdit;
 import com.sk89q.worldedit.WorldEditException;
@@ -17,8 +18,8 @@ import org.bukkit.Location;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.NoSuchElementException;
 
 public class Schematic {
     private Schematic() {
@@ -35,10 +36,13 @@ public class Schematic {
 
         try (ClipboardReader reader = format.getReader(new FileInputStream(schematicFile))) {
             clipboard = reader.read();
-        } catch (FileNotFoundException e) {
-            throw new RuntimeException(e);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            e.printStackTrace();
+            return null;
+        } catch (NoSuchElementException e) {
+            Logger.warn("Failed to get element from schematic " + schematicFile.getName());
+            e.printStackTrace();
+            return null;
         }
         return clipboard;
     }
