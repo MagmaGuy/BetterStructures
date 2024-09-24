@@ -20,6 +20,6 @@ public class ReloadCommand extends AdvancedCommand {
         MetadataHandler.PLUGIN.onDisable();
         MetadataHandler.PLUGIN.onLoad();
         MetadataHandler.PLUGIN.onEnable();
-        Logger.sendMessage(commandData.getCommandSender(), " Reload attempted. This may not 100% work. Restart instead if it didn't!");
+        Logger.sendMessage(commandData.getCommandSender(), "Reload attempted. This may not 100% work. Restart instead if it didn't!");
     }
 }

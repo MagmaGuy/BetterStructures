@@ -42,11 +42,24 @@ public class DefaultConfig extends ConfigurationFile {
     @Getter
     private static boolean protectEliteMobsRegions;
     private static DefaultConfig instance;
+    @Getter
+    private static boolean setupDone;
 
     public DefaultConfig() {
         super("config.yml");
         instance = this;
     }
+
+    public static void toggleSetupDone() {
+        setupDone = !setupDone;
+        com.magmaguy.elitemobs.config.ConfigurationEngine.writeValue(setupDone, instance.file, instance.getFileConfiguration(), "setupDone");
+    }
+
+    public static void toggleSetupDone(boolean value) {
+        setupDone = value;
+        com.magmaguy.elitemobs.config.ConfigurationEngine.writeValue(setupDone, instance.file, instance.getFileConfiguration(), "setupDone");
+    }
+
 
     public static boolean toggleWarnings() {
         newBuildingWarn = !newBuildingWarn;
@@ -74,6 +87,7 @@ public class DefaultConfig extends ConfigurationFile {
         newBuildingWarn = ConfigurationEngine.setBoolean(fileConfiguration, "warnAdminsAboutNewBuildings", true);
         regionProtectedMessage = ConfigurationEngine.setString(fileConfiguration, "regionProtectedMessage", "&8[BetterStructures] &cDefeat the zone's bosses to edit blocks!");
         protectEliteMobsRegions = ConfigurationEngine.setBoolean(fileConfiguration, "protectEliteMobsRegions", true);
+        setupDone = ConfigurationEngine.setBoolean(fileConfiguration, "setupDone", false);
         ConfigurationEngine.fileSaverOnlyDefaults(fileConfiguration, file);
     }
 }

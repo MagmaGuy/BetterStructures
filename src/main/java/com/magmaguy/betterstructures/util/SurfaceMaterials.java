@@ -7,205 +7,51 @@ public class SurfaceMaterials {
     }
 
     public static boolean ignorable(Material material) {
-        switch (material) {
-            case ACACIA_LOG:
-            case BIRCH_LOG:
-            case DARK_OAK_LOG:
-            case JUNGLE_LOG:
-            case MANGROVE_LOG:
-            case OAK_LOG:
-            case SPRUCE_LOG:
-            case STRIPPED_ACACIA_LOG:
-            case STRIPPED_BIRCH_LOG:
-            case STRIPPED_DARK_OAK_LOG:
-            case STRIPPED_JUNGLE_LOG:
-            case STRIPPED_MANGROVE_LOG:
-            case STRIPPED_OAK_LOG:
-            case STRIPPED_SPRUCE_LOG:
-            case ACACIA_WOOD:
-            case BIRCH_WOOD:
-            case JUNGLE_WOOD:
-            case DARK_OAK_WOOD:
-            case OAK_WOOD:
-            case MANGROVE_WOOD:
-            case SPRUCE_WOOD:
-            case STRIPPED_ACACIA_WOOD:
-            case STRIPPED_BIRCH_WOOD:
-            case STRIPPED_DARK_OAK_WOOD:
-            case STRIPPED_JUNGLE_WOOD:
-            case STRIPPED_MANGROVE_WOOD:
-            case STRIPPED_OAK_WOOD:
-            case STRIPPED_SPRUCE_WOOD:
-            case MUSHROOM_STEM:
-            case BROWN_MUSHROOM_BLOCK:
-            case RED_MUSHROOM_BLOCK:
-            case SUGAR_CANE:
-            case BAMBOO:
-            case TALL_GRASS:
-            case WEEPING_VINES:
-            case VINE:
-            case TWISTING_VINES:
-            case CAVE_VINES_PLANT:
-            case CAVE_VINES:
-            case WEEPING_VINES_PLANT:
-            case TWISTING_VINES_PLANT:
-            case FLOWERING_AZALEA:
-            case CHORUS_FLOWER:
-            case CORNFLOWER:
-            case FLOWERING_AZALEA_LEAVES:
-            case SUNFLOWER:
-            case ACACIA_LEAVES:
-            case AZALEA_LEAVES:
-            case BIRCH_LEAVES:
-            case DARK_OAK_LEAVES:
-            case JUNGLE_LEAVES:
-            case MANGROVE_LEAVES:
-            case OAK_LEAVES:
-            case SPRUCE_LEAVES:
-            case DEAD_BUSH:
-            case SWEET_BERRY_BUSH:
-            case ROSE_BUSH:
-            case POPPY:
-            case DANDELION:
-            case BLUE_ORCHID:
-            case ALLIUM:
-            case AZURE_BLUET:
-            case ORANGE_TULIP:
-            case PINK_TULIP:
-            case RED_TULIP:
-            case WHITE_TULIP:
-            case OXEYE_DAISY:
-            case LILY_OF_THE_VALLEY:
-            case WITHER_ROSE:
-            case PEONY:
-            case COCOA:
-            case COCOA_BEANS:
-            case BAMBOO_SAPLING:
-            case SPRUCE_SAPLING:
-            case ACACIA_SAPLING:
-            case BIRCH_SAPLING:
-            case DARK_OAK_SAPLING:
-            case JUNGLE_SAPLING:
-            case OAK_SAPLING:
-            case MELON:
-            case POTATOES:
-            case CARROTS:
-            case BEETROOTS:
-            case WHEAT:
-            case AIR:
-            case CAVE_AIR:
-            case VOID_AIR:
-            case ACACIA_FENCE:
-            case ACACIA_FENCE_GATE:
-            case BIRCH_FENCE_GATE:
-            case BIRCH_FENCE:
-            case CRIMSON_FENCE:
-            case CRIMSON_FENCE_GATE:
-            case DARK_OAK_FENCE:
-            case DARK_OAK_FENCE_GATE:
-            case JUNGLE_FENCE:
-            case JUNGLE_FENCE_GATE:
-            case MANGROVE_FENCE:
-            case NETHER_BRICK_FENCE:
-            case OAK_FENCE:
-            case MANGROVE_FENCE_GATE:
-            case OAK_FENCE_GATE:
-            case SPRUCE_FENCE:
-            case SPRUCE_FENCE_GATE:
-            case WARPED_FENCE:
-            case WARPED_FENCE_GATE:
-            case FERN:
-            case LILAC:
-            case SNOW_BLOCK:
-            case POWDER_SNOW:
-            case SNOW:
-            case CHORUS_PLANT:
-            case CRIMSON_STEM:
-            case STRIPPED_CRIMSON_STEM:
-            case STRIPPED_CRIMSON_HYPHAE:
-            case NETHER_WART_BLOCK:
-            case NETHER_WART:
-            case CRIMSON_ROOTS:
-            case CRIMSON_FUNGUS:
-            case SHROOMLIGHT:
-            case FIRE:
-            case WARPED_STEM:
-            case WARPED_FUNGUS:
-            case WARPED_HYPHAE:
-            case WARPED_NYLIUM:
-            case WARPED_ROOTS:
-            case STRIPPED_WARPED_HYPHAE:
-            case STRIPPED_WARPED_STEM:
-            case NETHER_SPROUTS:
-            case BONE_BLOCK:
-            case LARGE_FERN:
-                return true;
-            default:
-                if (!VersionChecker.serverVersionOlderThan(21,0) && material.equals(Material.GRASS_BLOCK))
-                    return true;
-                else if (material.getKey().getKey().contains("grass"))
-                    //GRASS_BLOCK used to be GRASS, this is a bit of a hack to try to make it backwards compatible
-                    return true;
-                return false;
-        }
+        return switch (material.name()) {
+            case "ACACIA_LOG", "BIRCH_LOG", "DARK_OAK_LOG", "JUNGLE_LOG", "MANGROVE_LOG", "OAK_LOG", "SPRUCE_LOG",
+                 "STRIPPED_ACACIA_LOG", "STRIPPED_BIRCH_LOG", "STRIPPED_DARK_OAK_LOG", "STRIPPED_JUNGLE_LOG",
+                 "STRIPPED_MANGROVE_LOG", "STRIPPED_OAK_LOG", "STRIPPED_SPRUCE_LOG", "ACACIA_WOOD", "BIRCH_WOOD", "JUNGLE_WOOD",
+                 "DARK_OAK_WOOD", "OAK_WOOD", "MANGROVE_WOOD", "SPRUCE_WOOD", "STRIPPED_ACACIA_WOOD", "STRIPPED_BIRCH_WOOD",
+                 "STRIPPED_DARK_OAK_WOOD", "STRIPPED_JUNGLE_WOOD", "STRIPPED_MANGROVE_WOOD", "STRIPPED_OAK_WOOD",
+                 "STRIPPED_SPRUCE_WOOD", "MUSHROOM_STEM", "BROWN_MUSHROOM_BLOCK", "RED_MUSHROOM_BLOCK", "SUGAR_CANE", "BAMBOO",
+                 "TALL_GRASS", "WEEPING_VINES", "VINE", "TWISTING_VINES", "CAVE_VINES_PLANT", "CAVE_VINES", "WEEPING_VINES_PLANT",
+                 "TWISTING_VINES_PLANT", "FLOWERING_AZALEA", "CHORUS_FLOWER", "CORNFLOWER", "FLOWERING_AZALEA_LEAVES", "SUNFLOWER",
+                 "ACACIA_LEAVES", "AZALEA_LEAVES", "BIRCH_LEAVES", "DARK_OAK_LEAVES", "JUNGLE_LEAVES", "MANGROVE_LEAVES",
+                 "OAK_LEAVES", "SPRUCE_LEAVES", "DEAD_BUSH", "SWEET_BERRY_BUSH", "ROSE_BUSH", "POPPY", "DANDELION", "BLUE_ORCHID",
+                 "ALLIUM", "AZURE_BLUET", "ORANGE_TULIP", "PINK_TULIP", "RED_TULIP", "WHITE_TULIP", "OXEYE_DAISY", "LILY_OF_THE_VALLEY",
+                 "WITHER_ROSE", "PEONY", "COCOA", "COCOA_BEANS", "BAMBOO_SAPLING", "SPRUCE_SAPLING", "ACACIA_SAPLING", "BIRCH_SAPLING",
+                 "DARK_OAK_SAPLING", "JUNGLE_SAPLING", "OAK_SAPLING", "MELON", "POTATOES", "CARROTS", "BEETROOTS", "WHEAT", "AIR",
+                 "CAVE_AIR", "VOID_AIR", "ACACIA_FENCE", "ACACIA_FENCE_GATE", "BIRCH_FENCE_GATE", "BIRCH_FENCE", "CRIMSON_FENCE",
+                 "CRIMSON_FENCE_GATE", "DARK_OAK_FENCE", "DARK_OAK_FENCE_GATE", "JUNGLE_FENCE", "JUNGLE_FENCE_GATE",
+                 "MANGROVE_FENCE", "NETHER_BRICK_FENCE", "OAK_FENCE", "MANGROVE_FENCE_GATE", "OAK_FENCE_GATE", "SPRUCE_FENCE",
+                 "SPRUCE_FENCE_GATE", "WARPED_FENCE", "WARPED_FENCE_GATE", "FERN", "LILAC", "SNOW_BLOCK", "POWDER_SNOW", "SNOW",
+                 "CHORUS_PLANT", "CRIMSON_STEM", "STRIPPED_CRIMSON_STEM", "STRIPPED_CRIMSON_HYPHAE", "NETHER_WART_BLOCK",
+                 "NETHER_WART", "CRIMSON_ROOTS", "CRIMSON_FUNGUS", "SHROOMLIGHT", "FIRE", "WARPED_STEM", "WARPED_FUNGUS",
+                 "WARPED_HYPHAE", "WARPED_NYLIUM", "WARPED_ROOTS", "STRIPPED_WARPED_HYPHAE", "STRIPPED_WARPED_STEM",
+                 "NETHER_SPROUTS", "BONE_BLOCK", "LARGE_FERN" -> true;
+            default -> {
+                if (!VersionChecker.serverVersionOlderThan(21, 0) &&
+                        (material.name().equals("SHORT_GRASS")))
+                    yield true;
+                else if (material.getKey().getKey().equalsIgnoreCase("grass"))
+                    //backwards compatibility
+                    yield true;
+                yield false;
+            }
+        };
     }
 
     public static boolean isPedestalMaterial(Material material){
-        switch (material){
-            case DIRT:
-            case COARSE_DIRT:
-            case ROOTED_DIRT:
-            case STONE:
-            case SNOW_BLOCK:
-            case POWDER_SNOW:
-            case SNOW:
-            case NETHERRACK:
-            case SOUL_SAND:
-            case END_STONE:
-            case DIRT_PATH:
-            case GRASS_BLOCK:
-            case GRAVEL:
-            case DEEPSLATE:
-            case DIORITE:
-            case CLAY:
-            case SAND:
-            case SANDSTONE:
-            case TERRACOTTA:
-            case BLACK_TERRACOTTA:
-            case BLUE_TERRACOTTA:
-            case BROWN_TERRACOTTA:
-            case CYAN_TERRACOTTA:
-            case GRAY_TERRACOTTA:
-            case GREEN_TERRACOTTA:
-            case LIGHT_BLUE_TERRACOTTA:
-            case LIGHT_GRAY_TERRACOTTA:
-            case LIME_TERRACOTTA:
-            case MAGENTA_TERRACOTTA:
-            case PINK_TERRACOTTA:
-            case ORANGE_TERRACOTTA:
-            case PURPLE_TERRACOTTA:
-            case RED_TERRACOTTA:
-            case WHITE_TERRACOTTA:
-            case YELLOW_TERRACOTTA:
-            case PODZOL:
-            case RED_SAND:
-            case MYCELIUM:
-            case BASALT:
-            case GRANITE:
-            case ANDESITE:
-            case BLACKSTONE:
-            case CALCITE:
-            case ICE:
-            case BLUE_ICE:
-            case FROSTED_ICE:
-            case PACKED_ICE:
-            case MOSS_BLOCK:
-            case MOSSY_COBBLESTONE:
-            case WARPED_NYLIUM:
-            case CRIMSON_NYLIUM:
-                return true;
-            default:
-                return false;
-        }
+        return switch (material) {
+            case DIRT, COARSE_DIRT, ROOTED_DIRT, STONE, SNOW_BLOCK, POWDER_SNOW, SNOW, NETHERRACK, SOUL_SAND, END_STONE,
+                 DIRT_PATH, GRASS_BLOCK, GRAVEL, DEEPSLATE, DIORITE, CLAY, SAND, SANDSTONE, TERRACOTTA,
+                 BLACK_TERRACOTTA, BLUE_TERRACOTTA, BROWN_TERRACOTTA, CYAN_TERRACOTTA, GRAY_TERRACOTTA,
+                 GREEN_TERRACOTTA, LIGHT_BLUE_TERRACOTTA, LIGHT_GRAY_TERRACOTTA, LIME_TERRACOTTA, MAGENTA_TERRACOTTA,
+                 PINK_TERRACOTTA, ORANGE_TERRACOTTA, PURPLE_TERRACOTTA, RED_TERRACOTTA, WHITE_TERRACOTTA,
+                 YELLOW_TERRACOTTA, PODZOL, RED_SAND, MYCELIUM, BASALT, GRANITE, ANDESITE, BLACKSTONE, CALCITE, ICE,
+                 BLUE_ICE, FROSTED_ICE, PACKED_ICE, MOSS_BLOCK, MOSSY_COBBLESTONE, WARPED_NYLIUM, CRIMSON_NYLIUM ->
+                    true;
+            default -> false;
+        };
     }
 }

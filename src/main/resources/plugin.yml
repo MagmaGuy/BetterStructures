@@ -1,5 +1,5 @@
 name: BetterStructures
-version: '1.7.1'
+version: '1.7.2'
 main: com.magmaguy.betterstructures.BetterStructures
 api-version: 1.14
 depend: [ WorldEdit ]
@@ -15,3 +15,10 @@ commands:
     description: Main command
     aliases:
       - bs
+permissions:
+  betterstructures.setup:
+    description: Gives admins access to the /betterstructures setup command
+    default: op
+  betterstructures.initialize:
+    description: Gives admins access to the /betterstructures initialize command
+    default: op

@@ -38,11 +38,11 @@ public class SchematicConfig extends CustomConfig {
             new CustomConfig(file.getParent().replace(
                     MetadataHandler.PLUGIN.getDataFolder().getAbsolutePath() + File.separatorChar, ""),
                     SchematicConfigField.class, schematicConfigField);
-            if (schematicConfigField.isEnabled())
-                schematicConfigurations.put(configurationName, schematicConfigField);
+            schematicConfigurations.put(configurationName, schematicConfigField);
         }
 
         for (SchematicConfigField schematicConfigField : schematicConfigurations.values()) {
+            if (!schematicConfigField.isEnabled()) continue;
             String schematicFilename = convertFromConfigurationFilename(schematicConfigField.getFilename());
             Clipboard clipboard = null;
             for (File file : clipboards.keySet())
@@ -60,8 +60,11 @@ public class SchematicConfig extends CustomConfig {
     }
 
     private static void scanDirectoryForSchematics(File file, HashMap<File, Clipboard> clipboards) {
-        if (file.getName().endsWith(".schem"))
-            clipboards.put(file, Schematic.load(file));
+        if (file.getName().endsWith(".schem")) {
+            Clipboard clipboard = Schematic.load(file);
+            if (clipboard == null) return;
+            clipboards.put(file, clipboard);
+        }
         else if (file.isDirectory())
             for (File iteratedFile : file.listFiles())
                 scanDirectoryForSchematics(iteratedFile, clipboards);

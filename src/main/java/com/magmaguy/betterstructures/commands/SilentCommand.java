@@ -17,6 +17,6 @@ public class SilentCommand extends AdvancedCommand {
     @Override
     public void execute(CommandData commandData) {
         DefaultConfig.toggleWarnings();
-        Logger.sendMessage(commandData.getCommandSender(), "&2Toggled build warnings to " + DefaultConfig.toggleWarnings() + "!");
+        Logger.sendMessage(commandData.getCommandSender(), "&2Toggled build warnings to " + DefaultConfig.isNewBuildingWarn() + "!");
     }
 }
