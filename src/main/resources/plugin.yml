@@ -22,3 +22,6 @@ permissions:
   betterstructures.initialize:
     description: Gives admins access to the /betterstructures initialize command
     default: op
+  betterstructures.generateInfinite:
+    description: Gives admins access to the /betterstructures generateInfinite command
+    default: op
