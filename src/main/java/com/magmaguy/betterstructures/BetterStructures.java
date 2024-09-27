@@ -5,11 +5,14 @@ import com.magmaguy.betterstructures.config.DefaultConfig;
 import com.magmaguy.betterstructures.config.ValidWorldsConfig;
 import com.magmaguy.betterstructures.config.contentpackages.ContentPackageConfig;
 import com.magmaguy.betterstructures.config.generators.GeneratorConfig;
+import com.magmaguy.betterstructures.config.modules.ModulesConfig;
+import com.magmaguy.betterstructures.config.modules.WaveFunctionCollapseGenerator;
 import com.magmaguy.betterstructures.config.schematics.SchematicConfig;
 import com.magmaguy.betterstructures.config.treasures.TreasureConfig;
 import com.magmaguy.betterstructures.content.BSPackage;
 import com.magmaguy.betterstructures.listeners.FirstTimeSetupWarner;
 import com.magmaguy.betterstructures.listeners.NewChunkLoadEvent;
+import com.magmaguy.betterstructures.modules.ModulesContainer;
 import com.magmaguy.betterstructures.schematics.SchematicContainer;
 import com.magmaguy.betterstructures.thirdparty.WorldGuard;
 import com.magmaguy.betterstructures.util.VersionChecker;
@@ -53,6 +56,7 @@ public final class BetterStructures extends JavaPlugin {
         new TreasureConfig();
         new GeneratorConfig();
         new SchematicConfig();
+        new ModulesConfig();
         new ContentPackageConfig();
         CommandManager commandManager = new CommandManager(this, "betterstructures");
         commandManager.registerCommand(new LootifyCommand());
@@ -63,6 +67,7 @@ public final class BetterStructures extends JavaPlugin {
         commandManager.registerCommand(new VersionCommand());
         commandManager.registerCommand(new SetupCommand());
         commandManager.registerCommand(new FirstTimeSetupCommand());
+        commandManager.registerCommand(new GenerateInfiniteCommand());
 
         VersionChecker.checkPluginVersion();
         if (Bukkit.getPluginManager().getPlugin("WorldGuard") != null &&
@@ -93,6 +98,7 @@ public final class BetterStructures extends JavaPlugin {
         MagmaCore.shutdown();
         HandlerList.unregisterAll(MetadataHandler.PLUGIN);
         BSPackage.shutdown();
+        ModulesContainer.shutdown();
         Bukkit.getLogger().info("[BetterStructures] Shutdown!");
     }
 }
