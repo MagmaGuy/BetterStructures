@@ -13,7 +13,6 @@ import com.sk89q.worldedit.function.operation.Operation;
 import com.sk89q.worldedit.function.operation.Operations;
 import com.sk89q.worldedit.math.BlockVector3;
 import com.sk89q.worldedit.math.transform.AffineTransform;
-import com.sk89q.worldedit.math.transform.Transform;
 import com.sk89q.worldedit.session.ClipboardHolder;
 import com.sk89q.worldedit.world.World;
 import org.bukkit.Location;
@@ -65,8 +64,8 @@ public class Module {
 
     public static void paste(Clipboard clipboard, Location location, Integer rotation) {
         World world = BukkitAdapter.adapt(location.getWorld());
-        if (rotation == null) rotation = 0; //todo: rotations not working yet need to fix
-        switch (rotation){
+        if (rotation == null) Logger.warn("rotation was null at the time of the paste, this will not do");
+        switch (rotation) {
             case 0:
                 break;
             case 90:
