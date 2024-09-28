@@ -18,31 +18,24 @@ public enum BuildBorder {
     }
 
     public BuildBorder getOpposite() {
-        switch (this) {
-            case NORTH:
-                return SOUTH;
-            case SOUTH:
-                return NORTH;
-            case EAST:
-                return WEST;
-            case WEST:
-                return EAST;
-            case UP:
-                return DOWN;
-            case DOWN:
-                return UP;
-            default:
-                throw new IllegalArgumentException("Invalid BuildBorder");
-        }
+        return switch (this) {
+            case NORTH -> SOUTH;
+            case SOUTH -> NORTH;
+            case EAST -> WEST;
+            case WEST -> EAST;
+            case UP -> DOWN;
+            case DOWN -> UP;
+            default -> throw new IllegalArgumentException("Invalid BuildBorder");
+        };
     }
 
     public static BuildBorder transformDirection(BuildBorder direction, Integer rotation) {
         return switch (rotation % 360) {
             case 90 -> switch (direction) {
-                case NORTH -> BuildBorder.WEST;
-                case EAST -> BuildBorder.NORTH;
-                case SOUTH -> BuildBorder.EAST;
-                case WEST -> BuildBorder.SOUTH;
+                case NORTH -> BuildBorder.EAST;
+                case EAST -> BuildBorder.SOUTH;
+                case SOUTH -> BuildBorder.WEST;
+                case WEST -> BuildBorder.NORTH;
                 default -> direction;
             };
             case 180 -> switch (direction) {
@@ -53,10 +46,10 @@ public enum BuildBorder {
                 default -> direction;
             };
             case 270 -> switch (direction) {
-                case NORTH -> BuildBorder.EAST;
-                case EAST -> BuildBorder.SOUTH;
-                case SOUTH -> BuildBorder.WEST;
-                case WEST -> BuildBorder.NORTH;
+                case NORTH -> BuildBorder.WEST;
+                case EAST -> BuildBorder.NORTH;
+                case SOUTH -> BuildBorder.EAST;
+                case WEST -> BuildBorder.SOUTH;
                 default -> direction;
             };
             default -> direction; // 0 degrees or full rotation or up/down

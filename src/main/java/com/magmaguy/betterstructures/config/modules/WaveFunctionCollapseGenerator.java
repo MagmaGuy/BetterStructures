@@ -12,7 +12,6 @@ import org.bukkit.World;
 import org.bukkit.WorldCreator;
 import org.bukkit.entity.Player;
 import org.bukkit.generator.ChunkGenerator;
-import org.bukkit.generator.WorldInfo;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3i;
@@ -62,6 +61,7 @@ public class WaveFunctionCollapseGenerator {
     private Vector3i getClosestEmptyChunkLocationKey(List<Vector3i> elements) {
         Logger.debug("empty size: " + elements.size());
         Vector3i selectedLocation = null;
+        if (elements.isEmpty()) {return selectedLocation;}
 
         if (elements.size() > 1) {
             double smallestDistance = Double.MAX_VALUE;
@@ -72,10 +72,15 @@ public class WaveFunctionCollapseGenerator {
                     selectedLocation = chunkLocation;
                 }
             }
+            Logger.debug("placing at " + selectedLocation);
+
             return selectedLocation;
         } else {
             selectedLocation = elements.get(0);
         }
+
+        Logger.debug("placing at " + selectedLocation);
+
         return selectedLocation;
     }
 
@@ -100,29 +105,36 @@ public class WaveFunctionCollapseGenerator {
     private void searchNextChunkToGenerate() {
         int mostElements = 0;
         List<Vector3i> elements = new ArrayList<>();
-        for (Vector3i chunkKey : emptyChunks) {
-            if (chunkMap.get(chunkKey).recalculateCanOnlyBeNothing()) continue;
-            int borders = chunkMap.get(chunkKey).getGeneratedNeighborCount();
+
+        for (ChunkData chunkData : chunkMap.values()) {
+
+            if (chunkData.isGenerated() || chunkData.canOnlyBeNothing()) {
+                continue;
+            }
+
+            int borders = chunkData.getGeneratedNeighborCount();
+
             if (borders > mostElements) {
                 mostElements = borders;
                 elements.clear();
-                elements.add(chunkKey);
+                elements.add(chunkData.getChunkLocation());
             } else if (borders == mostElements) {
-                elements.add(chunkKey);
+                elements.add(chunkData.getChunkLocation());
             }
         }
 
         Logger.debug("most elements for border: " + mostElements);
         Vector3i selectedChunkLocationKey = getClosestEmptyChunkLocationKey(elements);
-
         generateNextChunk(selectedChunkLocationKey);
-        if (!emptyChunks.isEmpty())
+
+        if (selectedChunkLocationKey != null) {
             new BukkitRunnable() {
                 @Override
                 public void run() {
                     searchNextChunkToGenerate();
                 }
             }.runTaskLater(MetadataHandler.PLUGIN, interval);
+        } else player.sendTitle("Done!", "Generation complete!");
     }
 
     private void paste(Vector3i chunkLocation, ModulesContainer modulesContainer, Integer rotation) {
@@ -153,24 +165,6 @@ public class WaveFunctionCollapseGenerator {
     }
 
     private static class VoidGenerator extends ChunkGenerator {
-        @Override
-        public void generateSurface(WorldInfo info, Random random, int x, int z, ChunkData data) {
-        }
-
-        @Override
-        public boolean shouldGenerateNoise() {
-            return false;
-        }
-
-        @Override
-        public boolean shouldGenerateBedrock() {
-            return false;
-        }
-
-        @Override
-        public boolean shouldGenerateCaves() {
-            return false;
-        }
     }
 
 }
