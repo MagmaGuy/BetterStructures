@@ -8,10 +8,7 @@ import org.bukkit.Location;
 import org.bukkit.World;
 import org.joml.Vector3i;
 
-import java.util.EnumMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class ChunkData {
     @Getter
@@ -38,22 +35,39 @@ public class ChunkData {
     }
 
     public boolean recalculateCanOnlyBeNothing() {
-        boolean localCheck = true;
-        boolean wasNotNull = false;
-        for (List<String> value : collectValidBordersFromNeighbours().values()) {
-            if (value == null) continue;
-            wasNotNull = true;
-            for (String string : value) {
-                if (!string.equalsIgnoreCase("nothing")) {
-                    localCheck = false;
-                    break;
+        for (Map.Entry<ModulesConfigFields.BuildBorder, ChunkData> entry : orientedNeighbours.entrySet()) {
+            ChunkData neighbor = entry.getValue();
+            ModulesConfigFields.BuildBorder direction = entry.getKey();
+
+            // If neighbor is ungenerated and can accept any module
+            if (!neighbor.isGenerated() && (neighbor.getCanOnlyBeNothing() == null || !neighbor.getCanOnlyBeNothing())) {
+                // Cannot conclude that this chunk can only be nothing
+                return canOnlyBeNothing = false;
+            }
+
+            // Get neighbor's border tags
+            List<String> neighborBorderTags = null;
+            if (neighbor.pastableModulesContainer != null && neighbor.pastableModulesContainer.modulesContainer() != null) {
+                neighborBorderTags = neighbor.pastableModulesContainer.modulesContainer()
+                        .getBorderTags()
+                        .getRotatedTagsForDirection(direction.getOpposite(), neighbor.getRotation());
+            } else if (neighbor.getCanOnlyBeNothing() != null && neighbor.getCanOnlyBeNothing()) {
+                neighborBorderTags = Collections.singletonList("nothing");
+            }
+
+            // If neighbor has any border tag other than "nothing", we cannot be only "nothing"
+            if (neighborBorderTags != null) {
+                for (String tag : neighborBorderTags) {
+                    if (!tag.equalsIgnoreCase("nothing")) {
+                        return canOnlyBeNothing = false;
+                    }
                 }
             }
-            if (!localCheck) break;
         }
-        if (!wasNotNull) return canOnlyBeNothing = false;
-        return canOnlyBeNothing = localCheck;
+        // All neighbors are generated and have only "nothing" as their border tags
+        return canOnlyBeNothing = true;
     }
+
 
     public void addNeighbor(ModulesConfigFields.BuildBorder buildBorder, ChunkData neighborToAdd) {
         if (neighborToAdd == null) return;
@@ -106,16 +120,22 @@ public class ChunkData {
             neighbour.resetNeighbor();
         });
 
+        // Recalculate for the current chunk
+        if (!recalculateCanOnlyBeNothing())
+            emptyChunksCopy.add(chunkLocation);
+        else
+            emptyChunksCopy.remove(chunkLocation);
+
+        // Recalculate for each neighbor
         orientedNeighbours.values().forEach(neighbour -> {
             Logger.debug("recalculating neighbor");
-            if (!recalculateCanOnlyBeNothing())
-                emptyChunksCopy.add(chunkLocation);
+            if (!neighbour.recalculateCanOnlyBeNothing())
+                emptyChunksCopy.add(neighbour.getChunkLocation());
             else
-                emptyChunksCopy.remove(chunkLocation);
+                emptyChunksCopy.remove(neighbour.getChunkLocation());
         });
-
-//        if (!recalculateCanOnlyBeNothing()) emptyChunksCopy.add(chunkLocation);
     }
+
 
     public void resetNeighbor() {
         resetData();
