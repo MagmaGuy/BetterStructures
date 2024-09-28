@@ -17,6 +17,7 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3i;
 
 import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class WaveFunctionCollapseGenerator {
     @Getter
@@ -90,9 +91,7 @@ public class WaveFunctionCollapseGenerator {
 
     private void start(String startingModule) {
         ModulesContainer modulesContainer = ModulesContainer.getModulesContainers().get(startingModule);
-//        paste(new ChunkLocation(0, 0, 0), modulesContainer, validRotations.get(ThreadLocalRandom.current().nextInt(0, validRotations.size()))); //todo reenable rotations
-        paste(new Vector3i(0, 0, 0), modulesContainer, 0);
-
+        paste(new Vector3i(), modulesContainer, validRotations.get(ThreadLocalRandom.current().nextInt(0, validRotations.size()))); //todo reenable rotations
         // Begin the recursive generation
         searchNextChunkToGenerate();
     }
@@ -101,6 +100,7 @@ public class WaveFunctionCollapseGenerator {
         int mostElements = 0;
         List<Vector3i> elements = new ArrayList<>();
         for (Vector3i chunkKey : emptyChunks) {
+            if (chunkMap.get(chunkKey).recalculateCanOnlyBeNothing()) continue;
             int borders = chunkMap.get(chunkKey).getGeneratedNeighborCount();
             if (borders > mostElements) {
                 mostElements = borders;
@@ -128,26 +128,17 @@ public class WaveFunctionCollapseGenerator {
         Location pasteLocation = new Location(world, chunkLocation.x * 16, chunkLocation.y * 16, chunkLocation.z * 16);
         if (modulesContainer != null && modulesContainer.getClipboard() != null)
             Module.paste(modulesContainer.getClipboard(), pasteLocation.clone().add(-17, 0, -17), rotation);
-        emptyChunks.remove(chunkLocation);
-        chunkMap.get(chunkLocation).paste(new ModulesContainer.PastableModulesContainer(modulesContainer, rotation, false));
+        chunkMap.get(chunkLocation).paste(new ModulesContainer.PastableModulesContainer(modulesContainer, rotation));
     }
 
     private void generateNextChunk(Vector3i nextChunkKey) {
         // Get valid modules
-        ModulesContainer.PastableModulesContainer pastableModulesContainer = ModulesContainer.pickRandomModuleFromSurroundings(chunkMap.get(nextChunkKey), null);
+        ModulesContainer.PastableModulesContainer pastableModulesContainer = ModulesContainer.pickRandomModuleFromSurroundings(chunkMap.get(nextChunkKey), chunkMap.get(nextChunkKey).getRotation());
         if (pastableModulesContainer == null) {
             Logger.warn("No valid modules to place at (" + nextChunkKey.x + ", " + nextChunkKey.y + ", " + nextChunkKey.z + ")");
             rollbackChunk(chunkMap.get(nextChunkKey));
-            emptyChunks.add(nextChunkKey);
             return;
         }
-
-        emptyChunks.remove(nextChunkKey);
-
-//        if (!pastableModulesContainer.nothing())
-//            Logger.debug("Picked module " + pastableModulesContainer.modulesContainer().getClipboardFilename());
-//        else
-//            Logger.debug("Picked nothing! ");
 
         // Paste the module
         paste(nextChunkKey, pastableModulesContainer.modulesContainer(), pastableModulesContainer.rotation());

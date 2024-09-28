@@ -23,6 +23,10 @@ public class ModulesConfigFields extends CustomConfigFields {
     private ChestContents chestContents = null;
     @Getter
     private Map<String, Object> borderMap = new HashMap<>();
+    @Getter
+    private Integer minY = -4;
+    @Getter
+    private Integer maxY = 16;
 
     /**
      * Used by plugin-generated files (defaults)
@@ -47,6 +51,8 @@ public class ModulesConfigFields extends CustomConfigFields {
             this.chestContents = treasureConfigFields.getChestContents();
         }
         this.borderMap = processMap("borders", new HashMap<>());
+        this.minY = processInt("minY", minY, -4, false);
+        this.maxY = processInt("maxY", maxY, 16, false);
     }
 
     public void toggleEnabled(boolean enabled) {
