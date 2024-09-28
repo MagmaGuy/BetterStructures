@@ -15,7 +15,7 @@ import java.util.Map;
 
 public class ChunkData {
     @Getter
-    private final Map<ModulesConfigFields.BuildBorder, ChunkData> orientedNeighbours = new EnumMap<>(ModulesConfigFields.BuildBorder.class);
+    private final Map<BuildBorder, ChunkData> orientedNeighbours = new EnumMap<>(BuildBorder.class);
     private final World world;
     @Getter
     private final Vector3i chunkLocation;
@@ -55,7 +55,7 @@ public class ChunkData {
         return canOnlyBeNothing = localCheck;
     }
 
-    public void addNeighbor(ModulesConfigFields.BuildBorder buildBorder, ChunkData neighborToAdd) {
+    public void addNeighbor(BuildBorder buildBorder, ChunkData neighborToAdd) {
         if (neighborToAdd == null) return;
         orientedNeighbours.put(buildBorder, neighborToAdd);
     }
@@ -71,11 +71,11 @@ public class ChunkData {
     public void paste(ModulesContainer.PastableModulesContainer pastableModulesContainer) {
         this.pastableModulesContainer = pastableModulesContainer;
         this.rotation = pastableModulesContainer.rotation();
-        if (orientedNeighbours.get(ModulesConfigFields.BuildBorder.UP) != null) {
-            orientedNeighbours.get(ModulesConfigFields.BuildBorder.UP).setRotation(rotation);
+        if (orientedNeighbours.get(BuildBorder.UP) != null) {
+            orientedNeighbours.get(BuildBorder.UP).setRotation(rotation);
         }
-        if (orientedNeighbours.get(ModulesConfigFields.BuildBorder.DOWN) != null) {
-            orientedNeighbours.get(ModulesConfigFields.BuildBorder.DOWN).setRotation(rotation);
+        if (orientedNeighbours.get(BuildBorder.DOWN) != null) {
+            orientedNeighbours.get(BuildBorder.DOWN).setRotation(rotation);
         }
 
         orientedNeighbours.values().forEach(neighbour -> {
@@ -140,8 +140,8 @@ public class ChunkData {
     }
 
     public ModulesContainer.BorderTags collectValidBordersFromNeighbours() {
-        ModulesContainer.BorderTags borderTags = new ModulesContainer.BorderTags(new EnumMap<>(ModulesConfigFields.BuildBorder.class));
-        for (Map.Entry<ModulesConfigFields.BuildBorder, ChunkData> buildBorderChunkDataEntry : orientedNeighbours.entrySet()) {
+        ModulesContainer.BorderTags borderTags = new ModulesContainer.BorderTags(new EnumMap<>(BuildBorder.class));
+        for (Map.Entry<BuildBorder, ChunkData> buildBorderChunkDataEntry : orientedNeighbours.entrySet()) {
             if (buildBorderChunkDataEntry.getValue().pastableModulesContainer != null &&
                     buildBorderChunkDataEntry.getValue().pastableModulesContainer.modulesContainer() != null)
                 borderTags.put(

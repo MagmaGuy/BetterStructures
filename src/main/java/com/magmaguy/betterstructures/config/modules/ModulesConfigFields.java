@@ -54,47 +54,4 @@ public class ModulesConfigFields extends CustomConfigFields {
         this.minY = processInt("minY", minY, -4, false);
         this.maxY = processInt("maxY", maxY, 16, false);
     }
-
-    public void toggleEnabled(boolean enabled) {
-        this.isEnabled = enabled;
-        fileConfiguration.set("isEnabled", enabled);
-        try {
-            fileConfiguration.save(file);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    public enum BuildBorder {
-        NORTH, SOUTH, EAST, WEST, UP, DOWN;
-
-        @Nullable
-        public static BuildBorder fromString(String s) {
-            for (BuildBorder border : BuildBorder.values()) {
-                if (border.name().equalsIgnoreCase(s)) {
-                    return border;
-                }
-            }
-            return null;
-        }
-
-        public BuildBorder getOpposite() {
-            switch (this) {
-                case NORTH:
-                    return SOUTH;
-                case SOUTH:
-                    return NORTH;
-                case EAST:
-                    return WEST;
-                case WEST:
-                    return EAST;
-                case UP:
-                    return DOWN;
-                case DOWN:
-                    return UP;
-                default:
-                    throw new IllegalArgumentException("Invalid BuildBorder");
-            }
-        }
-    }
 }

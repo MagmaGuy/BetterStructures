@@ -1,6 +1,7 @@
 package com.magmaguy.betterstructures.config.modules;
 
 import com.magmaguy.betterstructures.MetadataHandler;
+import com.magmaguy.betterstructures.modules.BuildBorder;
 import com.magmaguy.betterstructures.modules.ChunkData;
 import com.magmaguy.betterstructures.modules.ModulesContainer;
 import com.magmaguy.magmacore.util.Logger;
@@ -48,12 +49,12 @@ public class WaveFunctionCollapseGenerator {
         }
         for (ChunkData chunkData : chunkMap.values()) {
             Vector3i chunkLocation = chunkData.getChunkLocation();
-            chunkData.addNeighbor(ModulesConfigFields.BuildBorder.UP, chunkMap.get(new Vector3i(chunkLocation.x, chunkLocation.y + 1, chunkLocation.z)));
-            chunkData.addNeighbor(ModulesConfigFields.BuildBorder.DOWN, chunkMap.get(new Vector3i(chunkLocation.x, chunkLocation.y - 1, chunkLocation.z)));
-            chunkData.addNeighbor(ModulesConfigFields.BuildBorder.EAST, chunkMap.get(new Vector3i(chunkLocation.x + 1, chunkLocation.y, chunkLocation.z)));
-            chunkData.addNeighbor(ModulesConfigFields.BuildBorder.WEST, chunkMap.get(new Vector3i(chunkLocation.x - 1, chunkLocation.y, chunkLocation.z)));
-            chunkData.addNeighbor(ModulesConfigFields.BuildBorder.NORTH, chunkMap.get(new Vector3i(chunkLocation.x, chunkLocation.y, chunkLocation.z - 1)));
-            chunkData.addNeighbor(ModulesConfigFields.BuildBorder.SOUTH, chunkMap.get(new Vector3i(chunkLocation.x, chunkLocation.y, chunkLocation.z + 1)));
+            chunkData.addNeighbor(BuildBorder.UP, chunkMap.get(new Vector3i(chunkLocation.x, chunkLocation.y + 1, chunkLocation.z)));
+            chunkData.addNeighbor(BuildBorder.DOWN, chunkMap.get(new Vector3i(chunkLocation.x, chunkLocation.y - 1, chunkLocation.z)));
+            chunkData.addNeighbor(BuildBorder.EAST, chunkMap.get(new Vector3i(chunkLocation.x + 1, chunkLocation.y, chunkLocation.z)));
+            chunkData.addNeighbor(BuildBorder.WEST, chunkMap.get(new Vector3i(chunkLocation.x - 1, chunkLocation.y, chunkLocation.z)));
+            chunkData.addNeighbor(BuildBorder.NORTH, chunkMap.get(new Vector3i(chunkLocation.x, chunkLocation.y, chunkLocation.z - 1)));
+            chunkData.addNeighbor(BuildBorder.SOUTH, chunkMap.get(new Vector3i(chunkLocation.x, chunkLocation.y, chunkLocation.z + 1)));
         }
     }
 
