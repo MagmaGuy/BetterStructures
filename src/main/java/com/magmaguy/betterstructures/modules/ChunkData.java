@@ -8,7 +8,10 @@ import org.bukkit.Location;
 import org.bukkit.World;
 import org.joml.Vector3i;
 
-import java.util.*;
+import java.util.EnumMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 
 public class ChunkData {
     @Getter
@@ -35,39 +38,22 @@ public class ChunkData {
     }
 
     public boolean recalculateCanOnlyBeNothing() {
-        for (Map.Entry<ModulesConfigFields.BuildBorder, ChunkData> entry : orientedNeighbours.entrySet()) {
-            ChunkData neighbor = entry.getValue();
-            ModulesConfigFields.BuildBorder direction = entry.getKey();
-
-            // If neighbor is ungenerated and can accept any module
-            if (!neighbor.isGenerated() && (neighbor.getCanOnlyBeNothing() == null || !neighbor.getCanOnlyBeNothing())) {
-                // Cannot conclude that this chunk can only be nothing
-                return canOnlyBeNothing = false;
-            }
-
-            // Get neighbor's border tags
-            List<String> neighborBorderTags = null;
-            if (neighbor.pastableModulesContainer != null && neighbor.pastableModulesContainer.modulesContainer() != null) {
-                neighborBorderTags = neighbor.pastableModulesContainer.modulesContainer()
-                        .getBorderTags()
-                        .getRotatedTagsForDirection(direction.getOpposite(), neighbor.getRotation());
-            } else if (neighbor.getCanOnlyBeNothing() != null && neighbor.getCanOnlyBeNothing()) {
-                neighborBorderTags = Collections.singletonList("nothing");
-            }
-
-            // If neighbor has any border tag other than "nothing", we cannot be only "nothing"
-            if (neighborBorderTags != null) {
-                for (String tag : neighborBorderTags) {
-                    if (!tag.equalsIgnoreCase("nothing")) {
-                        return canOnlyBeNothing = false;
-                    }
+        boolean localCheck = true;
+        boolean wasNotNull = false;
+        for (List<String> value : collectValidBordersFromNeighbours().values()) {
+            if (value == null) continue;
+            wasNotNull = true;
+            for (String string : value) {
+                if (!string.equalsIgnoreCase("nothing")) {
+                    localCheck = false;
+                    break;
                 }
             }
+            if (!localCheck) break;
         }
-        // All neighbors are generated and have only "nothing" as their border tags
-        return canOnlyBeNothing = true;
+        if (!wasNotNull) return canOnlyBeNothing = false;
+        return canOnlyBeNothing = localCheck;
     }
-
 
     public void addNeighbor(ModulesConfigFields.BuildBorder buildBorder, ChunkData neighborToAdd) {
         if (neighborToAdd == null) return;
