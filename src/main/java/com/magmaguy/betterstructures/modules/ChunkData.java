@@ -3,6 +3,7 @@ package com.magmaguy.betterstructures.modules;
 import com.magmaguy.betterstructures.config.modules.ModulesConfigFields;
 import com.magmaguy.magmacore.util.Logger;
 import lombok.Getter;
+import lombok.Setter;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.joml.Vector3i;
@@ -21,7 +22,8 @@ public class ChunkData {
     private final HashSet<Vector3i> emptyChunksCopy;
     private Boolean canOnlyBeNothing = null;
     @Getter
-    private Integer rotation = 0;//todo should be null here
+    @Setter
+    private Integer rotation = null;
     private ModulesContainer.PastableModulesContainer pastableModulesContainer = null;
 
     public ChunkData(Vector3i chunkLocation, World world, HashSet<Vector3i> emptyChunksCopy) {
@@ -35,7 +37,7 @@ public class ChunkData {
         return recalculateCanOnlyBeNothing();
     }
 
-    private boolean recalculateCanOnlyBeNothing() {
+    public boolean recalculateCanOnlyBeNothing() {
         boolean localCheck = true;
         boolean wasNotNull = false;
         for (List<String> value : collectValidBordersFromNeighbours().values()) {
@@ -68,14 +70,21 @@ public class ChunkData {
 
     public void paste(ModulesContainer.PastableModulesContainer pastableModulesContainer) {
         this.pastableModulesContainer = pastableModulesContainer;
-        if (rotation == null) rotation = 0;//todo: placeholder should not be null for full release
         this.rotation = pastableModulesContainer.rotation();
+        if (orientedNeighbours.get(ModulesConfigFields.BuildBorder.UP) != null) {
+            orientedNeighbours.get(ModulesConfigFields.BuildBorder.UP).setRotation(rotation);
+        }
+        if (orientedNeighbours.get(ModulesConfigFields.BuildBorder.DOWN) != null) {
+            orientedNeighbours.get(ModulesConfigFields.BuildBorder.DOWN).setRotation(rotation);
+        }
 
         orientedNeighbours.values().forEach(neighbour -> {
             if (!neighbour.isGenerated() && !neighbour.recalculateCanOnlyBeNothing()) {
                 emptyChunksCopy.add(neighbour.chunkLocation);
-            }
+            } else if (neighbour.getCanOnlyBeNothing()) emptyChunksCopy.remove(neighbour.chunkLocation);
         });
+
+        emptyChunksCopy.remove(chunkLocation);
     }
 
     private boolean isGenerated() {
@@ -86,17 +95,31 @@ public class ChunkData {
         clearChunk();
         this.pastableModulesContainer = null;
         this.canOnlyBeNothing = null;
+        this.rotation = null;
+//        emptyChunksCopy.remove(chunkLocation);
     }
 
     public void hardReset() {
         resetData();
-        orientedNeighbours.values().forEach(ChunkData::resetNeighbor);
+        orientedNeighbours.values().forEach(neighbour -> {
+            Logger.debug("resetting neighbor " + neighbour.getChunkLocation().toString());
+            neighbour.resetNeighbor();
+        });
+
+        orientedNeighbours.values().forEach(neighbour -> {
+            Logger.debug("recalculating neighbor");
+            if (!recalculateCanOnlyBeNothing())
+                emptyChunksCopy.add(chunkLocation);
+            else
+                emptyChunksCopy.remove(chunkLocation);
+        });
+
+//        if (!recalculateCanOnlyBeNothing()) emptyChunksCopy.add(chunkLocation);
     }
 
     public void resetNeighbor() {
         resetData();
-        if (!recalculateCanOnlyBeNothing())
-            emptyChunksCopy.add(chunkLocation);
+        Logger.debug("resetting neighbor");
     }
 
     private void clearChunk() {
@@ -115,7 +138,9 @@ public class ChunkData {
         for (Map.Entry<ModulesConfigFields.BuildBorder, ChunkData> buildBorderChunkDataEntry : orientedNeighbours.entrySet()) {
             if (buildBorderChunkDataEntry.getValue().pastableModulesContainer != null &&
                     buildBorderChunkDataEntry.getValue().pastableModulesContainer.modulesContainer() != null)
-                borderTags.put(buildBorderChunkDataEntry.getKey(), buildBorderChunkDataEntry.getValue().pastableModulesContainer.modulesContainer().getBorderTags().getRotatedTagsForDirection(buildBorderChunkDataEntry.getKey().getOpposite(), buildBorderChunkDataEntry.getValue().getRotation()));
+                borderTags.put(
+                        buildBorderChunkDataEntry.getKey(),
+                        buildBorderChunkDataEntry.getValue().pastableModulesContainer.modulesContainer().getBorderTags().getRotatedTagsForDirection(buildBorderChunkDataEntry.getKey().getOpposite(), buildBorderChunkDataEntry.getValue().getRotation()));
         }
         return borderTags;
     }

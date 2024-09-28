@@ -5,6 +5,7 @@ import com.magmaguy.betterstructures.config.modules.ModulesConfigFields;
 import com.magmaguy.magmacore.util.Logger;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
 import lombok.Getter;
+import org.joml.Vector3i;
 
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
@@ -90,10 +91,15 @@ public class ModulesContainer {
 //        Logger.debug("All borders Entry: map = " + new Gson().toJson(border.neighborMap));
 //        Logger.debug("containers size " + modulesContainers.size());
 
+        List<Integer> rotationsToTry = enforcedRotation != null
+                ? Collections.singletonList(enforcedRotation)
+                : validRotations;
+
         for (ModulesContainer module : modulesContainers.values()) {
-            List<Integer> rotationsToTry = enforcedRotation != null
-                    ? Collections.singletonList(enforcedRotation)
-                    : validRotations;
+            Vector3i loc = chunkData.getChunkLocation();
+            if (loc.y < module.modulesConfigField.getMinY() ||
+                    loc.y > module.modulesConfigField.getMaxY())
+                continue;
 
             for (int rotation : rotationsToTry) {
                 boolean isValid = true;
@@ -115,9 +121,8 @@ public class ModulesContainer {
                     }
                 }
 
-
                 if (isValid) {
-                    validModules.add(new PastableModulesContainer(module, rotation, false));
+                    validModules.add(new PastableModulesContainer(module, rotation));
 //                    Logger.debug("Adding module " + module.getClipboardFilename());
 //                    Logger.debug("Module borders: " + new Gson().toJson(module.getBorderTags()));
                 }
@@ -218,7 +223,7 @@ public class ModulesContainer {
         }
     }
 
-    public record PastableModulesContainer(ModulesContainer modulesContainer, Integer rotation, boolean nothing) {
+    public record PastableModulesContainer(ModulesContainer modulesContainer, Integer rotation) {
     }
 
 }
