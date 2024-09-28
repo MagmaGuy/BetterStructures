@@ -58,6 +58,7 @@ public final class BetterStructures extends JavaPlugin {
         new SchematicConfig();
         new ModulesConfig();
         new ContentPackageConfig();
+        ModulesContainer.initialize();
         CommandManager commandManager = new CommandManager(this, "betterstructures");
         commandManager.registerCommand(new LootifyCommand());
         commandManager.registerCommand(new PlaceCommand());

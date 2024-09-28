@@ -24,15 +24,31 @@ public class ModulesContainer {
     private final ModulesConfigFields modulesConfigField;
     private final String configFilename;
     @Getter
-    private final BorderTags borderTags = new BorderTags(new EnumMap<>(BuildBorder.class));
+    private BorderTags borderTags = new BorderTags(new EnumMap<>(BuildBorder.class));
+    @Getter
+    private boolean nothing = false;
 
     public ModulesContainer(Clipboard clipboard, String clipboardFilename, ModulesConfigFields modulesConfigField, String configFilename) {
         this.clipboard = clipboard;
         this.clipboardFilename = clipboardFilename;
         this.modulesConfigField = modulesConfigField;
         this.configFilename = configFilename;
-        processBorders(modulesConfigField.getBorderMap());
+        if (!clipboardFilename.equalsIgnoreCase("nothing"))
+            processBorders(modulesConfigField.getBorderMap());
+        else nothing = true;
         modulesContainers.put(clipboardFilename, this);
+    }
+
+    public static void initialize() {
+        //Initialize "nothing", a reserved name with special behavior
+        ModulesContainer nothing = new ModulesContainer(null, "nothing", null, null);
+        nothing.borderTags = new BorderTags(Map.of(
+                BuildBorder.NORTH, Collections.singletonList("nothing"),
+                BuildBorder.SOUTH, Collections.singletonList("nothing"),
+                BuildBorder.EAST, Collections.singletonList("nothing"),
+                BuildBorder.WEST, Collections.singletonList("nothing"),
+                BuildBorder.UP, Collections.singletonList("nothing"),
+                BuildBorder.DOWN, Collections.singletonList("nothing")));
     }
 
     public static void shutdown() {
@@ -47,18 +63,18 @@ public class ModulesContainer {
 
         BorderTags border = chunkData.collectValidBordersFromNeighbours();
 
-//        Logger.debug("All borders Entry: map = " + new Gson().toJson(border.neighborMap));
-//        Logger.debug("containers size " + modulesContainers.size());
-
         List<Integer> rotationsToTry = enforcedRotation != null
                 ? Collections.singletonList(enforcedRotation)
                 : validRotations;
 
         for (ModulesContainer module : modulesContainers.values()) {
             Vector3i loc = chunkData.getChunkLocation();
-            if (loc.y < module.modulesConfigField.getMinY() ||
-                    loc.y > module.modulesConfigField.getMaxY())
-                continue;
+            if (!module.nothing)
+                if (loc.y < module.modulesConfigField.getMinY() ||
+                        loc.y > module.modulesConfigField.getMaxY())
+                    continue;
+
+//            Logger.debug("Checking chunk " + new Gson().toJson(chunkData.collectValidBordersFromNeighbours()));
 
             for (int rotation : rotationsToTry) {
                 boolean isValid = true;
@@ -67,12 +83,8 @@ public class ModulesContainer {
                     BuildBorder direction = neighborEntry.getKey();
                     List<String> neighborTags = neighborEntry.getValue();
 
-                    if (neighborTags == null) continue; // No neighbor in this direction, skip
-
                     // Get the module's border tags for the transformed direction
                     List<String> moduleTags = module.getBorderTags().getRotatedTagsForDirection(direction, rotation);
-
-//                    Logger.debug("checking direction " + direction + " for module " + module.getClipboardFilename() + " and got tags " + moduleTags);
 
                     if (Collections.disjoint(moduleTags, neighborTags)) {
                         isValid = false;

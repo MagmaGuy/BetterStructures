@@ -1,6 +1,5 @@
 package com.magmaguy.betterstructures.modules;
 
-import com.magmaguy.betterstructures.config.modules.ModulesConfigFields;
 import com.magmaguy.magmacore.util.Logger;
 import lombok.Getter;
 import lombok.Setter;
@@ -10,7 +9,6 @@ import org.joml.Vector3i;
 
 import java.util.EnumMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 
 public class ChunkData {
@@ -20,7 +18,6 @@ public class ChunkData {
     @Getter
     private final Vector3i chunkLocation;
     private final HashSet<Vector3i> emptyChunksCopy;
-    private Boolean canOnlyBeNothing = null;
     @Getter
     @Setter
     private Integer rotation = null;
@@ -32,27 +29,15 @@ public class ChunkData {
         this.emptyChunksCopy = emptyChunksCopy;
     }
 
-    public Boolean getCanOnlyBeNothing() {
-        if (canOnlyBeNothing != null) return canOnlyBeNothing;
-        return recalculateCanOnlyBeNothing();
+    public boolean isNothing() {
+        return pastableModulesContainer != null && pastableModulesContainer.modulesContainer().isNothing();
     }
 
-    public boolean recalculateCanOnlyBeNothing() {
-        boolean localCheck = true;
-        boolean wasNotNull = false;
-        for (List<String> value : collectValidBordersFromNeighbours().values()) {
-            if (value == null) continue;
-            wasNotNull = true;
-            for (String string : value) {
-                if (!string.equalsIgnoreCase("nothing")) {
-                    localCheck = false;
-                    break;
-                }
-            }
-            if (!localCheck) break;
+    public boolean canOnlyBeNothing() {
+        for (ChunkData value : orientedNeighbours.values()) {
+            if (!value.isNothing()) return false;
         }
-        if (!wasNotNull) return canOnlyBeNothing = false;
-        return canOnlyBeNothing = localCheck;
+        return true;
     }
 
     public void addNeighbor(BuildBorder buildBorder, ChunkData neighborToAdd) {
@@ -62,6 +47,7 @@ public class ChunkData {
 
     public int getGeneratedNeighborCount() {
         int count = 0;
+        if (orientedNeighbours.values().isEmpty() ) Logger.debug("uh wtf it's empty!!))!)!)!)");
         for (ChunkData neighbor : orientedNeighbours.values()) {
             if (neighbor.isGenerated()) count++;
         }
@@ -77,55 +63,24 @@ public class ChunkData {
         if (orientedNeighbours.get(BuildBorder.DOWN) != null) {
             orientedNeighbours.get(BuildBorder.DOWN).setRotation(rotation);
         }
-
-        orientedNeighbours.values().forEach(neighbour -> {
-            if (!neighbour.isGenerated() && !neighbour.recalculateCanOnlyBeNothing()) {
-                emptyChunksCopy.add(neighbour.chunkLocation);
-            } else if (neighbour.getCanOnlyBeNothing()) emptyChunksCopy.remove(neighbour.chunkLocation);
-        });
-
-        emptyChunksCopy.remove(chunkLocation);
     }
 
-    private boolean isGenerated() {
-        return pastableModulesContainer != null || getCanOnlyBeNothing();
+    public boolean isGenerated() {
+        return pastableModulesContainer != null;
     }
 
     private void resetData() {
         clearChunk();
         this.pastableModulesContainer = null;
-        this.canOnlyBeNothing = null;
         this.rotation = null;
-//        emptyChunksCopy.remove(chunkLocation);
     }
 
     public void hardReset() {
         resetData();
         orientedNeighbours.values().forEach(neighbour -> {
             Logger.debug("resetting neighbor " + neighbour.getChunkLocation().toString());
-            neighbour.resetNeighbor();
+            neighbour.resetData();
         });
-
-        // Recalculate for the current chunk
-        if (!recalculateCanOnlyBeNothing())
-            emptyChunksCopy.add(chunkLocation);
-        else
-            emptyChunksCopy.remove(chunkLocation);
-
-        // Recalculate for each neighbor
-        orientedNeighbours.values().forEach(neighbour -> {
-            Logger.debug("recalculating neighbor");
-            if (!neighbour.recalculateCanOnlyBeNothing())
-                emptyChunksCopy.add(neighbour.getChunkLocation());
-            else
-                emptyChunksCopy.remove(neighbour.getChunkLocation());
-        });
-    }
-
-
-    public void resetNeighbor() {
-        resetData();
-        Logger.debug("resetting neighbor");
     }
 
     private void clearChunk() {
@@ -146,7 +101,10 @@ public class ChunkData {
                     buildBorderChunkDataEntry.getValue().pastableModulesContainer.modulesContainer() != null)
                 borderTags.put(
                         buildBorderChunkDataEntry.getKey(),
-                        buildBorderChunkDataEntry.getValue().pastableModulesContainer.modulesContainer().getBorderTags().getRotatedTagsForDirection(buildBorderChunkDataEntry.getKey().getOpposite(), buildBorderChunkDataEntry.getValue().getRotation()));
+                        buildBorderChunkDataEntry.getValue().pastableModulesContainer.modulesContainer().getBorderTags()
+                                .getRotatedTagsForDirection(
+                                        buildBorderChunkDataEntry.getKey().getOpposite(),
+                                        buildBorderChunkDataEntry.getValue().getRotation()));
         }
         return borderTags;
     }
