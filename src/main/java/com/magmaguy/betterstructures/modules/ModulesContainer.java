@@ -14,15 +14,8 @@ public class ModulesContainer {
 
     @Getter
     private static final HashMap<String, ModulesContainer> modulesContainers = new HashMap<>();
-
     @Getter
     private static final HashMap<String, Integer> tagOccurrences = new HashMap<>();
-    @Getter
-    private static final HashMap<String, HashSet<ModulesContainer>> sideTags = new HashMap<>();
-    @Getter
-    private static final HashMap<String, HashSet<ModulesContainer>> topTags = new HashMap<>();
-    @Getter
-    private static final HashMap<String, HashSet<ModulesContainer>> bottomTags = new HashMap<>();
     private static final List<Integer> validRotations = Arrays.asList(0, 90, 180, 270);
     @Getter
     private final Clipboard clipboard;
@@ -31,7 +24,7 @@ public class ModulesContainer {
     private final ModulesConfigFields modulesConfigField;
     private final String configFilename;
     @Getter
-    private final BorderTags borderTags = new BorderTags(new EnumMap<>(ModulesConfigFields.BuildBorder.class));
+    private final BorderTags borderTags = new BorderTags(new EnumMap<>(BuildBorder.class));
 
     public ModulesContainer(Clipboard clipboard, String clipboardFilename, ModulesConfigFields modulesConfigField, String configFilename) {
         this.clipboard = clipboard;
@@ -42,43 +35,9 @@ public class ModulesContainer {
         modulesContainers.put(clipboardFilename, this);
     }
 
-    public static List<String> getAllTags() {
-        return new ArrayList<>(tagOccurrences.keySet());
-    }
-
     public static void shutdown() {
         modulesContainers.clear();
         tagOccurrences.clear();
-        sideTags.clear();
-        topTags.clear();
-        bottomTags.clear();
-    }
-
-    public static ModulesConfigFields.BuildBorder transformDirection(ModulesConfigFields.BuildBorder direction, Integer rotation) {
-        return switch (rotation % 360) {
-            case 90 -> switch (direction) {
-                case NORTH -> ModulesConfigFields.BuildBorder.WEST;
-                case EAST -> ModulesConfigFields.BuildBorder.NORTH;
-                case SOUTH -> ModulesConfigFields.BuildBorder.EAST;
-                case WEST -> ModulesConfigFields.BuildBorder.SOUTH;
-                default -> direction;
-            };
-            case 180 -> switch (direction) {
-                case NORTH -> ModulesConfigFields.BuildBorder.SOUTH;
-                case EAST -> ModulesConfigFields.BuildBorder.WEST;
-                case SOUTH -> ModulesConfigFields.BuildBorder.NORTH;
-                case WEST -> ModulesConfigFields.BuildBorder.EAST;
-                default -> direction;
-            };
-            case 270 -> switch (direction) {
-                case NORTH -> ModulesConfigFields.BuildBorder.EAST;
-                case EAST -> ModulesConfigFields.BuildBorder.SOUTH;
-                case SOUTH -> ModulesConfigFields.BuildBorder.WEST;
-                case WEST -> ModulesConfigFields.BuildBorder.NORTH;
-                default -> direction;
-            };
-            default -> direction; // 0 degrees or full rotation or up/down
-        };
     }
 
     public static List<PastableModulesContainer> getValidModulesFromSurroundings(
@@ -104,8 +63,8 @@ public class ModulesContainer {
             for (int rotation : rotationsToTry) {
                 boolean isValid = true;
 
-                for (Map.Entry<ModulesConfigFields.BuildBorder, List<String>> neighborEntry : border.entrySet()) {
-                    ModulesConfigFields.BuildBorder direction = neighborEntry.getKey();
+                for (Map.Entry<BuildBorder, List<String>> neighborEntry : border.entrySet()) {
+                    BuildBorder direction = neighborEntry.getKey();
                     List<String> neighborTags = neighborEntry.getValue();
 
                     if (neighborTags == null) continue; // No neighbor in this direction, skip
@@ -143,7 +102,7 @@ public class ModulesContainer {
         for (Map.Entry<String, Object> entry : borderMap.entrySet()) {
             String direction = entry.getKey().toLowerCase();
             List<String> borderList = processBorderList(entry.getValue());
-            ModulesConfigFields.BuildBorder border = ModulesConfigFields.BuildBorder.fromString(direction);
+            BuildBorder border = BuildBorder.fromString(direction);
             if (border == null) {
                 Logger.warn("Invalid border " + direction + " for module " + configFilename);
                 continue;
@@ -152,39 +111,16 @@ public class ModulesContainer {
             Logger.debug("Adding " + border + " / " + new Gson().toJson(borderList) + " to " + configFilename);
 
             borderTags.put(border, borderList);
-
-            // Update appropriate tag map
-            switch (border) {
-                case NORTH:
-                case SOUTH:
-                case EAST:
-                case WEST:
-                    updateTags(sideTags, borderList);
-                    break;
-                case UP:
-                    updateTags(topTags, borderList);
-                    break;
-                case DOWN:
-                    updateTags(bottomTags, borderList);
-                    break;
-
-            }
         }
 
         // Check for missing borders
-        for (ModulesConfigFields.BuildBorder border : ModulesConfigFields.BuildBorder.values()) {
+        for (BuildBorder border : BuildBorder.values()) {
             if (!borderTags.containsKey(border)) {
                 Logger.warn("Failed to get module border " + border.toString() + " for module " + configFilename);
             }
         }
 
 //        Logger.debug("Finished initializing, now its " + new Gson().toJson(borderTags));
-    }
-
-    private void updateTags(Map<String, HashSet<ModulesContainer>> tagMap, List<String> tags) {
-        for (String tag : tags) {
-            tagMap.computeIfAbsent(tag, k -> new HashSet<>()).add(this);
-        }
     }
 
     private List<String> processBorderList(Object rawBorderList) {
@@ -197,29 +133,25 @@ public class ModulesContainer {
         return stringList;
     }
 
-    public record BorderTags(Map<ModulesConfigFields.BuildBorder, List<String>> neighborMap) {
-        public List<String> getRotatedTagsForDirection(ModulesConfigFields.BuildBorder buildBorder, int rotation) {
-            return neighborMap.get(transformDirection(buildBorder, rotation));
+    public record BorderTags(Map<BuildBorder, List<String>> neighborMap) {
+        public List<String> getRotatedTagsForDirection(BuildBorder buildBorder, int rotation) {
+            return neighborMap.get(BuildBorder.transformDirection(buildBorder, rotation));
         }
 
-        public void put(ModulesConfigFields.BuildBorder direction, List<String> tags) {
+        public void put(BuildBorder direction, List<String> tags) {
             neighborMap.put(direction, tags);
         }
 
-        public boolean containsKey(ModulesConfigFields.BuildBorder direction) {
+        public boolean containsKey(BuildBorder direction) {
             return neighborMap.containsKey(direction);
         }
 
-        public Set<Map.Entry<ModulesConfigFields.BuildBorder, List<String>>> entrySet() {
+        public Set<Map.Entry<BuildBorder, List<String>>> entrySet() {
             return neighborMap.entrySet();
         }
 
         public Collection<List<String>> values() {
             return neighborMap.values();
-        }
-
-        public void clear() {
-            neighborMap.clear();
         }
     }
 
