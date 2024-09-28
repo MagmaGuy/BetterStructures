@@ -27,6 +27,8 @@ public class ModulesConfigFields extends CustomConfigFields {
     private Integer minY = -4;
     @Getter
     private Integer maxY = 16;
+    @Getter
+    private boolean enforceVerticalRotation = false;
 
     /**
      * Used by plugin-generated files (defaults)
@@ -41,7 +43,7 @@ public class ModulesConfigFields extends CustomConfigFields {
     @Override
     public void processConfigFields() {
         this.isEnabled = processBoolean("isEnabled", isEnabled, true, true);
-        this.treasureFile = processString("treasureFile", treasureFile, null, false);
+        this.treasureFile = processString("treasureFile", treasureFile, null, true);
         if (treasureFile != null && !treasureFile.isEmpty()) {
             TreasureConfigFields treasureConfigFields = TreasureConfig.getConfigFields(treasureFile);
             if (treasureConfigFields == null) {
@@ -51,7 +53,8 @@ public class ModulesConfigFields extends CustomConfigFields {
             this.chestContents = treasureConfigFields.getChestContents();
         }
         this.borderMap = processMap("borders", new HashMap<>());
-        this.minY = processInt("minY", minY, -4, false);
-        this.maxY = processInt("maxY", maxY, 16, false);
+        this.minY = processInt("minY", minY, -4, true);
+        this.maxY = processInt("maxY", maxY, 16, true);
+        this.enforceVerticalRotation = processBoolean("enforceVerticalRotation", enforceVerticalRotation, enforceVerticalRotation, true);
     }
 }

@@ -21,6 +21,7 @@ public class ModulesContainer {
     private final Clipboard clipboard;
     @Getter
     private final String clipboardFilename;
+    @Getter
     private final ModulesConfigFields modulesConfigField;
     private final String configFilename;
     @Getter

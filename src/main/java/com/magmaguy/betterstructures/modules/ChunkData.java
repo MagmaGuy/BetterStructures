@@ -2,7 +2,6 @@ package com.magmaguy.betterstructures.modules;
 
 import com.magmaguy.magmacore.util.Logger;
 import lombok.Getter;
-import lombok.Setter;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.joml.Vector3i;
@@ -17,25 +16,61 @@ public class ChunkData {
     private final World world;
     @Getter
     private final Vector3i chunkLocation;
-    private final HashSet<Vector3i> emptyChunksCopy;
-    @Getter
-    @Setter
-    private Integer rotation = null;
-    private ModulesContainer.PastableModulesContainer pastableModulesContainer = null;
+    private String clipboardName = null;
+    private Byte rotation = null;
+    private HashSet<ChunkData> emptyChunks;
 
-    public ChunkData(Vector3i chunkLocation, World world, HashSet<Vector3i> emptyChunksCopy) {
+    public ChunkData(Vector3i chunkLocation, World world, HashSet<ChunkData> emptyChunks) {
         this.chunkLocation = chunkLocation;
         this.world = world;
-        this.emptyChunksCopy = emptyChunksCopy;
+        this.emptyChunks = emptyChunks;
+    }
+
+    public Integer getRotation() {
+        if (rotation == null) return null;
+        return switch (rotation) {
+            case 0 -> 0;
+            case 1 -> 90;
+            case 2 -> 180;
+            case 3 -> 270;
+            default -> null;
+        };
+    }
+
+    public void setRotation(Integer intRotation) {
+        if (intRotation == null) {
+            this.rotation = null;
+            return;
+        }
+        switch (intRotation) {
+            case 0 -> rotation = 0;
+            case 90 -> rotation = 1;
+            case 180 -> rotation = 2;
+            case 270 -> rotation = 3;
+            default -> rotation = 0;
+        }
+    }
+
+    public ModulesContainer getModulesContainer() {
+        if (clipboardName == null) return null;
+        return ModulesContainer.getModulesContainers().get(clipboardName);
+    }
+
+    private void serializeData(ModulesContainer.PastableModulesContainer pastableModulesContainer) {
+        if (pastableModulesContainer.modulesContainer().getClipboardFilename() == null)
+            clipboardName = null;
+        else
+            clipboardName = pastableModulesContainer.modulesContainer().getClipboardFilename();
+        setRotation(pastableModulesContainer.rotation());
     }
 
     public boolean isNothing() {
-        return pastableModulesContainer != null && pastableModulesContainer.modulesContainer().isNothing();
+        return clipboardName != null && getModulesContainer().isNothing();
     }
 
     public boolean canOnlyBeNothing() {
         for (ChunkData value : orientedNeighbours.values()) {
-            if (!value.isNothing()) return false;
+            if (value.isGenerated() && !value.isNothing()) return false;
         }
         return true;
     }
@@ -47,40 +82,55 @@ public class ChunkData {
 
     public int getGeneratedNeighborCount() {
         int count = 0;
-        if (orientedNeighbours.values().isEmpty() ) Logger.debug("uh wtf it's empty!!))!)!)!)");
-        for (ChunkData neighbor : orientedNeighbours.values()) {
+        for (ChunkData neighbor : orientedNeighbours.values())
             if (neighbor.isGenerated()) count++;
-        }
         return count;
     }
 
-    public void paste(ModulesContainer.PastableModulesContainer pastableModulesContainer) {
-        this.pastableModulesContainer = pastableModulesContainer;
-        this.rotation = pastableModulesContainer.rotation();
-        if (orientedNeighbours.get(BuildBorder.UP) != null) {
-            orientedNeighbours.get(BuildBorder.UP).setRotation(rotation);
+    public void processPaste(ModulesContainer.PastableModulesContainer pastableModulesContainer) {
+        serializeData(pastableModulesContainer);
+        int rotation = pastableModulesContainer.rotation();
+        if (pastableModulesContainer.modulesContainer().getModulesConfigField() != null &&
+                pastableModulesContainer.modulesContainer().getModulesConfigField().isEnforceVerticalRotation()) {
+            if (orientedNeighbours.get(BuildBorder.UP) != null) {
+                orientedNeighbours.get(BuildBorder.UP).setRotation(rotation);
+            }
+            if (orientedNeighbours.get(BuildBorder.DOWN) != null) {
+                orientedNeighbours.get(BuildBorder.DOWN).setRotation(rotation);
+            }
         }
-        if (orientedNeighbours.get(BuildBorder.DOWN) != null) {
-            orientedNeighbours.get(BuildBorder.DOWN).setRotation(rotation);
-        }
+        emptyChunks.remove(this);
+        orientedNeighbours.values().forEach(orientedNeighbour->{if (!orientedNeighbour.isGenerated()) emptyChunks.add(orientedNeighbour);});
     }
 
     public boolean isGenerated() {
-        return pastableModulesContainer != null;
+        return clipboardName != null;
     }
 
     private void resetData() {
         clearChunk();
-        this.pastableModulesContainer = null;
-        this.rotation = null;
+        this.clipboardName = null;
+        setRotation(getValidRotationFromNeighbor(BuildBorder.DOWN));
+        if (rotation == null)
+            setRotation(getValidRotationFromNeighbor(BuildBorder.UP));
+        emptyChunks.add(this);
+    }
+
+    private Integer getValidRotationFromNeighbor(BuildBorder border) {
+        ModulesContainer modulesContainer = orientedNeighbours.get(border).getModulesContainer();
+        if (orientedNeighbours.get(border) != null &&
+                orientedNeighbours.get(border).rotation != null &&
+                modulesContainer != null &&
+                modulesContainer.getModulesConfigField() != null &&
+                modulesContainer.getModulesConfigField().isEnforceVerticalRotation()) {
+            return orientedNeighbours.get(border).getRotation();
+        }
+        return null;
     }
 
     public void hardReset() {
         resetData();
-        orientedNeighbours.values().forEach(neighbour -> {
-            Logger.debug("resetting neighbor " + neighbour.getChunkLocation().toString());
-            neighbour.resetData();
-        });
+        orientedNeighbours.values().forEach(ChunkData::resetData);
     }
 
     private void clearChunk() {
@@ -97,14 +147,13 @@ public class ChunkData {
     public ModulesContainer.BorderTags collectValidBordersFromNeighbours() {
         ModulesContainer.BorderTags borderTags = new ModulesContainer.BorderTags(new EnumMap<>(BuildBorder.class));
         for (Map.Entry<BuildBorder, ChunkData> buildBorderChunkDataEntry : orientedNeighbours.entrySet()) {
-            if (buildBorderChunkDataEntry.getValue().pastableModulesContainer != null &&
-                    buildBorderChunkDataEntry.getValue().pastableModulesContainer.modulesContainer() != null)
+            ModulesContainer modulesContainer = buildBorderChunkDataEntry.getValue().getModulesContainer();
+            if (modulesContainer != null)
                 borderTags.put(
                         buildBorderChunkDataEntry.getKey(),
-                        buildBorderChunkDataEntry.getValue().pastableModulesContainer.modulesContainer().getBorderTags()
-                                .getRotatedTagsForDirection(
-                                        buildBorderChunkDataEntry.getKey().getOpposite(),
-                                        buildBorderChunkDataEntry.getValue().getRotation()));
+                        modulesContainer.getBorderTags().getRotatedTagsForDirection(
+                                buildBorderChunkDataEntry.getKey().getOpposite(),
+                                buildBorderChunkDataEntry.getValue().getRotation()));
         }
         return borderTags;
     }
