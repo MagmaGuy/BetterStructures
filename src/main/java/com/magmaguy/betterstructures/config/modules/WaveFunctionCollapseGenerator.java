@@ -5,13 +5,20 @@ import com.magmaguy.betterstructures.modules.BuildBorder;
 import com.magmaguy.betterstructures.modules.ChunkData;
 import com.magmaguy.betterstructures.modules.ModulesContainer;
 import com.magmaguy.magmacore.util.Logger;
+import com.magmaguy.magmacore.util.Round;
 import lombok.Getter;
 import org.bukkit.*;
+import org.bukkit.boss.BarColor;
+import org.bukkit.boss.BarStyle;
+import org.bukkit.boss.BossBar;
+import org.bukkit.entity.Boss;
 import org.bukkit.entity.Player;
 import org.bukkit.generator.ChunkGenerator;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.jetbrains.annotations.Nullable;
+import org.joml.Vector2i;
 import org.joml.Vector3i;
+import org.reflections.vfs.JbossDir;
 
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
@@ -26,10 +33,27 @@ public class WaveFunctionCollapseGenerator {
     private final int radius;
     private final boolean systemShowcaseSpeed = false;
     private final int massPasteSize = 20;
+    private final int totalMassPasteChunks;
+    private final Set<Vector2i> processedXZ = new HashSet<>();
+    private final int averageYLevels = 10; // this is used to estimate the progress for the chunk detection
     private World world;
     private int processedChunks = 0;
     private int massPasteCount = 0;
     private long startTime;
+    private final BossBar completionPercentage;
+    private static HashSet<BossBar> bars = new HashSet<>();
+
+    public static void shutdown(){
+        for (BossBar bar : bars) {
+            bar.removeAll();
+        }
+        bars.clear();
+    }
+
+    private void clearBar(){
+        bars.remove(completionPercentage);
+        completionPercentage.removeAll();
+    }
 
     public WaveFunctionCollapseGenerator(String worldName, int radius, int interval, Player player, String startingModule) {
         this.player = player;
@@ -37,12 +61,26 @@ public class WaveFunctionCollapseGenerator {
         this.radius = radius;
         generateWorld(worldName);
         initializeChunkData();
+        completionPercentage = Bukkit.createBossBar("", BarColor.GREEN, BarStyle.SOLID);
+        completionPercentage.addPlayer(player);
+        bars.add(completionPercentage);
+        updateProgress(0, "Initializing...");
+
+        // Initialize total chunks for mass paste progress tracking
+        int xzRange = 2 * radius + 1;
+        totalMassPasteChunks = xzRange * xzRange;
+
         new BukkitRunnable() {
             @Override
             public void run() {
                 start(startingModule);
             }
         }.runTaskAsynchronously(MetadataHandler.PLUGIN);
+    }
+
+    private void updateProgress(double progress, String message) {
+        completionPercentage.setProgress(progress);
+        completionPercentage.setTitle(message);
     }
 
     private void initializeChunkData() {
@@ -157,12 +195,15 @@ public class WaveFunctionCollapseGenerator {
         }
     }
 
-
     private void paste(Vector3i chunkLocation, ModulesContainer modulesContainer, Integer rotation) {
-        if (processedChunks % 500 == 0) {
-            Logger.debug("Processed " + processedChunks + " chunks, latest location " + chunkLocation.toString() + " with rotation " + rotation);
-        }
         processedChunks++;
+        processedXZ.add(new Vector2i(chunkLocation.x, chunkLocation.z));
+        if (processedChunks % 1000 == 0) {
+            int totalEstimatedChunks = ((2 * radius + 1) * (2 * radius + 1)) * averageYLevels;
+            double progress = Round.twoDecimalPlaces(((double) processedXZ.size() * averageYLevels) / totalEstimatedChunks * 100);
+            Logger.debug("[" + progress + "%] Processed " + processedChunks + " chunks, latest location " + chunkLocation + " with rotation " + rotation);
+            updateProgress(progress/100L, "Assembling modules - " + progress + "% done...");
+        }
         if (systemShowcaseSpeed) actualPaste(chunkMap.get(chunkLocation));
         chunkMap.get(chunkLocation).processPaste(new ModulesContainer.PastableModulesContainer(modulesContainer, rotation));
     }
@@ -198,36 +239,44 @@ public class WaveFunctionCollapseGenerator {
         if (player != null) {
             player.sendTitle("Done!", "Generation complete!");
         }
+
         Logger.warn("Done with infinity generator!");
+
         if (!systemShowcaseSpeed) {
+            timeMessage("Module assembly ");
             Logger.warn("Starting mass paste");
             if (player != null) {
                 player.sendMessage("Starting mass paste...");
             }
             Bukkit.getScheduler().runTask(MetadataHandler.PLUGIN, () -> instantPaste(-radius, -radius));
         } else {
-            // Calculate and display the elapsed time
-            long endTime = System.currentTimeMillis();
-            long elapsedTime = endTime - startTime;
-
-            long seconds = (elapsedTime / 1000) % 60;
-            long minutes = (elapsedTime / (1000 * 60)) % 60;
-            long hours = elapsedTime / (1000 * 60 * 60);
-
-            String timeString = String.format("%02d:%02d:%02d", hours, minutes, seconds);
-
-            if (player != null) {
-                player.sendMessage("Generation complete! Time taken: " + timeString);
-            }
-            Logger.warn("Generation complete! Time taken: " + timeString);
+            timeMessage("Generation");
+            clearBar();
         }
     }
 
+    private void timeMessage(String whatEnded) {
+        // Calculate and display the elapsed time
+        long endTime = System.currentTimeMillis();
+        long elapsedTime = endTime - startTime;
+
+        long seconds = (elapsedTime / 1000) % 60;
+        long minutes = (elapsedTime / (1000 * 60)) % 60;
+        long hours = elapsedTime / (1000 * 60 * 60);
+
+        String timeString = String.format("%02d:%02d:%02d", hours, minutes, seconds);
+        if (player != null) {
+            player.sendMessage(whatEnded + " completed! Time taken: " + timeString);
+        }
+        Logger.warn("Generation complete! Time taken: " + timeString);
+    }
 
     private void instantPaste(int currentX, int currentZ) {
         massPasteCount++;
         if (massPasteCount % massPasteSize == 0) {
-            Logger.debug("Pasting chunk " + currentX + ", " + currentZ);
+            double progress = Round.twoDecimalPlaces(massPasteCount / (double) totalMassPasteChunks * 100);
+            Logger.info("[" + progress + "%] Pasting chunk " + massPasteCount + "/" + totalMassPasteChunks + " at " + currentX + ", " + currentZ);
+            updateProgress(progress/100L, "Pasting world - " + progress + "% done...");
         }
         int x = currentX + 1;
         int z = currentZ;
@@ -236,23 +285,8 @@ public class WaveFunctionCollapseGenerator {
             z++;
         }
         if (z > radius) {
-            // Mass paste is complete
-            if (player != null) {
-                player.sendMessage("Mass paste complete!");
-
-                // Calculate and display the elapsed time
-                long endTime = System.currentTimeMillis();
-                long elapsedTime = endTime - startTime;
-
-                long seconds = (elapsedTime / 1000) % 60;
-                long minutes = (elapsedTime / (1000 * 60)) % 60;
-                long hours = elapsedTime / (1000 * 60 * 60);
-
-                String timeString = String.format("%02d:%02d:%02d", hours, minutes, seconds);
-
-                player.sendMessage("Total time taken (including mass paste): " + timeString);
-                Logger.warn("Total time taken (including mass paste): " + timeString);
-            }
+            timeMessage("Mass paste");
+            clearBar();
             return;
         }
         for (int y = -4; y <= 20; y++) {
