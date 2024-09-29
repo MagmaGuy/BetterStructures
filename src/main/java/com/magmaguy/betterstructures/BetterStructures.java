@@ -100,6 +100,7 @@ public final class BetterStructures extends JavaPlugin {
         HandlerList.unregisterAll(MetadataHandler.PLUGIN);
         BSPackage.shutdown();
         ModulesContainer.shutdown();
+        WaveFunctionCollapseGenerator.shutdown();
         Bukkit.getLogger().info("[BetterStructures] Shutdown!");
     }
 }

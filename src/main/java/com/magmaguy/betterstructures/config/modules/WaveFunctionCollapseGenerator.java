@@ -11,14 +11,12 @@ import org.bukkit.*;
 import org.bukkit.boss.BarColor;
 import org.bukkit.boss.BarStyle;
 import org.bukkit.boss.BossBar;
-import org.bukkit.entity.Boss;
 import org.bukkit.entity.Player;
 import org.bukkit.generator.ChunkGenerator;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2i;
 import org.joml.Vector3i;
-import org.reflections.vfs.JbossDir;
 
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
@@ -26,6 +24,7 @@ import java.util.concurrent.ThreadLocalRandom;
 public class WaveFunctionCollapseGenerator {
     @Getter
     private static final List<Integer> validRotations = Arrays.asList(0, 90, 180, 270);
+    private static final HashSet<BossBar> bars = new HashSet<>();
     private final HashSet<ChunkData> emptyChunks = new HashSet<>();
     private final Player player;
     private final Map<Vector3i, ChunkData> chunkMap = new HashMap<>();
@@ -36,24 +35,11 @@ public class WaveFunctionCollapseGenerator {
     private final int totalMassPasteChunks;
     private final Set<Vector2i> processedXZ = new HashSet<>();
     private final int averageYLevels = 10; // this is used to estimate the progress for the chunk detection
+    private final BossBar completionPercentage;
     private World world;
     private int processedChunks = 0;
     private int massPasteCount = 0;
     private long startTime;
-    private final BossBar completionPercentage;
-    private static HashSet<BossBar> bars = new HashSet<>();
-
-    public static void shutdown(){
-        for (BossBar bar : bars) {
-            bar.removeAll();
-        }
-        bars.clear();
-    }
-
-    private void clearBar(){
-        bars.remove(completionPercentage);
-        completionPercentage.removeAll();
-    }
 
     public WaveFunctionCollapseGenerator(String worldName, int radius, int interval, Player player, String startingModule) {
         this.player = player;
@@ -76,6 +62,18 @@ public class WaveFunctionCollapseGenerator {
                 start(startingModule);
             }
         }.runTaskAsynchronously(MetadataHandler.PLUGIN);
+    }
+
+    public static void shutdown() {
+        for (BossBar bar : bars) {
+            bar.removeAll();
+        }
+        bars.clear();
+    }
+
+    private void clearBar() {
+        bars.remove(completionPercentage);
+        completionPercentage.removeAll();
     }
 
     private void updateProgress(double progress, String message) {
@@ -202,7 +200,7 @@ public class WaveFunctionCollapseGenerator {
             int totalEstimatedChunks = ((2 * radius + 1) * (2 * radius + 1)) * averageYLevels;
             double progress = Round.twoDecimalPlaces(((double) processedXZ.size() * averageYLevels) / totalEstimatedChunks * 100);
             Logger.debug("[" + progress + "%] Processed " + processedChunks + " chunks, latest location " + chunkLocation + " with rotation " + rotation);
-            updateProgress(progress/100L, "Assembling modules - " + progress + "% done...");
+            updateProgress(progress / 100L, "Assembling modules - " + progress + "% done...");
         }
         if (systemShowcaseSpeed) actualPaste(chunkMap.get(chunkLocation));
         chunkMap.get(chunkLocation).processPaste(new ModulesContainer.PastableModulesContainer(modulesContainer, rotation));
@@ -276,7 +274,7 @@ public class WaveFunctionCollapseGenerator {
         if (massPasteCount % massPasteSize == 0) {
             double progress = Round.twoDecimalPlaces(massPasteCount / (double) totalMassPasteChunks * 100);
             Logger.info("[" + progress + "%] Pasting chunk " + massPasteCount + "/" + totalMassPasteChunks + " at " + currentX + ", " + currentZ);
-            updateProgress(progress/100L, "Pasting world - " + progress + "% done...");
+            updateProgress(progress / 100L, "Pasting world - " + progress + "% done...");
         }
         int x = currentX + 1;
         int z = currentZ;
