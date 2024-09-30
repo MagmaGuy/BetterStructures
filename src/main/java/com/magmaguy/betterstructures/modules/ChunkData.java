@@ -1,14 +1,15 @@
 package com.magmaguy.betterstructures.modules;
 
-import com.magmaguy.magmacore.util.Logger;
 import lombok.Getter;
+import lombok.Setter;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.joml.Vector3i;
 
 import java.util.EnumMap;
-import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.PriorityQueue;
 
 public class ChunkData {
     @Getter
@@ -18,12 +19,15 @@ public class ChunkData {
     private final Vector3i chunkLocation;
     private String clipboardName = null;
     private Byte rotation = null;
-    private HashSet<ChunkData> emptyChunks;
+    @Getter
+    @Setter
+    private int generatedNeighborCount = 0;
+    List<PriorityQueue<ChunkData>> emptyNeighborBuckets;
 
-    public ChunkData(Vector3i chunkLocation, World world, HashSet<ChunkData> emptyChunks) {
+    public ChunkData(Vector3i chunkLocation, World world, List<PriorityQueue<ChunkData>> emptyNeighborBuckets) {
         this.chunkLocation = chunkLocation;
         this.world = world;
-        this.emptyChunks = emptyChunks;
+        this.emptyNeighborBuckets = emptyNeighborBuckets;
     }
 
     public Integer getRotation() {
@@ -99,8 +103,10 @@ public class ChunkData {
                 orientedNeighbours.get(BuildBorder.DOWN).setRotation(rotation);
             }
         }
-        emptyChunks.remove(this);
-        orientedNeighbours.values().forEach(orientedNeighbour->{if (!orientedNeighbour.isGenerated()) emptyChunks.add(orientedNeighbour);});
+//        emptyChunks.remove(this); this should be done at the time of selecting it
+        orientedNeighbours.values().forEach(orientedNeighbour -> {
+            if (!orientedNeighbour.isGenerated()) orientedNeighbour.updateGeneratedNeighborCount();
+        });
     }
 
     public boolean isGenerated() {
@@ -113,7 +119,8 @@ public class ChunkData {
         setRotation(getValidRotationFromNeighbor(BuildBorder.DOWN));
         if (rotation == null)
             setRotation(getValidRotationFromNeighbor(BuildBorder.UP));
-        emptyChunks.add(this);
+        updateGeneratedNeighborCount();
+//        recalculateGeneratedNeighborCount();
     }
 
     private Integer getValidRotationFromNeighbor(BuildBorder border) {
@@ -157,4 +164,25 @@ public class ChunkData {
         }
         return borderTags;
     }
+
+    private void recalculateGeneratedNeighborCount() {
+        generatedNeighborCount = 0;
+        for (ChunkData value : orientedNeighbours.values())
+            if (value.isGenerated())
+                this.generatedNeighborCount++;
+    }
+
+    public void updateGeneratedNeighborCount() {
+        int oldCount = this.generatedNeighborCount;
+        recalculateGeneratedNeighborCount();
+
+        if (oldCount != this.generatedNeighborCount) {
+            // Remove from old bucket
+            emptyNeighborBuckets.get(oldCount).remove(this);
+
+            // Add to new bucket
+            emptyNeighborBuckets.get(this.generatedNeighborCount).add(this);
+        }
+    }
+
 }

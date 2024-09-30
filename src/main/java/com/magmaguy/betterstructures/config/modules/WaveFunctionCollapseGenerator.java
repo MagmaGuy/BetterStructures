@@ -25,17 +25,39 @@ public class WaveFunctionCollapseGenerator {
     @Getter
     private static final List<Integer> validRotations = Arrays.asList(0, 90, 180, 270);
     private static final HashSet<BossBar> bars = new HashSet<>();
-    private final HashSet<ChunkData> emptyChunks = new HashSet<>();
+    private static final Vector3i[] NEIGHBOR_OFFSETS = {
+            new Vector3i(0, 1, 0),    // UP
+            new Vector3i(0, -1, 0),   // DOWN
+            new Vector3i(1, 0, 0),    // EAST
+            new Vector3i(-1, 0, 0),   // WEST
+            new Vector3i(0, 0, -1),   // NORTH
+            new Vector3i(0, 0, 1)     // SOUTH
+    };
+    private static final BuildBorder[] NEIGHBOR_DIRECTIONS = {
+            BuildBorder.UP,
+            BuildBorder.DOWN,
+            BuildBorder.EAST,
+            BuildBorder.WEST,
+            BuildBorder.NORTH,
+            BuildBorder.SOUTH
+    };
+    private static final int MIN_Y_LEVEL = -4;
+    private static final int MAX_Y_LEVEL = 20;
+    private static final int Y_SIZE = MAX_Y_LEVEL - MIN_Y_LEVEL; // Y_SIZE = 25
+    //    private final HashSet<ChunkData> emptyChunks = new HashSet<>();
     private final Player player;
-    private final Map<Vector3i, ChunkData> chunkMap = new HashMap<>();
     private final int interval;
     private final int radius;
     private final boolean systemShowcaseSpeed = false;
-    private final int massPasteSize = 20;
+    private final int massPasteSize = 10;
     private final int totalMassPasteChunks;
     private final Set<Vector2i> processedXZ = new HashSet<>();
     private final int averageYLevels = 10; // this is used to estimate the progress for the chunk detection
     private final BossBar completionPercentage;
+    private final Map<Vector3i, Long> distanceCache = new HashMap<>();
+    private final List<Vector2i> spiralPositions;
+    private final List<PriorityQueue<ChunkData>> emptyNeighborBuckets = new ArrayList<>(7);
+    private ChunkData[][][] chunkArray;
     private World world;
     private int processedChunks = 0;
     private int massPasteCount = 0;
@@ -45,13 +67,13 @@ public class WaveFunctionCollapseGenerator {
         this.player = player;
         this.interval = interval;
         this.radius = radius;
+        this.spiralPositions = generateSpiralPositions(radius);
         generateWorld(worldName);
-        initializeChunkData();
+
         completionPercentage = Bukkit.createBossBar("", BarColor.GREEN, BarStyle.SOLID);
         completionPercentage.addPlayer(player);
         bars.add(completionPercentage);
         updateProgress(0, "Initializing...");
-
         // Initialize total chunks for mass paste progress tracking
         int xzRange = 2 * radius + 1;
         totalMassPasteChunks = xzRange * xzRange;
@@ -59,6 +81,12 @@ public class WaveFunctionCollapseGenerator {
         new BukkitRunnable() {
             @Override
             public void run() {
+                for (int i = 0; i <= 6; i++) {
+                    emptyNeighborBuckets.add(new PriorityQueue<>(Comparator.comparingLong(chunkData -> getDistanceSquared(chunkData.getChunkLocation()))));
+                }
+
+                initializeChunkData();
+
                 start(startingModule);
             }
         }.runTaskAsynchronously(MetadataHandler.PLUGIN);
@@ -81,45 +109,76 @@ public class WaveFunctionCollapseGenerator {
         completionPercentage.setTitle(message);
     }
 
+    private Long getDistanceSquared(Vector3i location) {
+        return distanceCache.computeIfAbsent(location, Vector3i::lengthSquared);
+    }
+
     private void initializeChunkData() {
+        int size = 2 * radius + 1; // Size in X and Z dimensions
+        chunkArray = new ChunkData[size][Y_SIZE][size];
+
+        // Initialize ChunkData instances
         for (int x = -radius; x <= radius; x++) {
-            for (int y = -4; y <= 20; y++) {
+            int arrayX = x + radius;
+            for (int y = MIN_Y_LEVEL; y < MAX_Y_LEVEL + 1; y++) {
+                int arrayY = y - MIN_Y_LEVEL;
                 for (int z = -radius; z <= radius; z++) {
-                    chunkMap.put(new Vector3i(x, y, z), new ChunkData(new Vector3i(x, y, z), world, emptyChunks));
+                    int arrayZ = z + radius;
+                    // Boundary check just in case
+                    if (arrayX >= 0 && arrayX < size &&
+                            arrayY >= 0 && arrayY < Y_SIZE &&
+                            arrayZ >= 0 && arrayZ < size) {
+                        Vector3i chunkLocation = new Vector3i(x, y, z);
+                        ChunkData chunkData = new ChunkData(chunkLocation, world, emptyNeighborBuckets);
+
+                        // Add to the appropriate bucket
+                        emptyNeighborBuckets.get(0).add(chunkData);
+
+                        chunkArray[arrayX][arrayY][arrayZ] = chunkData;
+                    }
                 }
             }
         }
-        for (ChunkData chunkData : chunkMap.values()) {
-            Vector3i chunkLocation = chunkData.getChunkLocation();
-            chunkData.addNeighbor(BuildBorder.UP, chunkMap.get(new Vector3i(chunkLocation.x, chunkLocation.y + 1, chunkLocation.z)));
-            chunkData.addNeighbor(BuildBorder.DOWN, chunkMap.get(new Vector3i(chunkLocation.x, chunkLocation.y - 1, chunkLocation.z)));
-            chunkData.addNeighbor(BuildBorder.EAST, chunkMap.get(new Vector3i(chunkLocation.x + 1, chunkLocation.y, chunkLocation.z)));
-            chunkData.addNeighbor(BuildBorder.WEST, chunkMap.get(new Vector3i(chunkLocation.x - 1, chunkLocation.y, chunkLocation.z)));
-            chunkData.addNeighbor(BuildBorder.NORTH, chunkMap.get(new Vector3i(chunkLocation.x, chunkLocation.y, chunkLocation.z - 1)));
-            chunkData.addNeighbor(BuildBorder.SOUTH, chunkMap.get(new Vector3i(chunkLocation.x, chunkLocation.y, chunkLocation.z + 1)));
+
+        // Initialize neighbors
+        int xSize = chunkArray.length;
+        int ySize = chunkArray[0].length;
+        int zSize = chunkArray[0][0].length;
+
+        for (int x = 0; x < xSize; x++) {
+            for (int y = 0; y < ySize; y++) {
+                for (int z = 0; z < zSize; z++) {
+                    ChunkData chunkData = chunkArray[x][y][z];
+                    if (chunkData != null) {
+                        for (int i = 0; i < NEIGHBOR_OFFSETS.length; i++) {
+                            Vector3i offset = NEIGHBOR_OFFSETS[i];
+                            int neighborX = x + offset.x();
+                            int neighborY = y + offset.y();
+                            int neighborZ = z + offset.z();
+
+                            // Check boundaries
+                            if (neighborX >= 0 && neighborX < xSize &&
+                                    neighborY >= 0 && neighborY < ySize &&
+                                    neighborZ >= 0 && neighborZ < zSize) {
+
+                                ChunkData neighborChunkData = chunkArray[neighborX][neighborY][neighborZ];
+                                chunkData.addNeighbor(NEIGHBOR_DIRECTIONS[i], neighborChunkData);
+                            } else {
+                                // No neighbor in this direction
+                                chunkData.addNeighbor(NEIGHBOR_DIRECTIONS[i], null);
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
     @Nullable
-    private Vector3i getClosestEmptyChunkLocationKey(List<Vector3i> elements) {
-        Vector3i selectedLocation = null;
-        if (elements.isEmpty()) {
-            return selectedLocation;
-        }
-        if (elements.size() > 1) {
-            double smallestDistance = Double.MAX_VALUE;
-            for (Vector3i chunkLocation : elements) {
-                double distance = chunkLocation.lengthSquared();
-                if (distance < smallestDistance) {
-                    smallestDistance = distance;
-                    selectedLocation = chunkLocation;
-                }
-            }
-            return selectedLocation;
-        } else {
-            selectedLocation = elements.get(0);
-        }
-        return selectedLocation;
+    private ChunkData getClosestEmptyChunkLocationKey(List<ChunkData> elements) {
+        return elements.stream()
+                .min(Comparator.comparingLong(chunkData -> getDistanceSquared(chunkData.getChunkLocation())))
+                .orElse(null);
     }
 
     private void generateWorld(String worldName) {
@@ -142,68 +201,89 @@ public class WaveFunctionCollapseGenerator {
     }
 
     private void searchNextChunkToGenerate() {
-        int mostElements = 0;
-        List<Vector3i> elements = new ArrayList<>();
-
-        Iterator<ChunkData> iterator = emptyChunks.iterator();
-
-        while (iterator.hasNext()) {
-            ChunkData chunkData = iterator.next();
-
-            if (chunkData.isGenerated() || chunkData.canOnlyBeNothing()) {
-                iterator.remove();
-                continue;
-            }
-
-            int borders = chunkData.getGeneratedNeighborCount();
-
-            if (borders > mostElements) {
-                mostElements = borders;
-                elements.clear();
-                elements.add(chunkData.getChunkLocation());
-            } else if (borders == mostElements) {
-                elements.add(chunkData.getChunkLocation());
-            }
-        }
-
-        Vector3i selectedChunkLocationKey = getClosestEmptyChunkLocationKey(elements);
-        if (selectedChunkLocationKey == null) {
-            done();
-            return;
-        }
-        generateNextChunk(selectedChunkLocationKey);
-
         if (systemShowcaseSpeed) {
+            ChunkData selectedChunkLocationKey = getNextChunk();
+            if (selectedChunkLocationKey == null) {
+                done();
+                return;
+            }
+            generateNextChunk(selectedChunkLocationKey);
+
             new BukkitRunnable() {
                 @Override
                 public void run() {
                     searchNextChunkToGenerate();
                 }
             }.runTaskLater(MetadataHandler.PLUGIN, interval);
-        } else if (processedChunks % 1000 != 0) {
-            searchNextChunkToGenerate();
         } else {
-            // Avoid stack overflows
-            new BukkitRunnable() {
-                @Override
-                public void run() {
-                    searchNextChunkToGenerate();
+            while (true) {
+                ChunkData selectedChunkLocationKey = getNextChunk();
+                if (selectedChunkLocationKey == null) {
+                    done();
+                    return;
                 }
-            }.runTaskLaterAsynchronously(MetadataHandler.PLUGIN, 1);
+                generateNextChunk(selectedChunkLocationKey);
+            }
         }
+    }
+
+    private ChunkData getNextChunk() {
+        for (int i = 6; i >= 0; i--) {
+            PriorityQueue<ChunkData> bucket = emptyNeighborBuckets.get(i);
+            if (!bucket.isEmpty()) {
+                return bucket.poll(); // Retrieves and removes the chunk with the smallest distance
+            }
+        }
+        return null; // All buckets are empty
+    }
+
+    private void updateAssemblingProgress() {
+        int totalEstimatedChunks = ((2 * radius + 1) * (2 * radius + 1)) * averageYLevels;
+        double progress = Round.twoDecimalPlaces(((double) processedXZ.size() * averageYLevels) / totalEstimatedChunks * 100);
+        Logger.debug("[" + progress + "%] Processed " + processedChunks + " chunks");
+        updateProgress(progress / 100L, "Assembling modules - " + progress + "% done...");
     }
 
     private void paste(Vector3i chunkLocation, ModulesContainer modulesContainer, Integer rotation) {
         processedChunks++;
         processedXZ.add(new Vector2i(chunkLocation.x, chunkLocation.z));
+
         if (processedChunks % 1000 == 0) {
-            int totalEstimatedChunks = ((2 * radius + 1) * (2 * radius + 1)) * averageYLevels;
-            double progress = Round.twoDecimalPlaces(((double) processedXZ.size() * averageYLevels) / totalEstimatedChunks * 100);
-            Logger.debug("[" + progress + "%] Processed " + processedChunks + " chunks, latest location " + chunkLocation + " with rotation " + rotation);
-            updateProgress(progress / 100L, "Assembling modules - " + progress + "% done...");
+            updateAssemblingProgress();
         }
-        if (systemShowcaseSpeed) actualPaste(chunkMap.get(chunkLocation));
-        chunkMap.get(chunkLocation).processPaste(new ModulesContainer.PastableModulesContainer(modulesContainer, rotation));
+
+        // Access the ChunkData from chunkArray
+        ChunkData chunkData = getChunkDataAt(chunkLocation.x, chunkLocation.y, chunkLocation.z);
+        if (chunkData == null) {
+            Logger.warn("ChunkData not found at location: " + chunkLocation);
+            return;
+        }
+
+        if (systemShowcaseSpeed) {
+            actualPaste(chunkData);
+        }
+
+        chunkData.processPaste(new ModulesContainer.PastableModulesContainer(modulesContainer, rotation));
+    }
+
+    private ChunkData getChunkDataAt(int x, int y, int z) {
+        int arrayX = x + radius;
+        int arrayY = y - MIN_Y_LEVEL;
+        int arrayZ = z + radius;
+
+        // Check bounds if necessary
+        if (arrayX >= 0 && arrayX < chunkArray.length &&
+                arrayY >= 0 && arrayY < chunkArray[0].length &&
+                arrayZ >= 0 && arrayZ < chunkArray[0][0].length) {
+
+            return chunkArray[arrayX][arrayY][arrayZ];
+        } else {
+            return null;
+        }
+    }
+
+    private ChunkData getChunkDataAt(Vector3i chunkLocation) {
+        return getChunkDataAt(chunkLocation.x, chunkLocation.y, chunkLocation.z);
     }
 
     private void actualPaste(ChunkData chunkData) {
@@ -213,17 +293,17 @@ public class WaveFunctionCollapseGenerator {
         Module.paste(modulesContainer.getClipboard(), pasteLocation.clone().add(-1, 0, -1), chunkData.getRotation());
     }
 
-    private void generateNextChunk(Vector3i nextChunkKey) {
+    private void generateNextChunk(ChunkData chunkData) {
         // Get valid modules
-        ModulesContainer.PastableModulesContainer pastableModulesContainer = ModulesContainer.pickRandomModuleFromSurroundings(chunkMap.get(nextChunkKey), chunkMap.get(nextChunkKey).getRotation());
+        ModulesContainer.PastableModulesContainer pastableModulesContainer = ModulesContainer.pickRandomModuleFromSurroundings(chunkData, chunkData.getRotation());
         if (pastableModulesContainer == null) {
-            Logger.warn("No valid modules to place at (" + nextChunkKey.x + ", " + nextChunkKey.y + ", " + nextChunkKey.z + ")");
-            rollbackChunk(chunkMap.get(nextChunkKey));
+            Logger.warn("No valid modules to place at (" + chunkData.getChunkLocation().x + ", " + chunkData.getChunkLocation().y + ", " + chunkData.getChunkLocation().z + ")");
+            rollbackChunk(chunkData);
             return;
         }
 
         // Paste the module
-        paste(nextChunkKey, pastableModulesContainer.modulesContainer(), pastableModulesContainer.rotation());
+        paste(chunkData.getChunkLocation(), pastableModulesContainer.modulesContainer(), pastableModulesContainer.rotation());
     }
 
     private void rollbackChunk(ChunkData chunkData) {
@@ -246,7 +326,7 @@ public class WaveFunctionCollapseGenerator {
             if (player != null) {
                 player.sendMessage("Starting mass paste...");
             }
-            Bukkit.getScheduler().runTask(MetadataHandler.PLUGIN, () -> instantPaste(-radius, -radius));
+            Bukkit.getScheduler().runTask(MetadataHandler.PLUGIN, this::instantPaste);
         } else {
             timeMessage("Generation");
             clearBar();
@@ -269,36 +349,74 @@ public class WaveFunctionCollapseGenerator {
         Logger.warn("Generation complete! Time taken: " + timeString);
     }
 
-    private void instantPaste(int currentX, int currentZ) {
-        massPasteCount++;
-        if (massPasteCount % massPasteSize == 0) {
-            double progress = Round.twoDecimalPlaces(massPasteCount / (double) totalMassPasteChunks * 100);
-            Logger.info("[" + progress + "%] Pasting chunk " + massPasteCount + "/" + totalMassPasteChunks + " at " + currentX + ", " + currentZ);
-            updateProgress(progress / 100L, "Pasting world - " + progress + "% done...");
+    private List<Vector2i> generateSpiralPositions(int radius) {
+        List<Vector2i> positions = new ArrayList<>();
+        int x = 0, z = 0;
+        int dx = 0, dz = -1;
+        int max = (2 * radius + 1) * (2 * radius + 1);
+
+        for (int i = 0; i < max; i++) {
+            if (-radius <= x && x <= radius && -radius <= z && z <= radius) {
+                positions.add(new Vector2i(x, z));
+            }
+
+            if (x == z || (x < 0 && x == -z) || (x > 0 && x == 1 - z)) {
+                int temp = dx;
+                dx = -dz;
+                dz = temp;
+            }
+            x += dx;
+            z += dz;
         }
-        int x = currentX + 1;
-        int z = currentZ;
-        if (x > radius) {
-            x = -radius;
-            z++;
-        }
-        if (z > radius) {
-            timeMessage("Mass paste");
-            clearBar();
-            return;
-        }
-        for (int y = -4; y <= 20; y++) {
-            actualPaste(chunkMap.get(new Vector3i(x, y, z)));
-        }
-        int finalX = x;
-        int finalZ = z;
-        if (massPasteCount % massPasteSize == 0) {
-            Bukkit.getScheduler().runTaskLater(MetadataHandler.PLUGIN, () -> instantPaste(finalX, finalZ), 1);
-        } else {
-            instantPaste(finalX, finalZ);
-        }
+        return positions;
     }
 
+
+    private void instantPaste() {
+        BukkitRunnable pasteTask = new BukkitRunnable() {
+            int index = 0;
+
+            @Override
+            public void run() {
+                int batchCount = 0;
+
+                while (index < spiralPositions.size() && batchCount < massPasteSize) {
+                    massPasteCount++;
+                    Vector2i pos = spiralPositions.get(index);
+                    int x = pos.x();
+                    int z = pos.y();
+
+                    if (massPasteCount % massPasteSize == 0) {
+                        double progress = Round.twoDecimalPlaces(massPasteCount / (double) totalMassPasteChunks * 100);
+                        Logger.info("[" + progress + "%] Pasting chunk " + massPasteCount + "/" + totalMassPasteChunks + " at " + x + ", " + z);
+                        updateProgress(progress / 100L, "Pasting world - " + progress + "% done...");
+                    }
+
+                    for (int y = MIN_Y_LEVEL; y < MAX_Y_LEVEL; y++) {
+                        ChunkData chunkData = getChunkDataAt(x, y, z);
+                        if (chunkData == null) {
+                            Logger.warn("ChunkData not found at location: " + x + ", " + y + ", " + z);
+                        } else {
+                            actualPaste(chunkData);
+                        }
+                    }
+
+                    index++;
+                    batchCount++;
+                }
+
+                if (index >= spiralPositions.size()) {
+                    timeMessage("Mass paste");
+                    clearBar();
+                    this.cancel(); // Stop the task
+                }
+                // Else, the task will automatically reschedule itself on the next tick
+            }
+        };
+
+        // Schedule the task to run every tick until it's canceled
+        pasteTask.runTaskTimer(MetadataHandler.PLUGIN, 0, 1);
+    }
 
     private static class VoidGenerator extends ChunkGenerator {
     }
