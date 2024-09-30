@@ -96,6 +96,7 @@ public final class BetterStructures extends JavaPlugin {
         // Plugin shutdown logic
         SchematicContainer.shutdown();
         Bukkit.getServer().getScheduler().cancelTasks(MetadataHandler.PLUGIN);
+        Bukkit.getServer().getScheduler().cancelTasks(this);
         MagmaCore.shutdown();
         HandlerList.unregisterAll(MetadataHandler.PLUGIN);
         BSPackage.shutdown();
