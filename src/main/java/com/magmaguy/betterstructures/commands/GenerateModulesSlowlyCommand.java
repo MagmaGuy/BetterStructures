@@ -10,16 +10,17 @@ import com.magmaguy.magmacore.util.Logger;
 import java.util.ArrayList;
 import java.util.List;
 
-public class GenerateInfiniteCommand extends AdvancedCommand {
-    public GenerateInfiniteCommand() {
-        super(List.of("generateInfinite"));
+public class GenerateModulesSlowlyCommand extends AdvancedCommand {
+    public GenerateModulesSlowlyCommand() {
+        super(List.of("generateModulesSlowly"));
         addArgument("worldName", new ArrayList<>());
         addArgument("radius", new ArrayList<>());
-        addArgument("speed", new ArrayList<>());
+        addArgument("interval", new ArrayList<>());
+        addArgument("debug" , new ArrayList<>(List.of("true", "false")));
         addArgument("startingModule", ModulesContainer.getModulesContainers().keySet().stream().toList());
-        setUsage("/bs generateInfinite <worldName> <radius> <speed> <startingModule>");
-        setPermission("betterstructures.generateInfinite");
-        setDescription("Generates builds.");
+        setUsage("/bs generateModulesSlowly <worldName> <radius> <debug> <interval> <startingModule>");
+        setPermission("betterstructures.generatemodules.slowly");
+        setDescription("Generates modular builds in a dedicated world, slowly.");
         setSenderType(SenderType.PLAYER);
     }
 
@@ -30,6 +31,12 @@ public class GenerateInfiniteCommand extends AdvancedCommand {
                     "You do not have enough RAM for a radius above 80, you will definitely want more than 4GB of RAM for that. Consider pregenerating it locally on a computer that has more RAM and then putting the world in your server!");
             return;
         }
-        new WaveFunctionCollapseGenerator(commandData.getStringArgument("worldName"), commandData.getIntegerArgument("radius"), commandData.getIntegerArgument("speed"), commandData.getPlayerSender(), commandData.getStringArgument("startingModule"));
+        new WaveFunctionCollapseGenerator(
+                commandData.getStringArgument("worldName"),
+                commandData.getIntegerArgument("radius"),
+                Boolean.valueOf(commandData.getStringArgument("debug")),
+                commandData.getIntegerArgument("interval"),
+                commandData.getPlayerSender(),
+                commandData.getStringArgument("startingModule"));
     }
 }

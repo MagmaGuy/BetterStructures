@@ -24,6 +24,9 @@ public class Module {
             Logger.debug("rotation was null at the time of the paste, this will not do");
             return;
         }
+        //todo: this is scuffed af
+        if (rotation == 90) rotation = 270;
+        else if (rotation == 270) rotation = 90;
         switch (rotation) {
             case 0:
                 break;
