@@ -48,7 +48,7 @@ public class ModulesConfig extends CustomConfig {
                     clipboard = clipboards.get(file);
                     break;
                 }
-            new ModulesContainer(
+            ModulesContainer.initializeModulesContainer(
                     clipboard,
                     schematicFilename,
                     modulesConfigFields,

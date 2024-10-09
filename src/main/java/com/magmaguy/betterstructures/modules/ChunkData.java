@@ -1,28 +1,37 @@
 package com.magmaguy.betterstructures.modules;
 
+import com.magmaguy.magmacore.util.Logger;
 import lombok.Getter;
 import lombok.Setter;
+import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.entity.Display;
+import org.bukkit.entity.EntityType;
+import org.bukkit.entity.TextDisplay;
+import org.bukkit.util.Transformation;
+import org.bukkit.util.Vector;
+import org.joml.AxisAngle4f;
+import org.joml.Vector3f;
 import org.joml.Vector3i;
 
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class ChunkData {
     @Getter
     private final Map<BuildBorder, ChunkData> orientedNeighbours = new EnumMap<>(BuildBorder.class);
     private final World world;
-    @Getter
     private final Vector3i chunkLocation;
-    private String clipboardName = null;
-    private Byte rotation = null;
+    List<PriorityQueue<ChunkData>> emptyNeighborBuckets;
+    @Getter
+    private ModulesContainer modulesContainer;
     @Getter
     @Setter
     private int generatedNeighborCount = 0;
-    List<PriorityQueue<ChunkData>> emptyNeighborBuckets;
 
     public ChunkData(Vector3i chunkLocation, World world, List<PriorityQueue<ChunkData>> emptyNeighborBuckets) {
         this.chunkLocation = chunkLocation;
@@ -30,53 +39,47 @@ public class ChunkData {
         this.emptyNeighborBuckets = emptyNeighborBuckets;
     }
 
-    public Integer getRotation() {
-        if (rotation == null) return null;
-        return switch (rotation) {
-            case 0 -> 0;
-            case 1 -> 90;
-            case 2 -> 180;
-            case 3 -> 270;
-            default -> null;
-        };
-    }
+    public void showDebugTextDisplays() {
+        Color color = Color.fromRGB(ThreadLocalRandom.current().nextInt(0, 256), ThreadLocalRandom.current().nextInt(0, 256), ThreadLocalRandom.current().nextInt(0, 256));
+        Vector3i centerLocation = getChunkLocation().mul(16).add(8, 8, 8);
+        Location actualCenterLocation = new Location(world, centerLocation.x, centerLocation.y, centerLocation.z);
+        spawnDebugText(actualCenterLocation, getModulesContainer().getClipboardFilename(), color, 1);
+        spawnDebugText(actualCenterLocation.clone().add(new Vector(0, -1 / 4d, 0)), "Rotation: " + getModulesContainer().getRotation(), color, 1);
 
-    public void setRotation(Integer intRotation) {
-        if (intRotation == null) {
-            this.rotation = null;
-            return;
+        //possible module borders
+        for (Map.Entry<BuildBorder, List<ModulesContainer.NeighborTag>> buildBorderListEntry : getModulesContainer().getBorderTags().entrySet()) {
+            Vector3i offset = switch (BuildBorder.transformDirection(buildBorderListEntry.getKey(), getModulesContainer().getRotation())) {
+                case UP -> new Vector3i(0, 5, 0);
+                case DOWN -> new Vector3i(0, -5, 0);
+                case EAST -> new Vector3i(5, 0, 0);
+                case WEST -> new Vector3i(-5, 0, 0);
+                case NORTH -> new Vector3i(0, 0, -5);
+                case SOUTH -> new Vector3i(0, 0, 5);
+                default -> new Vector3i(0, 0, 0);
+            };
+
+            spawnDebugText(actualCenterLocation.clone().add(offset.x, offset.y, offset.z), buildBorderListEntry.getKey().name(), color, 1);
+            int counter = 0;
+            for (ModulesContainer.NeighborTag neighborTag : buildBorderListEntry.getValue()) {
+                counter++;
+                spawnDebugText(actualCenterLocation.clone().add(offset.x, offset.y - counter / 4d, offset.z), neighborTag.getTag(), color, 1);
+            }
         }
-        switch (intRotation) {
-            case 0 -> rotation = 0;
-            case 90 -> rotation = 1;
-            case 180 -> rotation = 2;
-            case 270 -> rotation = 3;
-            default -> rotation = 0;
-        }
     }
 
-    public ModulesContainer getModulesContainer() {
-        if (clipboardName == null) return null;
-        return ModulesContainer.getModulesContainers().get(clipboardName);
+    private void spawnDebugText(Location location, String text, Color color, int scale) {
+        TextDisplay textDisplay = (TextDisplay) world.spawnEntity(location, EntityType.TEXT_DISPLAY);
+        textDisplay.setBillboard(Display.Billboard.CENTER);
+        textDisplay.setTransformation(new Transformation(new Vector3f(), new AxisAngle4f(), new Vector3f(scale, scale, scale), new AxisAngle4f()));
+        textDisplay.setBackgroundColor(color);
+        textDisplay.setTextOpacity((byte) 1);
+        textDisplay.setSeeThrough(true);
+        textDisplay.setText(text);
+        textDisplay.setViewRange(0.1f);
     }
 
-    private void serializeData(ModulesContainer.PastableModulesContainer pastableModulesContainer) {
-        if (pastableModulesContainer.modulesContainer().getClipboardFilename() == null)
-            clipboardName = null;
-        else
-            clipboardName = pastableModulesContainer.modulesContainer().getClipboardFilename();
-        setRotation(pastableModulesContainer.rotation());
-    }
-
-    public boolean isNothing() {
-        return clipboardName != null && getModulesContainer().isNothing();
-    }
-
-    public boolean canOnlyBeNothing() {
-        for (ChunkData value : orientedNeighbours.values()) {
-            if (value.isGenerated() && !value.isNothing()) return false;
-        }
-        return true;
+    public Vector3i getChunkLocation() {
+        return new Vector3i(chunkLocation.x, chunkLocation.y, chunkLocation.z);
     }
 
     public void addNeighbor(BuildBorder buildBorder, ChunkData neighborToAdd) {
@@ -84,85 +87,36 @@ public class ChunkData {
         orientedNeighbours.put(buildBorder, neighborToAdd);
     }
 
-    public int getGeneratedNeighborCount() {
-        int count = 0;
-        for (ChunkData neighbor : orientedNeighbours.values())
-            if (neighbor.isGenerated()) count++;
-        return count;
-    }
-
     public void processPaste(ModulesContainer.PastableModulesContainer pastableModulesContainer) {
-        serializeData(pastableModulesContainer);
-        int rotation = pastableModulesContainer.rotation();
-        if (pastableModulesContainer.modulesContainer().getModulesConfigField() != null &&
-                pastableModulesContainer.modulesContainer().getModulesConfigField().isEnforceVerticalRotation()) {
-            if (orientedNeighbours.get(BuildBorder.UP) != null) {
-                orientedNeighbours.get(BuildBorder.UP).setRotation(rotation);
-            }
-            if (orientedNeighbours.get(BuildBorder.DOWN) != null) {
-                orientedNeighbours.get(BuildBorder.DOWN).setRotation(rotation);
-            }
-        }
-//        emptyChunks.remove(this); this should be done at the time of selecting it
-        orientedNeighbours.values().forEach(orientedNeighbour -> {
-            if (!orientedNeighbour.isGenerated()) orientedNeighbour.updateGeneratedNeighborCount();
-        });
+        modulesContainer = pastableModulesContainer.modulesContainer();
+        orientedNeighbours.values().forEach(ChunkData::updateGeneratedNeighborCount);
     }
 
     public boolean isGenerated() {
-        return clipboardName != null;
+        return modulesContainer != null;
     }
 
     private void resetData() {
-        clearChunk();
-        this.clipboardName = null;
-        setRotation(getValidRotationFromNeighbor(BuildBorder.DOWN));
-        if (rotation == null)
-            setRotation(getValidRotationFromNeighbor(BuildBorder.UP));
-        updateGeneratedNeighborCount();
-//        recalculateGeneratedNeighborCount();
-    }
-
-    private Integer getValidRotationFromNeighbor(BuildBorder border) {
-        ModulesContainer modulesContainer = orientedNeighbours.get(border).getModulesContainer();
-        if (orientedNeighbours.get(border) != null &&
-                orientedNeighbours.get(border).rotation != null &&
-                modulesContainer != null &&
-                modulesContainer.getModulesConfigField() != null &&
-                modulesContainer.getModulesConfigField().isEnforceVerticalRotation()) {
-            return orientedNeighbours.get(border).getRotation();
+        for (int x = 0; x < 16; x++) {
+            for (int y = 0; y < 16; y++) {
+                for (int z = 0; z < 16; z++) {
+                    Location blockLocation = new Location(world,
+                            chunkLocation.x * 16 + x,
+                            chunkLocation.y * 16 + y,
+                            chunkLocation.z * 16 + z);
+                    blockLocation.getBlock().setType(org.bukkit.Material.AIR);
+                }
+            }
         }
-        return null;
+        this.modulesContainer = null;
+//        updateGeneratedNeighborCount();
     }
 
     public void hardReset() {
         resetData();
         orientedNeighbours.values().forEach(ChunkData::resetData);
-    }
-
-    private void clearChunk() {
-        for (int x = 0; x < 16; x++) {
-            for (int y = 0; y < 16; y++) {
-                for (int z = 0; z < 16; z++) {
-                    Location blockLocation = new Location(world, chunkLocation.x * 16 + x, chunkLocation.y * 16 + y, chunkLocation.z * 16 + z);
-                    blockLocation.getBlock().setType(org.bukkit.Material.AIR);
-                }
-            }
-        }
-    }
-
-    public ModulesContainer.BorderTags collectValidBordersFromNeighbours() {
-        ModulesContainer.BorderTags borderTags = new ModulesContainer.BorderTags(new EnumMap<>(BuildBorder.class));
-        for (Map.Entry<BuildBorder, ChunkData> buildBorderChunkDataEntry : orientedNeighbours.entrySet()) {
-            ModulesContainer modulesContainer = buildBorderChunkDataEntry.getValue().getModulesContainer();
-            if (modulesContainer != null)
-                borderTags.put(
-                        buildBorderChunkDataEntry.getKey(),
-                        modulesContainer.getBorderTags().getRotatedTagsForDirection(
-                                buildBorderChunkDataEntry.getKey().getOpposite(),
-                                buildBorderChunkDataEntry.getValue().getRotation()));
-        }
-        return borderTags;
+        updateGeneratedNeighborCount();
+        orientedNeighbours.values().forEach(ChunkData::updateGeneratedNeighborCount);
     }
 
     private void recalculateGeneratedNeighborCount() {
@@ -173,6 +127,7 @@ public class ChunkData {
     }
 
     public void updateGeneratedNeighborCount() {
+        if (isGenerated()) return;
         int oldCount = this.generatedNeighborCount;
         recalculateGeneratedNeighborCount();
 

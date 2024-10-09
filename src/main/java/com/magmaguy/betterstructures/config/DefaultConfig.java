@@ -44,6 +44,8 @@ public class DefaultConfig extends ConfigurationFile {
     private static DefaultConfig instance;
     @Getter
     private static boolean setupDone;
+    @Getter
+    private static int modularChunkPastingSpeed = 10;
 
     public DefaultConfig() {
         super("config.yml");
@@ -88,6 +90,7 @@ public class DefaultConfig extends ConfigurationFile {
         regionProtectedMessage = ConfigurationEngine.setString(fileConfiguration, "regionProtectedMessage", "&8[BetterStructures] &cDefeat the zone's bosses to edit blocks!");
         protectEliteMobsRegions = ConfigurationEngine.setBoolean(fileConfiguration, "protectEliteMobsRegions", true);
         setupDone = ConfigurationEngine.setBoolean(fileConfiguration, "setupDone", false);
+        modularChunkPastingSpeed = ConfigurationEngine.setInt(fileConfiguration, "modularChunkPastingSpeed", 10);
         ConfigurationEngine.fileSaverOnlyDefaults(fileConfiguration, file);
     }
 }

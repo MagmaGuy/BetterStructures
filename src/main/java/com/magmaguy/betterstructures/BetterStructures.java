@@ -68,7 +68,8 @@ public final class BetterStructures extends JavaPlugin {
         commandManager.registerCommand(new VersionCommand());
         commandManager.registerCommand(new SetupCommand());
         commandManager.registerCommand(new FirstTimeSetupCommand());
-        commandManager.registerCommand(new GenerateInfiniteCommand());
+        commandManager.registerCommand(new GenerateModulesInstantlyCommand());
+        commandManager.registerCommand(new GenerateModulesSlowlyCommand());
 
         VersionChecker.checkPluginVersion();
         if (Bukkit.getPluginManager().getPlugin("WorldGuard") != null &&
@@ -96,7 +97,6 @@ public final class BetterStructures extends JavaPlugin {
         // Plugin shutdown logic
         SchematicContainer.shutdown();
         Bukkit.getServer().getScheduler().cancelTasks(MetadataHandler.PLUGIN);
-        Bukkit.getServer().getScheduler().cancelTasks(this);
         MagmaCore.shutdown();
         HandlerList.unregisterAll(MetadataHandler.PLUGIN);
         BSPackage.shutdown();

@@ -1,6 +1,7 @@
 package com.magmaguy.betterstructures.modules;
 
 import com.magmaguy.betterstructures.config.modules.ModulesConfigFields;
+import com.magmaguy.magmacore.util.Logger;
 
 import javax.annotation.Nullable;
 
@@ -30,7 +31,9 @@ public enum BuildBorder {
     }
 
     public static BuildBorder transformDirection(BuildBorder direction, Integer rotation) {
-        return switch (rotation % 360) {
+        if (rotation == null || rotation == 0) return direction;
+        rotation = ((rotation % 360) + 360) % 360; //normalizes negative rotations
+        return switch (rotation) {
             case 90 -> switch (direction) {
                 case NORTH -> BuildBorder.EAST;
                 case EAST -> BuildBorder.SOUTH;
@@ -52,7 +55,10 @@ public enum BuildBorder {
                 case WEST -> BuildBorder.SOUTH;
                 default -> direction;
             };
-            default -> direction; // 0 degrees or full rotation or up/down
+            default -> {
+                Logger.warn("Invalid rotation detected! " + rotation);
+                yield direction;
+            }
         };
     }
 }

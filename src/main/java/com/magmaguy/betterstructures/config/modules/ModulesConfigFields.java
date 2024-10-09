@@ -26,9 +26,13 @@ public class ModulesConfigFields extends CustomConfigFields {
     @Getter
     private Integer minY = -4;
     @Getter
-    private Integer maxY = 16;
+    private Integer maxY = 20;
     @Getter
     private boolean enforceVerticalRotation = false;
+    @Getter
+    private boolean noRepeat = false;
+    @Getter
+    private double weight = 100D;
 
     /**
      * Used by plugin-generated files (defaults)
@@ -54,7 +58,9 @@ public class ModulesConfigFields extends CustomConfigFields {
         }
         this.borderMap = processMap("borders", new HashMap<>());
         this.minY = processInt("minY", minY, -4, true);
-        this.maxY = processInt("maxY", maxY, 16, true);
+        this.maxY = processInt("maxY", maxY, 20, true);
         this.enforceVerticalRotation = processBoolean("enforceVerticalRotation", enforceVerticalRotation, enforceVerticalRotation, true);
+        this.noRepeat = processBoolean("noRepeat", noRepeat, noRepeat, true);
+        this.weight = processDouble("weight", weight, weight, true);
     }
 }
