@@ -156,7 +156,7 @@ public class ChestContents {
             weightsMap.put(i, chestRarities.get(i).chestWeight);
 
         for (int i = 0; i < amount; i++) {
-            ItemStack itemStack = chestRarities.get(WeighedProbability.pickWeighedProbability(weightsMap)).rollLoot();
+            ItemStack itemStack = chestRarities.get(WeighedProbability.pickWeightedProbability(weightsMap)).rollLoot();
             if (itemStack != null) {
                 int counter = 0;
                 while (counter < 100) {
@@ -184,7 +184,7 @@ public class ChestContents {
             HashMap<Integer, Double> weightsMap = new HashMap<>();
             for (int i = chestEntries.size() - 1; i >= 0; i--)
                 weightsMap.put(i, chestEntries.get(i).getWeight());
-            return chestEntries.get(WeighedProbability.pickWeighedProbability(weightsMap)).rollEntry();
+            return chestEntries.get(WeighedProbability.pickWeightedProbability(weightsMap)).rollEntry();
         }
     }
 }

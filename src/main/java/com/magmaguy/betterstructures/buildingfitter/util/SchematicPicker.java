@@ -22,7 +22,7 @@ public class SchematicPicker {
         HashMap<Integer, Double> probabilities = new HashMap<>();
         for (int i = 0; i < schematicContainers.size(); i++)
             probabilities.put(i, schematicContainers.get(i).getSchematicConfigField().getWeight());
-        SchematicContainer schematicContainer = schematicContainers.get(WeighedProbability.pickWeighedProbability(probabilities));
+        SchematicContainer schematicContainer = schematicContainers.get(WeighedProbability.pickWeightedProbability(probabilities));
         return schematicContainer;
     }
 }

@@ -4,7 +4,7 @@ import java.util.Map;
 
 public class WeighedProbability {
 
-    public static Integer pickWeighedProbability(Map<Integer, Double> weighedValues) {
+    public static Integer pickWeightedProbability(Map<Integer, Double> weighedValues) {
 
         double totalWeight = 0;
 

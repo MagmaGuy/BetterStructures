@@ -2,7 +2,6 @@ package com.magmaguy.betterstructures.config.modules;
 
 import com.magmaguy.betterstructures.MetadataHandler;
 import com.magmaguy.betterstructures.modules.ModulesContainer;
-import com.magmaguy.betterstructures.schematics.SchematicContainer;
 import com.magmaguy.betterstructures.worldedit.Schematic;
 import com.magmaguy.magmacore.config.CustomConfig;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
@@ -32,12 +31,14 @@ public class ModulesConfig extends CustomConfig {
 
         for (File file : clipboards.keySet()) {
             String configurationName = convertFromSchematicFilename(file.getName());
-            ModulesConfigFields schematicConfigField = new ModulesConfigFields(configurationName, true);
+            ModulesConfigFields moduleConfigField = new ModulesConfigFields(configurationName, true);
             new CustomConfig(file.getParent().replace(
                     MetadataHandler.PLUGIN.getDataFolder().getAbsolutePath() + File.separatorChar, ""),
-                    ModulesConfigFields.class, schematicConfigField);
-            moduleConfigurations.put(configurationName, schematicConfigField);
+                    ModulesConfigFields.class, moduleConfigField);
+            moduleConfigurations.put(configurationName, moduleConfigField);
         }
+
+        moduleConfigurations.values().forEach(ModulesConfigFields::validateClones);
 
         for (ModulesConfigFields modulesConfigFields : moduleConfigurations.values()) {
             if (!modulesConfigFields.isEnabled()) continue;
@@ -76,7 +77,7 @@ public class ModulesConfig extends CustomConfig {
         return configurationFilename.replace(".yml", ".schem");
     }
 
-    public static ModulesConfigFields getSchematicConfiguration(String filename) {
+    public static ModulesConfigFields getModuleConfiguration(String filename) {
         return moduleConfigurations.get(filename);
     }
 }

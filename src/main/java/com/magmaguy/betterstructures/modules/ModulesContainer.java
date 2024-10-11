@@ -2,13 +2,13 @@ package com.magmaguy.betterstructures.modules;
 
 import com.google.gson.Gson;
 import com.magmaguy.betterstructures.config.modules.ModulesConfigFields;
+import com.magmaguy.betterstructures.util.WeighedProbability;
 import com.magmaguy.magmacore.util.Logger;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
 import lombok.Getter;
 import org.joml.Vector3i;
 
 import java.util.*;
-import java.util.concurrent.ThreadLocalRandom;
 
 public class ModulesContainer {
 
@@ -40,7 +40,7 @@ public class ModulesContainer {
         if (!clipboardFilename.equalsIgnoreCase("nothing"))
             processBorders(modulesConfigField.getBorderMap());
         else nothing = true;
-        modulesContainers.put(clipboardFilename+"_rotation_"+rotation, this);
+        modulesContainers.put(clipboardFilename + "_rotation_" + rotation, this);
     }
 
     public static void initializeModulesContainer(Clipboard clipboard, String clipboardFilename, ModulesConfigFields modulesConfigField, String configFilename) {
@@ -97,7 +97,8 @@ public class ModulesContainer {
                 if (!iteratedeNeighbourChunkData.isGenerated()) continue;
 
                 //check rotation enforcement
-                if (!checkVerticalRotationValidity(direction, module, iteratedeNeighbourChunkData.getModulesContainer())) {
+                if (!checkVerticalRotationValidity(direction, module, iteratedeNeighbourChunkData.getModulesContainer()) ||
+                        !checkHorizontalRotationValidity(direction, module, iteratedeNeighbourChunkData.getModulesContainer())) {
                     isValid = false;
                     break;
                 }
@@ -139,44 +140,49 @@ public class ModulesContainer {
     private static boolean checkVerticalRotationValidity(BuildBorder direction, ModulesContainer module, ModulesContainer neighbour) {
         if (direction != BuildBorder.UP && direction != BuildBorder.DOWN) return true;
         if (module.nothing || neighbour.nothing) return true;
-        if (!neighbour.modulesConfigField.isEnforceVerticalRotation() && !module.modulesConfigField.isEnforceVerticalRotation()) return true;
+        if (!neighbour.modulesConfigField.isEnforceVerticalRotation() && !module.modulesConfigField.isEnforceVerticalRotation())
+            return true;
         return module.rotation == neighbour.rotation;
+    }
+
+    private static boolean checkHorizontalRotationValidity(BuildBorder direction, ModulesContainer module, ModulesContainer neighbour) {
+        if (direction == BuildBorder.UP || direction == BuildBorder.DOWN) return true;
+        if (module.nothing || neighbour.nothing) return true;
+        if (!module.modulesConfigField.isEnforceHorizontalRotation() &&
+                !neighbour.modulesConfigField.isEnforceHorizontalRotation())
+            return true;
+        else
+            return module.rotation == neighbour.rotation;
     }
 
     public static PastableModulesContainer pickRandomModuleFromSurroundings(ChunkData chunkData) {
         List<PastableModulesContainer> validModules = getValidModulesFromSurroundings(chunkData);
         if (validModules.isEmpty()) return null;
-//        return validModules.get(ThreadLocalRandom.current().nextInt(0, validModules.size()));
-        return pickWeightedRandomModule(validModules);
+        return pickWeightedRandomModule(validModules, chunkData);
     }
 
-    public static PastableModulesContainer pickWeightedRandomModule(List<PastableModulesContainer> modules) {
-        double totalWeight = 0.0;
-        for (PastableModulesContainer module : modules) {
-            double weight;
-            if (module.modulesContainer().getModulesConfigField() != null)
-                weight = module.modulesContainer().getModulesConfigField().getWeight();
-            else
-                weight = 50; //todo: this is going to require some thinking on how to do this value
-            totalWeight += weight;
-        }
-
-        double randomValue = ThreadLocalRandom.current().nextDouble() * totalWeight;
-
-        double cumulativeWeight = 0.0;
-        for (PastableModulesContainer module : modules) {
-            double weight;
-            if (module.modulesContainer().getModulesConfigField() != null)
-                weight = module.modulesContainer().getModulesConfigField().getWeight();
-            else
-                weight = 50;
-            cumulativeWeight += weight;
-            if (randomValue <= cumulativeWeight) {
-                return module;
+    public static PastableModulesContainer pickWeightedRandomModule(List<PastableModulesContainer> modules,
+                                                                    ChunkData chunkData) {
+        Map<Integer, Double> weightMap = new HashMap<>();
+        Map<Integer, PastableModulesContainer> moduleMap = new HashMap<>();
+        for (int i = 0; i < modules.size(); i++) {
+            ModulesContainer modulesContainer = modules.get(i).modulesContainer();
+            double weight =modulesContainer.getWeight();
+            if (!modulesContainer.nothing && modulesContainer.getModulesConfigField().getRepetitionPenalty() != 0) {
+                for (ChunkData value : chunkData.getOrientedNeighbours().values()) {
+                    if (value.getModulesContainer() != null && modules.get(i).modulesContainer.getClipboardFilename().equals(value.getModulesContainer().getClipboardFilename()))
+                        weight += modules.get(i).modulesContainer().getModulesConfigField().getRepetitionPenalty();
+                }
             }
+            weightMap.put(i, weight);
+            moduleMap.put(i, modules.get(i));
         }
-        // Fallback in case of rounding errors
-        return modules.get(modules.size() - 1);
+        return moduleMap.get(WeighedProbability.pickWeightedProbability(weightMap));
+    }
+
+    private double getWeight(){
+        if (nothing) return 50;
+        else return modulesConfigField.getWeight();
     }
 
 
@@ -204,7 +210,7 @@ public class ModulesContainer {
             }
         }
 
-        Logger.debug("Finished initializing module " + clipboardFilename + " with rotation " + rotation + " now its " + new Gson().toJson(borderTags));
+//        Logger.debug("Finished initializing module " + clipboardFilename + " with rotation " + rotation + " now its " + new Gson().toJson(borderTags));
     }
 
     private List<String> processBorderList(Object rawBorderList) {
