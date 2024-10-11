@@ -315,11 +315,14 @@ public class WaveFunctionCollapseGenerator {
     private void actualPaste(ChunkData chunkData) {
         ModulesContainer modulesContainer = chunkData.getModulesContainer();
         if (modulesContainer == null || modulesContainer.getClipboard() == null) return;
-        Location pasteLocation = new Location(world, chunkData.getChunkLocation().x * 16, chunkData.getChunkLocation().y * 16, chunkData.getChunkLocation().z * 16);
-        Module.paste(modulesContainer.getClipboard(), pasteLocation.clone().add(-1, 0, -1), chunkData.getModulesContainer().getRotation());
+        Module.paste(modulesContainer.getClipboard(), chunkData.getRealLocation().add(-1, 0, -1), chunkData.getModulesContainer().getRotation());
         if (debug) chunkData.showDebugTextDisplays();
     }
 
+    private void actualBatchPaste(List<ChunkData> batchedChunkData) {
+        Module.batchPaste(batchedChunkData, world);
+        if (debug) batchedChunkData.forEach(ChunkData::showDebugTextDisplays);
+    }
 
     private void generateNextChunk(ChunkData chunkData) {
         // Get valid modules
@@ -357,6 +360,14 @@ public class WaveFunctionCollapseGenerator {
             timeMessage("Generation");
             clearBar();
         }
+    }
+
+    private void cleanup(){
+        emptyNeighborBuckets.clear();
+        spiralPositions.clear();
+        distanceCache.clear();
+        processedXZ.clear();
+        chunkArray = null;
     }
 
     private void timeMessage(String whatEnded) {
@@ -406,6 +417,8 @@ public class WaveFunctionCollapseGenerator {
             public void run() {
                 int batchCount = 0;
 
+                List<ChunkData> batchedChunks = new ArrayList<>();
+
                 while (index < spiralPositions.size() && batchCount < massPasteSize) {
                     massPasteCount++;
                     Vector2i pos = spiralPositions.get(index);
@@ -420,21 +433,25 @@ public class WaveFunctionCollapseGenerator {
 
                     for (int y = MIN_Y_LEVEL; y < MAX_Y_LEVEL; y++) {
                         ChunkData chunkData = getChunkDataAt(x, y, z);
-                        if (chunkData == null) {
-                            Logger.warn("ChunkData not found at location: " + x + ", " + y + ", " + z);
-                        } else {
-                            actualPaste(chunkData);
-                        }
+                        batchedChunks.add(chunkData);
+//                        if (chunkData == null) {
+//                            Logger.warn("ChunkData not found at location: " + x + ", " + y + ", " + z);
+//                        } else {
+//                            actualPaste(chunkData);
+//                        }
                     }
 
                     index++;
                     batchCount++;
                 }
 
+                actualBatchPaste(batchedChunks);
+
                 if (index >= spiralPositions.size()) {
                     timeMessage("Mass paste");
                     clearBar();
                     this.cancel(); // Stop the task
+                    cleanup();
                 }
                 // Else, the task will automatically reschedule itself on the next tick
             }

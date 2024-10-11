@@ -1,6 +1,5 @@
 package com.magmaguy.betterstructures.modules;
 
-import com.magmaguy.magmacore.util.Logger;
 import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.Color;
@@ -24,6 +23,7 @@ import java.util.concurrent.ThreadLocalRandom;
 public class ChunkData {
     @Getter
     private final Map<BuildBorder, ChunkData> orientedNeighbours = new EnumMap<>(BuildBorder.class);
+    @Getter
     private final World world;
     private final Vector3i chunkLocation;
     List<PriorityQueue<ChunkData>> emptyNeighborBuckets;
@@ -37,6 +37,10 @@ public class ChunkData {
         this.chunkLocation = chunkLocation;
         this.world = world;
         this.emptyNeighborBuckets = emptyNeighborBuckets;
+    }
+
+    public Location getRealLocation(){
+        return new Location(world, getChunkLocation().x * 16, getChunkLocation().y * 16, getChunkLocation().z * 16);
     }
 
     public void showDebugTextDisplays() {
