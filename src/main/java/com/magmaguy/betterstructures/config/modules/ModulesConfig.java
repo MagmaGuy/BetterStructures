@@ -56,6 +56,8 @@ public class ModulesConfig extends CustomConfig {
                     modulesConfigFields.getFilename());
         }
 
+        ModulesContainer.postInitializeModulesContainer();
+
     }
 
     private static void scanDirectoryForSchematics(File file, HashMap<File, Clipboard> clipboards) {

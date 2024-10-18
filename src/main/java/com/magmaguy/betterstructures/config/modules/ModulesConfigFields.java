@@ -7,7 +7,7 @@ import com.magmaguy.magmacore.config.CustomConfigFields;
 import com.magmaguy.magmacore.util.Logger;
 import lombok.Getter;
 import lombok.Setter;
-import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.block.Biome;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -28,10 +28,19 @@ public class ModulesConfigFields extends CustomConfigFields {
     private double weight = 100D;
     private double repetitionPenalty = 0;
     @Getter
-    private String biome = "default";
+    private String moduleBiome = "default";
+    private String minecraftBiomeString = "null";
+    @Getter
+    private Biome minecraftBiome = null;
     @Getter
     private String cloneConfig = "";
     private ModulesConfigFields clonedConfig = null;
+    private boolean northIsPassable = true;
+    private boolean southIsPassable = true;
+    private boolean eastIsPassable = true;
+    private boolean westIsPassable = true;
+    private boolean upIsPassable = true;
+    private boolean downIsPassable = true;
 
     /**
      * Used by plugin-generated files (defaults)
@@ -83,6 +92,30 @@ public class ModulesConfigFields extends CustomConfigFields {
         return clonedConfig == null ? repetitionPenalty : clonedConfig.getRepetitionPenalty();
     }
 
+    public boolean isNorthIsPassable() {
+        return clonedConfig == null ? northIsPassable : clonedConfig.isNorthIsPassable();
+    }
+
+    public boolean isSouthIsPassable() {
+        return clonedConfig == null ? southIsPassable : clonedConfig.isSouthIsPassable();
+    }
+
+    public boolean isEastIsPassable() {
+        return clonedConfig == null ? eastIsPassable : clonedConfig.isEastIsPassable();
+    }
+
+    public boolean isWestIsPassable() {
+        return clonedConfig == null ? westIsPassable : clonedConfig.isWestIsPassable();
+    }
+
+    public boolean isUpIsPassable() {
+        return clonedConfig == null ? upIsPassable : clonedConfig.isUpIsPassable();
+    }
+
+    public boolean isDownIsPassable() {
+        return clonedConfig == null ? downIsPassable : clonedConfig.isDownIsPassable();
+    }
+
     @Override
     public void processConfigFields() {
         this.isEnabled = processBoolean("isEnabled", isEnabled, true, true);
@@ -103,8 +136,21 @@ public class ModulesConfigFields extends CustomConfigFields {
         this.weight = processDouble("weight", weight, weight, true);
         this.repetitionPenalty = processDouble("repetitionPenalty", repetitionPenalty, repetitionPenalty, true);
         this.enforceHorizontalRotation = processBoolean("enforceHorizontalRotation", enforceHorizontalRotation, enforceHorizontalRotation, true);
-        this.biome = processString("biome", biome, biome, true);
+        this.moduleBiome = processString("biome", moduleBiome, moduleBiome, true);
+        this.minecraftBiomeString = processString("minecraftBiome", minecraftBiomeString, minecraftBiomeString, true);
+        if (!minecraftBiomeString.equalsIgnoreCase("null"))
+            try {
+                this.minecraftBiome = Biome.valueOf(minecraftBiomeString.toUpperCase());
+            } catch (Exception e) {
+                Logger.warn("Biome " + minecraftBiomeString + " is not a valid biome! Fix it in " + filename);
+            }
         this.cloneConfig = processString("cloneConfig", cloneConfig, cloneConfig, true);
+        this.northIsPassable = processBoolean("northIsPassable", northIsPassable, northIsPassable, true);
+        this.southIsPassable = processBoolean("southIsPassable", southIsPassable, southIsPassable, true);
+        this.eastIsPassable = processBoolean("eastIsPassable", eastIsPassable, eastIsPassable, true);
+        this.westIsPassable = processBoolean("westIsPassable", westIsPassable, westIsPassable, true);
+        this.upIsPassable = processBoolean("upIsPassable", upIsPassable, upIsPassable, true);
+        this.downIsPassable = processBoolean("downIsPassable", downIsPassable, downIsPassable, true);
     }
 
     public void validateClones() {
@@ -115,19 +161,25 @@ public class ModulesConfigFields extends CustomConfigFields {
             return;
         } else
             Logger.info("Cloned " + filename + " into " + clonedConfig.getFilename());
-//        fileConfiguration.set("treasureFile", null);
-//        fileConfiguration.set("borders", null);
-//        fileConfiguration.set("minY", null);
-//        fileConfiguration.set("maxY", null);
-//        fileConfiguration.set("enforceVerticalRotation", null);
-//        fileConfiguration.set("noRepeat", null);
-//        fileConfiguration.set("weight", null);
-//        fileConfiguration.set("repetitionPenalty", null);
-//        fileConfiguration.set("enforceHorizontalRotation", null);
-//        try {
-//            fileConfiguration.save(file);
-//        } catch (IOException e) {
-//            throw new RuntimeException(e);
-//        }
+        fileConfiguration.set("treasureFile", null);
+        fileConfiguration.set("borders", null);
+        fileConfiguration.set("minY", null);
+        fileConfiguration.set("maxY", null);
+        fileConfiguration.set("enforceVerticalRotation", null);
+        fileConfiguration.set("noRepeat", null);
+        fileConfiguration.set("weight", null);
+        fileConfiguration.set("repetitionPenalty", null);
+        fileConfiguration.set("enforceHorizontalRotation", null);
+        fileConfiguration.set("northIsPassable", null);
+        fileConfiguration.set("southIsPassable", null);
+        fileConfiguration.set("eastIsPassable", null);
+        fileConfiguration.set("westIsPassable", null);
+        fileConfiguration.set("upIsPassable", null);
+        fileConfiguration.set("downIsPassable", null);
+        try {
+            fileConfiguration.save(file);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
