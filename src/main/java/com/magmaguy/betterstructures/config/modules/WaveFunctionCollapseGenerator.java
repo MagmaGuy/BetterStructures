@@ -19,7 +19,6 @@ import org.joml.Vector2i;
 import org.joml.Vector3i;
 
 import java.util.*;
-import java.util.concurrent.ThreadLocalRandom;
 
 public class WaveFunctionCollapseGenerator {
     @Getter
@@ -43,7 +42,7 @@ public class WaveFunctionCollapseGenerator {
     };
     private static final int MIN_Y_LEVEL = -4;
     private static final int MAX_Y_LEVEL = 20;
-    private static final int Y_SIZE = MAX_Y_LEVEL - MIN_Y_LEVEL; // Y_SIZE = 25
+//    private static final int Y_SIZE = MAX_Y_LEVEL - MIN_Y_LEVEL; // Y_SIZE = 25
     //    private final HashSet<ChunkData> emptyChunks = new HashSet<>();
     private final Player player;
     private final int radius;
@@ -52,23 +51,31 @@ public class WaveFunctionCollapseGenerator {
     private final Set<Vector2i> processedXZ = new HashSet<>();
     private final int averageYLevels = 10; // this is used to estimate the progress for the chunk detection
     private final BossBar completionPercentage;
-    private final Map<Vector3i, Long> distanceCache = new HashMap<>();
     private final List<Vector2i> spiralPositions;
-    private final List<PriorityQueue<ChunkData>> emptyNeighborBuckets = new ArrayList<>(7);
+    private final boolean debug;
+    private final boolean preventInsularModules = true; //todo: not all modes should do this
+    private final Map<Vector3i, ChunkData> chunkMap = new HashMap<>();
+    private final Queue<ChunkData> chunkQueue = new PriorityQueue<>(
+            Comparator.<ChunkData>comparingInt(chunkData -> -chunkData.getGeneratedNeighborCount())
+                    .thenComparingLong(chunkData -> {
+                        Vector3i loc = chunkData.getChunkLocation();
+                        return (long) loc.x * loc.x + (long) loc.y * loc.y + (long) loc.z * loc.z;
+                    })
+    );
+
+    int rollbackCounter = 0;
     private int interval;
-    private boolean systemShowcaseSpeed = false;
-    private ChunkData[][][] chunkArray;
+    private boolean slowGenerationForShowcase = false;
     private World world;
     private int processedChunks = 0;
     private int massPasteCount = 0;
     private long startTime;
-    private final boolean debug;
 
     public WaveFunctionCollapseGenerator(String worldName, int radius, boolean debug, int interval, Player player, String startingModule) {
         this.player = player;
         this.debug = debug;
         this.interval = interval;
-        systemShowcaseSpeed = true;
+        slowGenerationForShowcase = true;
         this.radius = radius;
         this.spiralPositions = generateSpiralPositions(radius);
         generateWorld(worldName);
@@ -84,12 +91,6 @@ public class WaveFunctionCollapseGenerator {
         new BukkitRunnable() {
             @Override
             public void run() {
-                for (int i = 0; i <= 6; i++) {
-                    emptyNeighborBuckets.add(new PriorityQueue<>(Comparator.comparingLong(chunkData -> getDistanceSquared(chunkData.getChunkLocation()))));
-                }
-
-                initializeChunkData();
-
                 start(startingModule);
             }
         }.runTaskAsynchronously(MetadataHandler.PLUGIN);
@@ -113,12 +114,6 @@ public class WaveFunctionCollapseGenerator {
         new BukkitRunnable() {
             @Override
             public void run() {
-                for (int i = 0; i <= 6; i++) {
-                    emptyNeighborBuckets.add(new PriorityQueue<>(Comparator.comparingLong(chunkData ->
-                            getDistanceSquared(chunkData.getChunkLocation()))));
-                }
-
-                initializeChunkData();
                 start(startingModule);
             }
         }.runTaskAsynchronously(MetadataHandler.PLUGIN);
@@ -131,6 +126,20 @@ public class WaveFunctionCollapseGenerator {
         bars.clear();
     }
 
+    private static boolean isPassable(ChunkData chunkData, BuildBorder border) {
+        if (chunkData == null) return false; // Return false if chunkData is null
+        ModulesContainer modulesContainer = chunkData.getModulesContainer();
+        ModulesConfigFields configField = modulesContainer != null ? modulesContainer.getModulesConfigField() : null;
+        return (configField == null) || switch (border) {
+            case UP -> configField.isUpIsPassable();
+            case DOWN -> configField.isDownIsPassable();
+            case NORTH -> configField.isNorthIsPassable();
+            case SOUTH -> configField.isSouthIsPassable();
+            case EAST -> configField.isEastIsPassable();
+            case WEST -> configField.isWestIsPassable();
+        };
+    }
+
     private void clearBar() {
         bars.remove(completionPercentage);
         completionPercentage.removeAll();
@@ -141,65 +150,11 @@ public class WaveFunctionCollapseGenerator {
         completionPercentage.setTitle(message);
     }
 
+    // And remove the getDistanceSquared method or keep it if used elsewhere:
     private Long getDistanceSquared(Vector3i location) {
-        return distanceCache.computeIfAbsent(location, Vector3i::lengthSquared);
+        return (long) location.x * location.x + (long) location.y * location.y + (long) location.z * location.z;
     }
 
-    private void initializeChunkData() {
-        int size = 2 * radius + 1; // Size in X and Z dimensions
-        chunkArray = new ChunkData[size][Y_SIZE][size];
-
-        // Initialize ChunkData instances
-        for (int x = -radius; x <= radius; x++) {
-            int arrayX = x + radius;
-            for (int y = MIN_Y_LEVEL; y < MAX_Y_LEVEL; y++) {
-                int arrayY = y - MIN_Y_LEVEL;
-                for (int z = -radius; z <= radius; z++) {
-                    int arrayZ = z + radius;
-                    Vector3i chunkLocation = new Vector3i(x, y, z);
-                    ChunkData chunkData = new ChunkData(chunkLocation, world, emptyNeighborBuckets);
-
-                    // Add to the appropriate bucket
-                    emptyNeighborBuckets.get(0).add(chunkData);
-
-                    chunkArray[arrayX][arrayY][arrayZ] = chunkData;
-                }
-            }
-        }
-
-        // Initialize neighbors
-        int xSize = chunkArray.length;
-        int ySize = chunkArray[0].length;
-        int zSize = chunkArray[0][0].length;
-
-        for (int x = 0; x < xSize; x++) {
-            for (int y = 0; y < ySize; y++) {
-                for (int z = 0; z < zSize; z++) {
-                    ChunkData chunkData = chunkArray[x][y][z];
-                    if (chunkData != null) {
-                        for (int i = 0; i < NEIGHBOR_OFFSETS.length; i++) {
-                            Vector3i offset = NEIGHBOR_OFFSETS[i];
-                            int neighborX = x + offset.x();
-                            int neighborY = y + offset.y();
-                            int neighborZ = z + offset.z();
-
-                            // Check boundaries
-                            if (neighborX >= 0 && neighborX < xSize &&
-                                    neighborY >= 0 && neighborY < ySize &&
-                                    neighborZ >= 0 && neighborZ < zSize) {
-
-                                ChunkData neighborChunkData = chunkArray[neighborX][neighborY][neighborZ];
-                                chunkData.addNeighbor(NEIGHBOR_DIRECTIONS[i], neighborChunkData);
-                            } else {
-                                // No neighbor in this direction
-                                chunkData.addNeighbor(NEIGHBOR_DIRECTIONS[i], null);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
 
     private void generateWorld(String worldName) {
         WorldCreator worldCreator = new WorldCreator(worldName);
@@ -214,35 +169,39 @@ public class WaveFunctionCollapseGenerator {
 
     private void start(String startingModule) {
         startTime = System.currentTimeMillis();
+
+        ChunkData startChunk = new ChunkData(new Vector3i(), world, chunkMap);
+        chunkMap.put(new Vector3i(), startChunk);
+        initializeChunkDataNeighbours(startChunk);
+
         ModulesContainer modulesContainer = ModulesContainer.getModulesContainers().get(startingModule);
         if (startingModule == null) {
             Logger.sendMessage(player, "Starting chunk was null! Canceling!");
             Logger.warn("Starting chunk was null! Canceling!");
             return;
         }
-        paste(new Vector3i(), modulesContainer, validRotations.get(ThreadLocalRandom.current().nextInt(0, validRotations.size()))); //todo reenable rotations
+        paste(new Vector3i(), modulesContainer);
         // Begin the recursive generation
         searchNextChunkToGenerate();
     }
 
     private void searchNextChunkToGenerate() {
-        if (systemShowcaseSpeed) {
-            ChunkData selectedChunkLocationKey = getNextChunk();
+        if (slowGenerationForShowcase) {
+            ChunkData selectedChunkLocationKey = chunkQueue.poll();
             if (selectedChunkLocationKey == null) {
                 done();
-                return;
+            } else {
+                generateNextChunk(selectedChunkLocationKey);
+                new BukkitRunnable() {
+                    @Override
+                    public void run() {
+                        searchNextChunkToGenerate();
+                    }
+                }.runTaskLater(MetadataHandler.PLUGIN, interval);
             }
-            generateNextChunk(selectedChunkLocationKey);
-
-            new BukkitRunnable() {
-                @Override
-                public void run() {
-                    searchNextChunkToGenerate();
-                }
-            }.runTaskLater(MetadataHandler.PLUGIN, interval);
         } else {
             while (true) {
-                ChunkData selectedChunkLocationKey = getNextChunk();
+                ChunkData selectedChunkLocationKey = chunkQueue.poll();
                 if (selectedChunkLocationKey == null) {
                     done();
                     return;
@@ -252,16 +211,6 @@ public class WaveFunctionCollapseGenerator {
         }
     }
 
-    private ChunkData getNextChunk() {
-        for (int i = 6; i >= 0; i--) {
-            PriorityQueue<ChunkData> bucket = emptyNeighborBuckets.get(i);
-            if (!bucket.isEmpty()) {
-                return bucket.poll(); // Retrieves and removes the chunk with the smallest distance
-            }
-        }
-        return null; // All buckets are empty
-    }
-
     private void updateAssemblingProgress() {
         int totalEstimatedChunks = ((2 * radius + 1) * (2 * radius + 1)) * averageYLevels;
         double progress = Round.twoDecimalPlaces(((double) processedXZ.size() * averageYLevels) / totalEstimatedChunks * 100);
@@ -269,7 +218,7 @@ public class WaveFunctionCollapseGenerator {
         updateProgress(progress / 100L, "Assembling modules - " + progress + "% done...");
     }
 
-    private void paste(Vector3i chunkLocation, ModulesContainer modulesContainer, Integer rotation) {
+    private void paste(Vector3i chunkLocation, ModulesContainer modulesContainer) {
         processedChunks++;
         processedXZ.add(new Vector2i(chunkLocation.x, chunkLocation.z));
 
@@ -284,9 +233,9 @@ public class WaveFunctionCollapseGenerator {
             return;
         }
 
-        chunkData.processPaste(new ModulesContainer.PastableModulesContainer(modulesContainer, rotation));
+        chunkData.processPaste(modulesContainer);
 
-        if (systemShowcaseSpeed) {
+        if (slowGenerationForShowcase) {
             new BukkitRunnable() {
                 @Override
                 public void run() {
@@ -297,19 +246,7 @@ public class WaveFunctionCollapseGenerator {
     }
 
     private ChunkData getChunkDataAt(int x, int y, int z) {
-        int arrayX = x + radius;
-        int arrayY = y - MIN_Y_LEVEL;
-        int arrayZ = z + radius;
-
-        // Check bounds if necessary
-        if (arrayX >= 0 && arrayX < chunkArray.length &&
-                arrayY >= 0 && arrayY < chunkArray[0].length &&
-                arrayZ >= 0 && arrayZ < chunkArray[0][0].length) {
-
-            return chunkArray[arrayX][arrayY][arrayZ];
-        } else {
-            return null;
-        }
+        return chunkMap.get(new Vector3i(x, y, z));
     }
 
     private void actualPaste(ChunkData chunkData) {
@@ -321,37 +258,140 @@ public class WaveFunctionCollapseGenerator {
 
     private void actualBatchPaste(List<ChunkData> batchedChunkData) {
         Module.batchPaste(batchedChunkData, world);
-        if (debug) batchedChunkData.forEach(ChunkData::showDebugTextDisplays);
+        if (debug) batchedChunkData.forEach(chunkData -> {
+            if (chunkData != null) chunkData.showDebugTextDisplays();
+        });
+    }
+
+    private void initializeChunkDataNeighbours(ChunkData chunkData) {
+        for (BuildBorder border : BuildBorder.values()) {
+            Vector3i neighborLocation = chunkData.getChunkLocation().add(getOffset(border));
+
+            if (withinBounds(neighborLocation)) {
+                ChunkData neighborChunk = chunkMap.get(neighborLocation);
+
+                if (neighborChunk == null) {
+                    Logger.debug("Initializing chunkData neighbours for chunk at " + chunkData.getChunkLocation());
+                    // Initialize neighbor
+                    neighborChunk = new ChunkData(neighborLocation, world, chunkMap);
+                    chunkMap.put(neighborLocation, neighborChunk);
+                    chunkQueue.add(neighborChunk);
+                }
+            }
+        }
+    }
+
+    private Vector3i getOffset(BuildBorder border) {
+        return switch (border) {
+            case NORTH -> new Vector3i(0, 0, -1);
+            case SOUTH -> new Vector3i(0, 0, 1);
+            case EAST -> new Vector3i(1, 0, 0);
+            case WEST -> new Vector3i(-1, 0, 0);
+            case UP -> new Vector3i(0, 1, 0);
+            case DOWN -> new Vector3i(0, -1, 0);
+        };
     }
 
     private void generateNextChunk(ChunkData chunkData) {
-        // Get valid modules
-        ModulesContainer.PastableModulesContainer pastableModulesContainer = ModulesContainer.pickRandomModuleFromSurroundings(chunkData);
-        if (pastableModulesContainer == null) {
-            Logger.warn("No valid modules to place at (" + chunkData.getChunkLocation().x + ", " + chunkData.getChunkLocation().y + ", " + chunkData.getChunkLocation().z + ")");
+        initializeChunkDataNeighbours(chunkData);
+
+        // Get valid modules for the current chunk
+        ModulesContainer modulesContainer = ModulesContainer.pickRandomModuleFromSurroundings(chunkData);
+        if (modulesContainer == null) {
             rollbackChunk(chunkData);
             return;
         }
 
         // Paste the module
-        paste(chunkData.getChunkLocation(), pastableModulesContainer.modulesContainer(), pastableModulesContainer.rotation());
+        paste(chunkData.getChunkLocation(), modulesContainer);
+//        chunkData.processPaste(modulesContainer);
+
+        if (slowGenerationForShowcase) {
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    actualPaste(chunkData);
+                }
+            }.runTask(MetadataHandler.PLUGIN);
+        }
+    }
+
+    private boolean withinBounds(Vector3i location) {
+        return Math.abs(location.x) <= radius &&
+                location.y >= MIN_Y_LEVEL &&
+                location.y <= MAX_Y_LEVEL &&
+                Math.abs(location.z) <= radius;
     }
 
     private void rollbackChunk(ChunkData chunkData) {
-        Vector3i location = chunkData.getChunkLocation();
-        Logger.warn("Rolling back chunk at (" + location.x + ", " + location.y + ", " + location.z + ")");
-        player.sendMessage("Rolling back invalid chunk at (" + location.x + ", " + location.y + ", " + location.z + ")");
-        chunkData.hardReset();
+        rollbackCounter++;
+        if (rollbackCounter % 1000 == 0) {
+            Vector3i location = chunkData.getChunkLocation();
+            Logger.warn("Current rollback status: " + rollbackCounter + " chunks rolled back. Latest rollback location: " + location.x + ", " + location.y + ", " + location.z);
+            player.sendMessage("Current rollback status: " + rollbackCounter + " chunks rolled back. Latest rollback location: " + location.x + ", " + location.y + ", " + location.z);
+        }
+        chunkData.hardReset(slowGenerationForShowcase, chunkQueue);
     }
 
+//    private void removeInsularModules() {
+//        if (!preventInsularModules) return;
+//
+//        ChunkData startingModule = getChunkDataAt(0, 0, 0);
+//        if (startingModule == null) {
+//            Logger.warn("Starting module is null at (0, 0, 0). Cannot remove insular modules.");
+//            return;
+//        }
+//
+//        Queue<ChunkData> uncheckedNeighbors = new LinkedList<>();
+//        Set<ChunkData> validatedModules = new HashSet<>();
+//        Set<ChunkData> queuedChunks = new HashSet<>();
+//
+//        uncheckedNeighbors.add(startingModule);
+//        queuedChunks.add(startingModule);
+//
+//        while (!uncheckedNeighbors.isEmpty()) {
+//            ChunkData chunkData = uncheckedNeighbors.poll();
+//            if (validatedModules.contains(chunkData)) continue;
+//
+//            for (Map.Entry<BuildBorder, ChunkData> entry : chunkData.getOrientedNeighbours().entrySet()) {
+//                BuildBorder border = entry.getKey();
+//                ChunkData neighborChunk = entry.getValue();
+//
+//                if (neighborChunk == null) continue; // Skip if neighborChunk is null
+//
+//                boolean isPassable = isPassable(chunkData, border);
+//                boolean isNeighborPassable = isPassable(neighborChunk, border.getOpposite());
+//
+//                if (isPassable && isNeighborPassable && !validatedModules.contains(neighborChunk) && !queuedChunks.contains(neighborChunk)) {
+//                    uncheckedNeighbors.add(neighborChunk);
+//                    queuedChunks.add(neighborChunk);
+//                }
+//            }
+//
+//            validatedModules.add(chunkData);
+//        }
+//
+//        for (ChunkData[][] chunkDataArray : chunkArray) {
+//            for (ChunkData[] chunkDatum : chunkDataArray) {
+//                for (ChunkData data : chunkDatum) {
+//                    if (data == null) continue; // Ensure data is not null
+//                    if (validatedModules.contains(data)) continue;
+//                    data.preventInsularity();
+//                }
+//            }
+//        }
+//    }
+
     private void done() {
+//        removeInsularModules();
+
         if (player != null) {
-            player.sendTitle("Done!", "Generation complete!");
+            player.sendTitle("Done!", "Module assembly complete!");
         }
 
         Logger.warn("Done with infinity generator!");
 
-        if (!systemShowcaseSpeed) {
+        if (!slowGenerationForShowcase) {
             timeMessage("Module assembly ");
             Logger.warn("Starting mass paste");
             if (player != null) player.sendMessage("Starting mass paste...");
@@ -362,12 +402,31 @@ public class WaveFunctionCollapseGenerator {
         }
     }
 
-    private void cleanup(){
-        emptyNeighborBuckets.clear();
+    private void cleanup() {
+        HashSet<ModulesContainer> usedModules = new HashSet<>();
+        chunkMap.clear();
+        boolean firstNotUsed = false;
+        for (ModulesContainer modulesContainer : ModulesContainer.getModulesContainers().values()) {
+            boolean used = false;
+            for (ModulesContainer usedModule : usedModules) {
+                if (modulesContainer.getClipboardFilename().equals(usedModule.getClipboardFilename())) {
+                    used = true;
+                    break;
+                }
+            }
+            if (!used) {
+                if (!firstNotUsed) {
+                    firstNotUsed = true;
+                    Logger.sendMessage(player, "Failed to use the following modules:");
+                    Logger.warn("Failed to use the following modules:");
+                }
+                Logger.sendMessage(player, modulesContainer.getClipboardFilename());
+                Logger.warn(modulesContainer.getClipboardFilename());
+            }
+        }
+
         spiralPositions.clear();
-        distanceCache.clear();
         processedXZ.clear();
-        chunkArray = null;
     }
 
     private void timeMessage(String whatEnded) {
@@ -434,11 +493,6 @@ public class WaveFunctionCollapseGenerator {
                     for (int y = MIN_Y_LEVEL; y < MAX_Y_LEVEL; y++) {
                         ChunkData chunkData = getChunkDataAt(x, y, z);
                         batchedChunks.add(chunkData);
-//                        if (chunkData == null) {
-//                            Logger.warn("ChunkData not found at location: " + x + ", " + y + ", " + z);
-//                        } else {
-//                            actualPaste(chunkData);
-//                        }
                     }
 
                     index++;
@@ -453,7 +507,6 @@ public class WaveFunctionCollapseGenerator {
                     this.cancel(); // Stop the task
                     cleanup();
                 }
-                // Else, the task will automatically reschedule itself on the next tick
             }
         };
 

@@ -1,6 +1,5 @@
 package com.magmaguy.betterstructures.modules;
 
-import com.google.gson.Gson;
 import com.magmaguy.betterstructures.config.modules.ModulesConfigFields;
 import com.magmaguy.betterstructures.util.WeighedProbability;
 import com.magmaguy.magmacore.util.Logger;
@@ -21,11 +20,12 @@ public class ModulesContainer {
     private final Clipboard clipboard;
     @Getter
     private final String clipboardFilename;
-    @Getter
-    private final ModulesConfigFields modulesConfigField;
     private final String configFilename;
     @Getter
     private final int rotation;
+    private final Map<BuildBorder, List<ModulesContainer>> validBorders = new HashMap<>();
+    @Getter
+    private ModulesConfigFields modulesConfigField;
     @Getter
     private BorderTags borderTags = new BorderTags(new EnumMap<>(BuildBorder.class));
     @Getter
@@ -47,6 +47,35 @@ public class ModulesContainer {
         validRotations.forEach(rotation -> new ModulesContainer(clipboard, clipboardFilename, modulesConfigField, configFilename, rotation));
     }
 
+    public static void postInitializeModulesContainer() {
+        for (ModulesContainer value : modulesContainers.values()) {
+            for (Map.Entry<BuildBorder, List<NeighborTag>> buildBorderListEntry : value.borderTags.entrySet()) {
+                BuildBorder buildBorder = buildBorderListEntry.getKey();
+                List<NeighborTag> borderTags = buildBorderListEntry.getValue();
+                for (ModulesContainer neighborContainer : modulesContainers.values()) {
+                    List<NeighborTag> neighborTags = neighborContainer.borderTags.neighborMap.get(buildBorder.getOpposite());
+                    for (NeighborTag borderTag : borderTags) {
+                        boolean valid = false;
+                        for (NeighborTag neighborTag : neighborTags) {
+                            if (borderTag.getTag().equals(neighborTag.getTag()) && (borderTag.isCanMirror() || neighborTag.isCanMirror())) {
+                                value.validBorders.computeIfAbsent(buildBorder, k -> new ArrayList<>()).add(neighborContainer);
+                                valid = true;
+                                break;
+                            }
+                        }
+                        if (valid) break;
+                    }
+                }
+            }
+            for (BuildBorder buildBorder : BuildBorder.values()) {
+                if (value.validBorders.get(buildBorder) == null || value.validBorders.get(buildBorder).isEmpty()) {
+                    Logger.warn("No valid neighbors for " + value.getClipboardFilename() + " in direction " + buildBorder);
+                    break;
+                }
+            }
+        }
+    }
+
     public static void initialize() {
         //Initialize "nothing", a reserved name with special behavior
         ModulesContainer nothing = new ModulesContainer(null, "nothing", null, null, 0);
@@ -57,6 +86,7 @@ public class ModulesContainer {
                 BuildBorder.WEST, Collections.singletonList(new NeighborTag("nothing")),
                 BuildBorder.UP, Collections.singletonList(new NeighborTag("nothing")),
                 BuildBorder.DOWN, Collections.singletonList(new NeighborTag("nothing"))));
+        nothing.modulesConfigField = new ModulesConfigFields("nothing", true);
         tagOccurrences.forEach((key, value) -> {
             if (value < 2)
                 Logger.warn("Tag " + key + " is only ever present once, which means it will never be valid and get the system stuck!");
@@ -68,72 +98,65 @@ public class ModulesContainer {
         tagOccurrences.clear();
     }
 
-    public static List<PastableModulesContainer> getValidModulesFromSurroundings(ChunkData chunkData) {
-        List<PastableModulesContainer> validModules = new ArrayList<>();
+    public static List<ModulesContainer> getValidModulesFromSurroundings(ChunkData chunkData) {
+        List<ModulesContainer> validModules = null;
 
-        for (ModulesContainer module : modulesContainers.values()) {
-            Vector3i loc = chunkData.getChunkLocation();
-            if (!module.nothing)
-                if (loc.y < module.modulesConfigField.getMinY() ||
-                        loc.y > module.modulesConfigField.getMaxY())
-                    continue;
+        for (Map.Entry<BuildBorder, ChunkData> buildBorderChunkDataEntry : chunkData.getOrientedNeighbours().entrySet()) {
+            BuildBorder direction = buildBorderChunkDataEntry.getKey();
+            //Handle the neighbor not being generated yet
+            if (buildBorderChunkDataEntry.getValue() == null || buildBorderChunkDataEntry.getValue().getModulesContainer() == null)
+                continue;
+            List<ModulesContainer> validBorderSpecificModules = new ArrayList<>();
 
-            boolean repeatStop = false;
-            for (ChunkData neighbourData : chunkData.getOrientedNeighbours().values()) {
-                if (neighbourData.getModulesContainer() == null) continue;
-                if (!module.nothing && module.getModulesConfigField().isNoRepeat() &&
-                        neighbourData.getModulesContainer().getClipboardFilename().equals(module.getClipboardFilename())) {
-                    repeatStop = true;
-                    break;
-                }
-            }
-            if (repeatStop) continue;
+            if (buildBorderChunkDataEntry.getValue().getModulesContainer().validBorders.get(direction.getOpposite()) == null)
+                Logger.debug("no valid direction " + direction.getOpposite() + " for " + buildBorderChunkDataEntry.getValue().getModulesContainer().getClipboardFilename() + " as it was " + buildBorderChunkDataEntry.getValue().getModulesContainer().validBorders);
 
-            boolean isValid = true;
-
-            for (Map.Entry<BuildBorder, ChunkData> buildBorderChunkDataEntry : chunkData.getOrientedNeighbours().entrySet()) {
-                BuildBorder direction = buildBorderChunkDataEntry.getKey();
-                ChunkData iteratedeNeighbourChunkData = buildBorderChunkDataEntry.getValue();
-                if (!iteratedeNeighbourChunkData.isGenerated()) continue;
-
-                //check rotation enforcement
-                if (!checkVerticalRotationValidity(direction, module, iteratedeNeighbourChunkData.getModulesContainer()) ||
-                        !checkHorizontalRotationValidity(direction, module, iteratedeNeighbourChunkData.getModulesContainer())) {
-                    isValid = false;
-                    break;
-                }
-
-                List<NeighborTag> neighborTags = iteratedeNeighbourChunkData.getModulesContainer().getBorderTags().neighborMap.get(direction.getOpposite());
-
-                // Get the module's border tags for the transformed direction
-                List<NeighborTag> moduleTags = module.getBorderTags().neighborMap.get(direction);
-
-                boolean commonTags = false;
-                for (NeighborTag neighborTag : neighborTags) {
-                    if (commonTags) break;
-                    String neighborTagString = neighborTag.getTag();
-                    for (NeighborTag moduleTag : moduleTags) {
-                        String moduleTagString = moduleTag.getTag();
-                        if (neighborTagString.equals(moduleTagString) && (neighborTag.isCanMirror() || moduleTag.isCanMirror())
-                        ) {
-                            commonTags = true;
-                            break;
-                        }
+            for (ModulesContainer modulesContainer : buildBorderChunkDataEntry.getValue().getModulesContainer().validBorders.get(direction.getOpposite())) {
+                boolean repeatStop = false;
+                for (ChunkData neighbourData : chunkData.getOrientedNeighbours().values()) {
+                    if (neighbourData == null || neighbourData.getModulesContainer() == null) continue;
+                    if (!modulesContainer.nothing && modulesContainer.getModulesConfigField().isNoRepeat() &&
+                            neighbourData.getModulesContainer().getClipboardFilename().equals(modulesContainer.getClipboardFilename())) {
+                        repeatStop = true;
+                        break;
                     }
                 }
 
-                if (!commonTags) {
-                    isValid = false;
-                    break;
+                if (repeatStop) continue;
+
+                if (!checkVerticalRotationValidity(direction, buildBorderChunkDataEntry.getValue().getModulesContainer(), modulesContainer) ||
+                        !checkHorizontalRotationValidity(direction, buildBorderChunkDataEntry.getValue().getModulesContainer(), modulesContainer)) {
+                    continue;
                 }
+
+                Vector3i loc = chunkData.getChunkLocation();
+                if (loc.y < modulesContainer.modulesConfigField.getMinY() ||
+                        loc.y > modulesContainer.modulesConfigField.getMaxY()) {
+                    continue;
+                }
+
+//                Logger.debug("Adding module " + modulesContainer.getClipboardFilename());
+                validBorderSpecificModules.add(modulesContainer);
             }
 
-            if (isValid) {
-                validModules.add(new PastableModulesContainer(module, module.rotation));
-//                    Logger.debug("Adding module " + module.getClipboardFilename());
-//                    Logger.debug("Module borders: " + new Gson().toJson(module.getBorderTags()));
+//            if (validBorderSpecificModules.size() > 0)
+//                Logger.debug("Size unfiltered " + validBorderSpecificModules.size());
+
+            if (validModules == null) {
+                validModules = new ArrayList<>(validBorderSpecificModules);
+            } else {
+                if (!validBorderSpecificModules.isEmpty())
+                    validModules.retainAll(validBorderSpecificModules);
+                Logger.debug("Size " + validModules.size());
+//                validModules.addAll(validBorderSpecificModules);
             }
         }
+
+        if (validModules == null || validModules.isEmpty()) {
+            Logger.warn("could not agree on valid border");
+            return null;
+        }
+
         return validModules;
     }
 
@@ -155,23 +178,23 @@ public class ModulesContainer {
             return module.rotation == neighbour.rotation;
     }
 
-    public static PastableModulesContainer pickRandomModuleFromSurroundings(ChunkData chunkData) {
-        List<PastableModulesContainer> validModules = getValidModulesFromSurroundings(chunkData);
-        if (validModules.isEmpty()) return null;
+    public static ModulesContainer pickRandomModuleFromSurroundings(ChunkData chunkData) {
+        List<ModulesContainer> validModules = getValidModulesFromSurroundings(chunkData);
+        if (validModules == null) return null;
         return pickWeightedRandomModule(validModules, chunkData);
     }
 
-    public static PastableModulesContainer pickWeightedRandomModule(List<PastableModulesContainer> modules,
-                                                                    ChunkData chunkData) {
+    public static ModulesContainer pickWeightedRandomModule(List<ModulesContainer> modules,
+                                                            ChunkData chunkData) {
         Map<Integer, Double> weightMap = new HashMap<>();
-        Map<Integer, PastableModulesContainer> moduleMap = new HashMap<>();
+        Map<Integer, ModulesContainer> moduleMap = new HashMap<>();
         for (int i = 0; i < modules.size(); i++) {
-            ModulesContainer modulesContainer = modules.get(i).modulesContainer();
-            double weight =modulesContainer.getWeight();
+            ModulesContainer modulesContainer = modules.get(i);
+            double weight = modulesContainer.getWeight();
             if (!modulesContainer.nothing && modulesContainer.getModulesConfigField().getRepetitionPenalty() != 0) {
                 for (ChunkData value : chunkData.getOrientedNeighbours().values()) {
-                    if (value.getModulesContainer() != null && modules.get(i).modulesContainer.getClipboardFilename().equals(value.getModulesContainer().getClipboardFilename()))
-                        weight += modules.get(i).modulesContainer().getModulesConfigField().getRepetitionPenalty();
+                    if (value.getModulesContainer() != null && modules.get(i).getClipboardFilename().equals(value.getModulesContainer().getClipboardFilename()))
+                        weight += modules.get(i).getModulesConfigField().getRepetitionPenalty();
                 }
             }
             weightMap.put(i, weight);
@@ -180,7 +203,7 @@ public class ModulesContainer {
         return moduleMap.get(WeighedProbability.pickWeightedProbability(weightMap));
     }
 
-    private double getWeight(){
+    private double getWeight() {
         if (nothing) return 50;
         else return modulesConfigField.getWeight();
     }
@@ -202,6 +225,9 @@ public class ModulesContainer {
 
             borderTags.put(BuildBorder.transformDirection(border, rotation), processedBorderList);
         }
+
+//        Logger.debug("border map " + new Gson().toJson(borderMap));
+//        Logger.debug("border tags " + new Gson().toJson(borderTags));
 
         // Check for missing borders
         for (BuildBorder border : BuildBorder.values()) {
@@ -253,9 +279,6 @@ public class ModulesContainer {
                 this.tag = this.tag.replace("no-mirror_", "");
             }
         }
-    }
-
-    public record PastableModulesContainer(ModulesContainer modulesContainer, Integer rotation) {
     }
 
 }

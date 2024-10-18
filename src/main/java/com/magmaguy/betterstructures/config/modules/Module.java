@@ -72,7 +72,7 @@ public class Module {
             editSession.setSideEffectApplier(SideEffectSet.none());
 
             for (ChunkData chunkData : chunkDataList) {
-                if (chunkData.getModulesContainer() == null) continue;
+                if (chunkData == null || chunkData.getModulesContainer() == null) continue;
                 //todo: this is scuffed af
                 int rotation = chunkData.getModulesContainer().getRotation();
                 Location location = chunkData.getRealLocation().add(-1, 0, -1);
@@ -109,7 +109,9 @@ public class Module {
         }
 
         HashSet<Chunk> chunks = new HashSet<>();
-        chunkDataList.forEach(chunkData -> chunks.add(chunkData.getRealLocation().getChunk()));
+        chunkDataList.forEach(chunkData -> {
+            if (chunkData != null) chunks.add(chunkData.getRealLocation().getChunk());
+        });
         chunks.forEach(chunk -> chunk.unload(true));
     }
 }
