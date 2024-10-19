@@ -76,7 +76,7 @@ public class ModulesContainer {
         }
     }
 
-    public static void initialize() {
+    public static void initializeSpecialModules() {
         //Initialize "nothing", a reserved name with special behavior
         ModulesContainer nothing = new ModulesContainer(null, "nothing", null, null, 0);
         nothing.borderTags = new BorderTags(Map.of(
@@ -87,10 +87,10 @@ public class ModulesContainer {
                 Direction.UP, Collections.singletonList(new NeighborTag("nothing")),
                 Direction.DOWN, Collections.singletonList(new NeighborTag("nothing"))));
         nothing.modulesConfigField = new ModulesConfigFields("nothing", true);
-        tagOccurrences.forEach((key, value) -> {
-            if (value < 2)
-                Logger.warn("Tag " + key + " is only ever present once, which means it will never be valid and get the system stuck!");
-        });
+//        tagOccurrences.forEach((key, value) -> {
+//            if (value < 2)
+//                Logger.warn("Tag " + key + " is only ever present once, which means it will never be valid and get the system stuck!");
+//        });
     }
 
     public static void shutdown() {
@@ -101,7 +101,7 @@ public class ModulesContainer {
     public static List<ModulesContainer> getValidModulesFromSurroundings(GridCell gridCell) {
         List<ModulesContainer> validModules = null;
 
-        for (Map.Entry<Direction, GridCell> buildBorderChunkDataEntry : gridCell.getOrientedNeighbours().entrySet()) {
+        for (Map.Entry<Direction, GridCell> buildBorderChunkDataEntry : gridCell.getOrientedNeighbors().entrySet()) {
             Direction direction = buildBorderChunkDataEntry.getKey();
             //Handle the neighbor not being generated yet
             if (buildBorderChunkDataEntry.getValue() == null || buildBorderChunkDataEntry.getValue().getModulesContainer() == null)
@@ -113,7 +113,7 @@ public class ModulesContainer {
 
             for (ModulesContainer modulesContainer : buildBorderChunkDataEntry.getValue().getModulesContainer().validBorders.get(direction.getOpposite())) {
                 boolean repeatStop = false;
-                for (GridCell neighbourData : gridCell.getOrientedNeighbours().values()) {
+                for (GridCell neighbourData : gridCell.getOrientedNeighbors().values()) {
                     if (neighbourData == null || neighbourData.getModulesContainer() == null) continue;
                     if (!modulesContainer.nothing && modulesContainer.getModulesConfigField().isNoRepeat() &&
                             neighbourData.getModulesContainer().getClipboardFilename().equals(modulesContainer.getClipboardFilename())) {
@@ -129,7 +129,7 @@ public class ModulesContainer {
                     continue;
                 }
 
-                Vector3i loc = gridCell.getChunkLocation();
+                Vector3i loc = gridCell.getCellLocation();
                 if (loc.y < modulesContainer.modulesConfigField.getMinY() ||
                         loc.y > modulesContainer.modulesConfigField.getMaxY()) {
                     continue;
@@ -191,7 +191,7 @@ public class ModulesContainer {
             ModulesContainer modulesContainer = modules.get(i);
             double weight = modulesContainer.getWeight();
             if (!modulesContainer.nothing && modulesContainer.getModulesConfigField().getRepetitionPenalty() != 0) {
-                for (GridCell value : gridCell.getOrientedNeighbours().values()) {
+                for (GridCell value : gridCell.getOrientedNeighbors().values()) {
                     if (value.getModulesContainer() != null && modules.get(i).getClipboardFilename().equals(value.getModulesContainer().getClipboardFilename()))
                         weight += modules.get(i).getModulesConfigField().getRepetitionPenalty();
                 }
@@ -235,12 +235,11 @@ public class ModulesContainer {
     }
 
     private List<String> processBorderList(Object rawBorderList) {
+        @SuppressWarnings("unchecked")
         List<String> stringList = (List<String>) rawBorderList;
         for (String string : stringList) {
-            // Increment the occurrence count for the string
-            tagOccurrences.put(string, tagOccurrences.getOrDefault(string, 0) + 1);
+            tagOccurrences.merge(string, 1, Integer::sum);
         }
-
         return stringList;
     }
 
