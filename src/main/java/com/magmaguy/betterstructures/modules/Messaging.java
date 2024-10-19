@@ -22,7 +22,7 @@ public class Messaging {
     }
 
     public void updateProgress(double progress, String message) {
-        completionPercentage.setProgress(progress);
+        completionPercentage.setProgress(Math.max(Math.min(progress ,1d ),0));
         completionPercentage.setTitle(message);
     }
 

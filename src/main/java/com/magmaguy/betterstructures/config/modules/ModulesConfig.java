@@ -18,6 +18,8 @@ public class ModulesConfig extends CustomConfig {
         super("modules", ModulesConfigFields.class);
         moduleConfigurations.clear();
 
+        ModulesContainer.initializeSpecialModules();
+
         File modulesFile = new File(MetadataHandler.PLUGIN.getDataFolder().getAbsolutePath()+ File.separatorChar + "modules");
         if (!modulesFile.exists()) modulesFile.mkdir();
 
