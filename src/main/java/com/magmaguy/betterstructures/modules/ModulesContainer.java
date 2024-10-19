@@ -192,7 +192,7 @@ public class ModulesContainer {
             double weight = modulesContainer.getWeight();
             if (!modulesContainer.nothing && modulesContainer.getModulesConfigField().getRepetitionPenalty() != 0) {
                 for (GridCell value : gridCell.getOrientedNeighbors().values()) {
-                    if (value.getModulesContainer() != null && modules.get(i).getClipboardFilename().equals(value.getModulesContainer().getClipboardFilename()))
+                    if (value !=null && value.getModulesContainer() != null && modules.get(i).getClipboardFilename().equals(value.getModulesContainer().getClipboardFilename()))
                         weight += modules.get(i).getModulesConfigField().getRepetitionPenalty();
                 }
             }
