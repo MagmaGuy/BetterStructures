@@ -49,6 +49,15 @@ public class SpatialGrid {
         gridCellQueue.add(gridCell);
     }
 
+    public void clearGridGenerationData(){
+        cellMap.values().forEach(GridCell::clearGridGenerationData);
+        gridCellQueue.clear();
+    }
+
+    public void clearAllData(){
+        cellMap.clear();
+    }
+
     public void initializeCellNeighbors(GridCell gridCell) {
         for (Direction direction : Direction.values()) {
             Vector3i offset = DIRECTION_OFFSETS.get(direction);

@@ -19,9 +19,9 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public class GridCell {
     @Getter
-    private final World world;
+    private World world;
     private final Vector3i cellLocation;
-    private final Map<Vector3i, GridCell> cellMap;
+    private Map<Vector3i, GridCell> cellMap;
     @Getter
     private ModulesContainer modulesContainer;
     @Getter
@@ -43,7 +43,7 @@ public class GridCell {
     }
 
     public void updateValidOptions() {
-        if (isGenerated()) return;
+//        if (isGenerated()) return;
 //        if (validOptions != null && !forceUpdate) return;
         validOptions = ModulesContainer.getValidModulesFromSurroundings(this);
     }
@@ -182,4 +182,10 @@ public class GridCell {
         }
         return resetGeneratedCells;
     }
+
+    public void clearGridGenerationData(){
+        textDisplays = null;
+        validOptions = null;
+    }
+
 }
