@@ -2,18 +2,12 @@ package com.magmaguy.betterstructures.config.modules;
 
 import com.magmaguy.betterstructures.MetadataHandler;
 import com.magmaguy.betterstructures.config.DefaultConfig;
-import com.magmaguy.betterstructures.modules.BuildBorder;
-import com.magmaguy.betterstructures.modules.ChunkData;
-import com.magmaguy.betterstructures.modules.ModulesContainer;
+import com.magmaguy.betterstructures.modules.*;
 import com.magmaguy.magmacore.util.Logger;
 import com.magmaguy.magmacore.util.Round;
-import lombok.Getter;
-import org.bukkit.*;
-import org.bukkit.boss.BarColor;
-import org.bukkit.boss.BarStyle;
-import org.bukkit.boss.BossBar;
+import org.bukkit.Bukkit;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
-import org.bukkit.generator.ChunkGenerator;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.joml.Vector2i;
 import org.joml.Vector3i;
@@ -21,72 +15,26 @@ import org.joml.Vector3i;
 import java.util.*;
 
 public class WaveFunctionCollapseGenerator {
-    @Getter
-    private static final List<Integer> validRotations = Arrays.asList(0, 90, 180, 270);
-    private static final HashSet<BossBar> bars = new HashSet<>();
-    private static final Vector3i[] NEIGHBOR_OFFSETS = {
-            new Vector3i(0, 1, 0),    // UP
-            new Vector3i(0, -1, 0),   // DOWN
-            new Vector3i(1, 0, 0),    // EAST
-            new Vector3i(-1, 0, 0),   // WEST
-            new Vector3i(0, 0, -1),   // NORTH
-            new Vector3i(0, 0, 1)     // SOUTH
-    };
-    private static final BuildBorder[] NEIGHBOR_DIRECTIONS = {
-            BuildBorder.UP,
-            BuildBorder.DOWN,
-            BuildBorder.EAST,
-            BuildBorder.WEST,
-            BuildBorder.NORTH,
-            BuildBorder.SOUTH
-    };
-    private static final int MIN_Y_LEVEL = -4;
-    private static final int MAX_Y_LEVEL = 20;
-//    private static final int Y_SIZE = MAX_Y_LEVEL - MIN_Y_LEVEL; // Y_SIZE = 25
-    //    private final HashSet<ChunkData> emptyChunks = new HashSet<>();
-    private final Player player;
-    private final int radius;
     private final int massPasteSize = DefaultConfig.getModularChunkPastingSpeed();
-    private final int totalMassPasteChunks;
     private final Set<Vector2i> processedXZ = new HashSet<>();
     private final int averageYLevels = 10; // this is used to estimate the progress for the chunk detection
-    private final BossBar completionPercentage;
-    private final List<Vector2i> spiralPositions;
-    private final boolean debug;
-    private final boolean preventInsularModules = true; //todo: not all modes should do this
-    private final Map<Vector3i, ChunkData> chunkMap = new HashMap<>();
-    private final Queue<ChunkData> chunkQueue = new PriorityQueue<>(
-            Comparator.<ChunkData>comparingInt(chunkData -> -chunkData.getGeneratedNeighborCount())
-                    .thenComparingLong(chunkData -> {
-                        Vector3i loc = chunkData.getChunkLocation();
-                        return (long) loc.x * loc.x + (long) loc.y * loc.y + (long) loc.z * loc.z;
-                    })
-    );
-
+    private final HashMap<GridCell, Integer> chunkRollbackCounter = new HashMap<>();
+    public Messaging messaging;
     int rollbackCounter = 0;
+    private Player player;
+    private int totalMassPasteChunks;
+    private List<Vector2i> spiralPositions;
+    private boolean debug;
+    private SpatialGrid spatialGrid;
     private int interval;
     private boolean slowGenerationForShowcase = false;
     private World world;
     private int processedChunks = 0;
     private int massPasteCount = 0;
-    private long startTime;
 
     public WaveFunctionCollapseGenerator(String worldName, int radius, boolean debug, int interval, Player player, String startingModule) {
-        this.player = player;
-        this.debug = debug;
+        initialize(radius, worldName, player, debug);
         this.interval = interval;
-        slowGenerationForShowcase = true;
-        this.radius = radius;
-        this.spiralPositions = generateSpiralPositions(radius);
-        generateWorld(worldName);
-
-        completionPercentage = Bukkit.createBossBar("", BarColor.GREEN, BarStyle.SOLID);
-        completionPercentage.addPlayer(player);
-        bars.add(completionPercentage);
-        updateProgress(0, "Initializing...");
-        // Initialize total chunks for mass paste progress tracking
-        int xzRange = 2 * radius + 1;
-        totalMassPasteChunks = xzRange * xzRange;
 
         new BukkitRunnable() {
             @Override
@@ -97,19 +45,7 @@ public class WaveFunctionCollapseGenerator {
     }
 
     public WaveFunctionCollapseGenerator(String worldName, int radius, boolean debug, Player player, String startingModule) {
-        this.player = player;
-        this.debug = debug;
-        this.radius = radius;
-        this.spiralPositions = generateSpiralPositions(radius);
-        generateWorld(worldName);
-
-        completionPercentage = Bukkit.createBossBar("", BarColor.GREEN, BarStyle.SOLID);
-        completionPercentage.addPlayer(player);
-        bars.add(completionPercentage);
-        updateProgress(0, "Initializing...");
-        // Initialize total chunks for mass paste progress tracking
-        int xzRange = 2 * radius + 1;
-        totalMassPasteChunks = xzRange * xzRange;
+        initialize(radius, worldName, player, debug);
 
         new BukkitRunnable() {
             @Override
@@ -120,59 +56,28 @@ public class WaveFunctionCollapseGenerator {
     }
 
     public static void shutdown() {
-        for (BossBar bar : bars) {
-            bar.removeAll();
-        }
-        bars.clear();
+        Messaging.shutdown();
     }
 
-    private static boolean isPassable(ChunkData chunkData, BuildBorder border) {
-        if (chunkData == null) return false; // Return false if chunkData is null
-        ModulesContainer modulesContainer = chunkData.getModulesContainer();
-        ModulesConfigFields configField = modulesContainer != null ? modulesContainer.getModulesConfigField() : null;
-        return (configField == null) || switch (border) {
-            case UP -> configField.isUpIsPassable();
-            case DOWN -> configField.isDownIsPassable();
-            case NORTH -> configField.isNorthIsPassable();
-            case SOUTH -> configField.isSouthIsPassable();
-            case EAST -> configField.isEastIsPassable();
-            case WEST -> configField.isWestIsPassable();
-        };
-    }
+    private void initialize(int radius, String worldName, Player player, boolean debug) {
+        spatialGrid = new SpatialGrid(radius);
+        messaging = new Messaging(player);
 
-    private void clearBar() {
-        bars.remove(completionPercentage);
-        completionPercentage.removeAll();
-    }
-
-    private void updateProgress(double progress, String message) {
-        completionPercentage.setProgress(progress);
-        completionPercentage.setTitle(message);
-    }
-
-    // And remove the getDistanceSquared method or keep it if used elsewhere:
-    private Long getDistanceSquared(Vector3i location) {
-        return (long) location.x * location.x + (long) location.y * location.y + (long) location.z * location.z;
-    }
-
-
-    private void generateWorld(String worldName) {
-        WorldCreator worldCreator = new WorldCreator(worldName);
-        worldCreator.environment(World.Environment.NORMAL);
-        worldCreator.keepSpawnInMemory(false);
-        worldCreator.generator(new VoidGenerator());
-        world = worldCreator.createWorld();
-        world.setAutoSave(false);
-        player.teleport(new Location(world, 8, 16, 8));
-        player.setGameMode(GameMode.SPECTATOR);
+        this.player = player;
+        this.debug = debug;
+        slowGenerationForShowcase = true;
+        this.spiralPositions = generateSpiralPositions(radius);
+        world = WorldInitializer.generateWorld(worldName, player);
+        messaging.updateProgress(0, "Initializing...");
+        // Initialize total chunks for mass paste progress tracking
+        int xzRange = 2 * radius + 1;
+        totalMassPasteChunks = xzRange * xzRange;
     }
 
     private void start(String startingModule) {
-        startTime = System.currentTimeMillis();
-
-        ChunkData startChunk = new ChunkData(new Vector3i(), world, chunkMap);
-        chunkMap.put(new Vector3i(), startChunk);
-        initializeChunkDataNeighbours(startChunk);
+        GridCell startChunk = new GridCell(new Vector3i(), world, spatialGrid.getCellMap());
+        spatialGrid.getCellMap().put(new Vector3i(), startChunk);
+        spatialGrid.initializeCellNeighbors(startChunk, world);
 
         ModulesContainer modulesContainer = ModulesContainer.getModulesContainers().get(startingModule);
         if (startingModule == null) {
@@ -187,7 +92,7 @@ public class WaveFunctionCollapseGenerator {
 
     private void searchNextChunkToGenerate() {
         if (slowGenerationForShowcase) {
-            ChunkData selectedChunkLocationKey = chunkQueue.poll();
+            GridCell selectedChunkLocationKey = spatialGrid.getNextGridCell();
             if (selectedChunkLocationKey == null) {
                 done();
             } else {
@@ -201,7 +106,7 @@ public class WaveFunctionCollapseGenerator {
             }
         } else {
             while (true) {
-                ChunkData selectedChunkLocationKey = chunkQueue.poll();
+                GridCell selectedChunkLocationKey = spatialGrid.getNextGridCell();
                 if (selectedChunkLocationKey == null) {
                     done();
                     return;
@@ -212,10 +117,10 @@ public class WaveFunctionCollapseGenerator {
     }
 
     private void updateAssemblingProgress() {
-        int totalEstimatedChunks = ((2 * radius + 1) * (2 * radius + 1)) * averageYLevels;
+        int totalEstimatedChunks = ((2 * spatialGrid.getGridRadius() + 1) * (2 * spatialGrid.getGridRadius() + 1)) * averageYLevels;
         double progress = Round.twoDecimalPlaces(((double) processedXZ.size() * averageYLevels) / totalEstimatedChunks * 100);
         Logger.debug("[" + progress + "%] Processed " + processedChunks + " chunks");
-        updateProgress(progress / 100L, "Assembling modules - " + progress + "% done...");
+        messaging.updateProgress(progress / 100L, "Assembling modules - " + progress + "% done...");
     }
 
     private void paste(Vector3i chunkLocation, ModulesContainer modulesContainer) {
@@ -227,164 +132,87 @@ public class WaveFunctionCollapseGenerator {
         }
 
         // Access the ChunkData from chunkArray
-        ChunkData chunkData = getChunkDataAt(chunkLocation.x, chunkLocation.y, chunkLocation.z);
-        if (chunkData == null) {
+        GridCell gridCell = getChunkDataAt(chunkLocation.x, chunkLocation.y, chunkLocation.z);
+        if (gridCell == null) {
             Logger.warn("ChunkData not found at location: " + chunkLocation);
             return;
         }
 
-        chunkData.processPaste(modulesContainer);
+        gridCell.processPaste(modulesContainer);
+        for (GridCell neighbor : gridCell.getOrientedNeighbours().values()) {
+            if (neighbor != null && !neighbor.isGenerated()) {
+                spatialGrid.updateCellPriority(neighbor);
+            }
+        }
+
+        //If a successful paste is done then the rollback counter should at least reset
+        chunkRollbackCounter.remove(gridCell);
 
         if (slowGenerationForShowcase) {
             new BukkitRunnable() {
                 @Override
                 public void run() {
-                    actualPaste(chunkData);
+                    actualPaste(gridCell);
                 }
             }.runTask(MetadataHandler.PLUGIN);
         }
     }
 
-    private ChunkData getChunkDataAt(int x, int y, int z) {
-        return chunkMap.get(new Vector3i(x, y, z));
+    private GridCell getChunkDataAt(int x, int y, int z) {
+        return spatialGrid.getCellMap().get(new Vector3i(x, y, z));
     }
 
-    private void actualPaste(ChunkData chunkData) {
-        ModulesContainer modulesContainer = chunkData.getModulesContainer();
+    private void actualPaste(GridCell gridCell) {
+        ModulesContainer modulesContainer = gridCell.getModulesContainer();
         if (modulesContainer == null || modulesContainer.getClipboard() == null) return;
-        Module.paste(modulesContainer.getClipboard(), chunkData.getRealLocation().add(-1, 0, -1), chunkData.getModulesContainer().getRotation());
-        if (debug) chunkData.showDebugTextDisplays();
+        Module.paste(modulesContainer.getClipboard(), gridCell.getRealLocation().add(-1, 0, -1), gridCell.getModulesContainer().getRotation());
+        if (debug) gridCell.showDebugTextDisplays();
     }
 
-    private void actualBatchPaste(List<ChunkData> batchedChunkData) {
+    private void actualBatchPaste(List<GridCell> batchedChunkData) {
         Module.batchPaste(batchedChunkData, world);
         if (debug) batchedChunkData.forEach(chunkData -> {
             if (chunkData != null) chunkData.showDebugTextDisplays();
         });
     }
 
-    private void initializeChunkDataNeighbours(ChunkData chunkData) {
-        for (BuildBorder border : BuildBorder.values()) {
-            Vector3i neighborLocation = chunkData.getChunkLocation().add(getOffset(border));
-
-            if (withinBounds(neighborLocation)) {
-                ChunkData neighborChunk = chunkMap.get(neighborLocation);
-
-                if (neighborChunk == null) {
-                    Logger.debug("Initializing chunkData neighbours for chunk at " + chunkData.getChunkLocation());
-                    // Initialize neighbor
-                    neighborChunk = new ChunkData(neighborLocation, world, chunkMap);
-                    chunkMap.put(neighborLocation, neighborChunk);
-                    chunkQueue.add(neighborChunk);
-                }
-            }
-        }
-    }
-
-    private Vector3i getOffset(BuildBorder border) {
-        return switch (border) {
-            case NORTH -> new Vector3i(0, 0, -1);
-            case SOUTH -> new Vector3i(0, 0, 1);
-            case EAST -> new Vector3i(1, 0, 0);
-            case WEST -> new Vector3i(-1, 0, 0);
-            case UP -> new Vector3i(0, 1, 0);
-            case DOWN -> new Vector3i(0, -1, 0);
-        };
-    }
-
-    private void generateNextChunk(ChunkData chunkData) {
-        initializeChunkDataNeighbours(chunkData);
+    private void generateNextChunk(GridCell gridCell) {
+        spatialGrid.initializeCellNeighbors(gridCell, world);
 
         // Get valid modules for the current chunk
-        ModulesContainer modulesContainer = ModulesContainer.pickRandomModuleFromSurroundings(chunkData);
+        ModulesContainer modulesContainer = ModulesContainer.pickRandomModule(gridCell.getValidOptions(), gridCell);
         if (modulesContainer == null) {
-            rollbackChunk(chunkData);
+            rollbackChunk(gridCell);
             return;
         }
 
         // Paste the module
-        paste(chunkData.getChunkLocation(), modulesContainer);
-//        chunkData.processPaste(modulesContainer);
+        paste(gridCell.getChunkLocation(), modulesContainer);
 
         if (slowGenerationForShowcase) {
             new BukkitRunnable() {
                 @Override
                 public void run() {
-                    actualPaste(chunkData);
+                    actualPaste(gridCell);
                 }
             }.runTask(MetadataHandler.PLUGIN);
         }
     }
 
-    private boolean withinBounds(Vector3i location) {
-        return Math.abs(location.x) <= radius &&
-                location.y >= MIN_Y_LEVEL &&
-                location.y <= MAX_Y_LEVEL &&
-                Math.abs(location.z) <= radius;
-    }
-
-    private void rollbackChunk(ChunkData chunkData) {
+    private void rollbackChunk(GridCell gridCell) {
+        Logger.debug("Rolling back chunk at " + gridCell.getChunkLocation());
+        chunkRollbackCounter.put(gridCell, chunkRollbackCounter.getOrDefault(gridCell, 0) + 1);
+        int rollBackRadius = Math.max((int) (chunkRollbackCounter.get(gridCell) / 10d), 1);
         rollbackCounter++;
         if (rollbackCounter % 1000 == 0) {
-            Vector3i location = chunkData.getChunkLocation();
+            Vector3i location = gridCell.getChunkLocation();
             Logger.warn("Current rollback status: " + rollbackCounter + " chunks rolled back. Latest rollback location: " + location.x + ", " + location.y + ", " + location.z);
             player.sendMessage("Current rollback status: " + rollbackCounter + " chunks rolled back. Latest rollback location: " + location.x + ", " + location.y + ", " + location.z);
         }
-        chunkData.hardReset(slowGenerationForShowcase, chunkQueue);
+        gridCell.hardReset(spatialGrid, slowGenerationForShowcase, rollBackRadius);
     }
 
-//    private void removeInsularModules() {
-//        if (!preventInsularModules) return;
-//
-//        ChunkData startingModule = getChunkDataAt(0, 0, 0);
-//        if (startingModule == null) {
-//            Logger.warn("Starting module is null at (0, 0, 0). Cannot remove insular modules.");
-//            return;
-//        }
-//
-//        Queue<ChunkData> uncheckedNeighbors = new LinkedList<>();
-//        Set<ChunkData> validatedModules = new HashSet<>();
-//        Set<ChunkData> queuedChunks = new HashSet<>();
-//
-//        uncheckedNeighbors.add(startingModule);
-//        queuedChunks.add(startingModule);
-//
-//        while (!uncheckedNeighbors.isEmpty()) {
-//            ChunkData chunkData = uncheckedNeighbors.poll();
-//            if (validatedModules.contains(chunkData)) continue;
-//
-//            for (Map.Entry<BuildBorder, ChunkData> entry : chunkData.getOrientedNeighbours().entrySet()) {
-//                BuildBorder border = entry.getKey();
-//                ChunkData neighborChunk = entry.getValue();
-//
-//                if (neighborChunk == null) continue; // Skip if neighborChunk is null
-//
-//                boolean isPassable = isPassable(chunkData, border);
-//                boolean isNeighborPassable = isPassable(neighborChunk, border.getOpposite());
-//
-//                if (isPassable && isNeighborPassable && !validatedModules.contains(neighborChunk) && !queuedChunks.contains(neighborChunk)) {
-//                    uncheckedNeighbors.add(neighborChunk);
-//                    queuedChunks.add(neighborChunk);
-//                }
-//            }
-//
-//            validatedModules.add(chunkData);
-//        }
-//
-//        for (ChunkData[][] chunkDataArray : chunkArray) {
-//            for (ChunkData[] chunkDatum : chunkDataArray) {
-//                for (ChunkData data : chunkDatum) {
-//                    if (data == null) continue; // Ensure data is not null
-//                    if (validatedModules.contains(data)) continue;
-//                    data.preventInsularity();
-//                }
-//            }
-//        }
-//    }
-
     private void done() {
-//        removeInsularModules();
-
         if (player != null) {
             player.sendTitle("Done!", "Module assembly complete!");
         }
@@ -392,19 +220,19 @@ public class WaveFunctionCollapseGenerator {
         Logger.warn("Done with infinity generator!");
 
         if (!slowGenerationForShowcase) {
-            timeMessage("Module assembly ");
+            messaging.timeMessage("Module assembly ", player);
             Logger.warn("Starting mass paste");
             if (player != null) player.sendMessage("Starting mass paste...");
             Bukkit.getScheduler().runTask(MetadataHandler.PLUGIN, this::instantPaste);
         } else {
-            timeMessage("Generation");
-            clearBar();
+            messaging.timeMessage("Generation", player);
+            messaging.clearBar();
         }
     }
 
     private void cleanup() {
         HashSet<ModulesContainer> usedModules = new HashSet<>();
-        chunkMap.clear();
+        spatialGrid.getCellMap().clear();
         boolean firstNotUsed = false;
         for (ModulesContainer modulesContainer : ModulesContainer.getModulesContainers().values()) {
             boolean used = false;
@@ -427,22 +255,6 @@ public class WaveFunctionCollapseGenerator {
 
         spiralPositions.clear();
         processedXZ.clear();
-    }
-
-    private void timeMessage(String whatEnded) {
-        // Calculate and display the elapsed time
-        long endTime = System.currentTimeMillis();
-        long elapsedTime = endTime - startTime;
-
-        long seconds = (elapsedTime / 1000) % 60;
-        long minutes = (elapsedTime / (1000 * 60)) % 60;
-        long hours = elapsedTime / (1000 * 60 * 60);
-
-        String timeString = String.format("%02d:%02d:%02d", hours, minutes, seconds);
-        if (player != null) {
-            player.sendMessage(whatEnded + " completed! Time taken: " + timeString);
-        }
-        Logger.warn("Generation complete! Time taken: " + timeString);
     }
 
     private List<Vector2i> generateSpiralPositions(int radius) {
@@ -476,7 +288,7 @@ public class WaveFunctionCollapseGenerator {
             public void run() {
                 int batchCount = 0;
 
-                List<ChunkData> batchedChunks = new ArrayList<>();
+                List<GridCell> batchedChunks = new ArrayList<>();
 
                 while (index < spiralPositions.size() && batchCount < massPasteSize) {
                     massPasteCount++;
@@ -487,12 +299,12 @@ public class WaveFunctionCollapseGenerator {
                     if (massPasteCount % massPasteSize == 0) {
                         double progress = Round.twoDecimalPlaces(massPasteCount / (double) totalMassPasteChunks * 100);
                         Logger.info("[" + progress + "%] Pasting chunk " + massPasteCount + "/" + totalMassPasteChunks + " at " + x + ", " + z);
-                        updateProgress(progress / 100L, "Pasting world - " + progress + "% done...");
+                        messaging.updateProgress(progress / 100L, "Pasting world - " + progress + "% done...");
                     }
 
-                    for (int y = MIN_Y_LEVEL; y < MAX_Y_LEVEL; y++) {
-                        ChunkData chunkData = getChunkDataAt(x, y, z);
-                        batchedChunks.add(chunkData);
+                    for (int y = SpatialGrid.minYLevel; y < SpatialGrid.maxYLevel; y++) {
+                        GridCell gridCell = getChunkDataAt(x, y, z);
+                        batchedChunks.add(gridCell);
                     }
 
                     index++;
@@ -502,8 +314,8 @@ public class WaveFunctionCollapseGenerator {
                 actualBatchPaste(batchedChunks);
 
                 if (index >= spiralPositions.size()) {
-                    timeMessage("Mass paste");
-                    clearBar();
+                    messaging.timeMessage("Mass paste", player);
+                    messaging.clearBar();
                     this.cancel(); // Stop the task
                     cleanup();
                 }
@@ -512,9 +324,6 @@ public class WaveFunctionCollapseGenerator {
 
         // Schedule the task to run every tick until it's canceled
         pasteTask.runTaskTimer(MetadataHandler.PLUGIN, 0, 1);
-    }
-
-    private static class VoidGenerator extends ChunkGenerator {
     }
 
 }

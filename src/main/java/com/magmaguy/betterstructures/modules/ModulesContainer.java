@@ -23,11 +23,11 @@ public class ModulesContainer {
     private final String configFilename;
     @Getter
     private final int rotation;
-    private final Map<BuildBorder, List<ModulesContainer>> validBorders = new HashMap<>();
+    private final Map<Direction, List<ModulesContainer>> validBorders = new HashMap<>();
     @Getter
     private ModulesConfigFields modulesConfigField;
     @Getter
-    private BorderTags borderTags = new BorderTags(new EnumMap<>(BuildBorder.class));
+    private BorderTags borderTags = new BorderTags(new EnumMap<>(Direction.class));
     @Getter
     private boolean nothing = false;
 
@@ -49,16 +49,16 @@ public class ModulesContainer {
 
     public static void postInitializeModulesContainer() {
         for (ModulesContainer value : modulesContainers.values()) {
-            for (Map.Entry<BuildBorder, List<NeighborTag>> buildBorderListEntry : value.borderTags.entrySet()) {
-                BuildBorder buildBorder = buildBorderListEntry.getKey();
+            for (Map.Entry<Direction, List<NeighborTag>> buildBorderListEntry : value.borderTags.entrySet()) {
+                Direction direction = buildBorderListEntry.getKey();
                 List<NeighborTag> borderTags = buildBorderListEntry.getValue();
                 for (ModulesContainer neighborContainer : modulesContainers.values()) {
-                    List<NeighborTag> neighborTags = neighborContainer.borderTags.neighborMap.get(buildBorder.getOpposite());
+                    List<NeighborTag> neighborTags = neighborContainer.borderTags.neighborMap.get(direction.getOpposite());
                     for (NeighborTag borderTag : borderTags) {
                         boolean valid = false;
                         for (NeighborTag neighborTag : neighborTags) {
                             if (borderTag.getTag().equals(neighborTag.getTag()) && (borderTag.isCanMirror() || neighborTag.isCanMirror())) {
-                                value.validBorders.computeIfAbsent(buildBorder, k -> new ArrayList<>()).add(neighborContainer);
+                                value.validBorders.computeIfAbsent(direction, k -> new ArrayList<>()).add(neighborContainer);
                                 valid = true;
                                 break;
                             }
@@ -67,9 +67,9 @@ public class ModulesContainer {
                     }
                 }
             }
-            for (BuildBorder buildBorder : BuildBorder.values()) {
-                if (value.validBorders.get(buildBorder) == null || value.validBorders.get(buildBorder).isEmpty()) {
-                    Logger.warn("No valid neighbors for " + value.getClipboardFilename() + " in direction " + buildBorder);
+            for (Direction direction : Direction.values()) {
+                if (value.validBorders.get(direction) == null || value.validBorders.get(direction).isEmpty()) {
+                    Logger.warn("No valid neighbors for " + value.getClipboardFilename() + " in direction " + direction);
                     break;
                 }
             }
@@ -80,12 +80,12 @@ public class ModulesContainer {
         //Initialize "nothing", a reserved name with special behavior
         ModulesContainer nothing = new ModulesContainer(null, "nothing", null, null, 0);
         nothing.borderTags = new BorderTags(Map.of(
-                BuildBorder.NORTH, Collections.singletonList(new NeighborTag("nothing")),
-                BuildBorder.SOUTH, Collections.singletonList(new NeighborTag("nothing")),
-                BuildBorder.EAST, Collections.singletonList(new NeighborTag("nothing")),
-                BuildBorder.WEST, Collections.singletonList(new NeighborTag("nothing")),
-                BuildBorder.UP, Collections.singletonList(new NeighborTag("nothing")),
-                BuildBorder.DOWN, Collections.singletonList(new NeighborTag("nothing"))));
+                Direction.NORTH, Collections.singletonList(new NeighborTag("nothing")),
+                Direction.SOUTH, Collections.singletonList(new NeighborTag("nothing")),
+                Direction.EAST, Collections.singletonList(new NeighborTag("nothing")),
+                Direction.WEST, Collections.singletonList(new NeighborTag("nothing")),
+                Direction.UP, Collections.singletonList(new NeighborTag("nothing")),
+                Direction.DOWN, Collections.singletonList(new NeighborTag("nothing"))));
         nothing.modulesConfigField = new ModulesConfigFields("nothing", true);
         tagOccurrences.forEach((key, value) -> {
             if (value < 2)
@@ -98,11 +98,11 @@ public class ModulesContainer {
         tagOccurrences.clear();
     }
 
-    public static List<ModulesContainer> getValidModulesFromSurroundings(ChunkData chunkData) {
+    public static List<ModulesContainer> getValidModulesFromSurroundings(GridCell gridCell) {
         List<ModulesContainer> validModules = null;
 
-        for (Map.Entry<BuildBorder, ChunkData> buildBorderChunkDataEntry : chunkData.getOrientedNeighbours().entrySet()) {
-            BuildBorder direction = buildBorderChunkDataEntry.getKey();
+        for (Map.Entry<Direction, GridCell> buildBorderChunkDataEntry : gridCell.getOrientedNeighbours().entrySet()) {
+            Direction direction = buildBorderChunkDataEntry.getKey();
             //Handle the neighbor not being generated yet
             if (buildBorderChunkDataEntry.getValue() == null || buildBorderChunkDataEntry.getValue().getModulesContainer() == null)
                 continue;
@@ -113,7 +113,7 @@ public class ModulesContainer {
 
             for (ModulesContainer modulesContainer : buildBorderChunkDataEntry.getValue().getModulesContainer().validBorders.get(direction.getOpposite())) {
                 boolean repeatStop = false;
-                for (ChunkData neighbourData : chunkData.getOrientedNeighbours().values()) {
+                for (GridCell neighbourData : gridCell.getOrientedNeighbours().values()) {
                     if (neighbourData == null || neighbourData.getModulesContainer() == null) continue;
                     if (!modulesContainer.nothing && modulesContainer.getModulesConfigField().isNoRepeat() &&
                             neighbourData.getModulesContainer().getClipboardFilename().equals(modulesContainer.getClipboardFilename())) {
@@ -129,47 +129,40 @@ public class ModulesContainer {
                     continue;
                 }
 
-                Vector3i loc = chunkData.getChunkLocation();
+                Vector3i loc = gridCell.getChunkLocation();
                 if (loc.y < modulesContainer.modulesConfigField.getMinY() ||
                         loc.y > modulesContainer.modulesConfigField.getMaxY()) {
                     continue;
                 }
 
-//                Logger.debug("Adding module " + modulesContainer.getClipboardFilename());
                 validBorderSpecificModules.add(modulesContainer);
             }
-
-//            if (validBorderSpecificModules.size() > 0)
-//                Logger.debug("Size unfiltered " + validBorderSpecificModules.size());
 
             if (validModules == null) {
                 validModules = new ArrayList<>(validBorderSpecificModules);
             } else {
                 if (!validBorderSpecificModules.isEmpty())
                     validModules.retainAll(validBorderSpecificModules);
-                Logger.debug("Size " + validModules.size());
-//                validModules.addAll(validBorderSpecificModules);
             }
         }
 
         if (validModules == null || validModules.isEmpty()) {
-            Logger.warn("could not agree on valid border");
-            return null;
+            return new ArrayList<>();
         }
 
         return validModules;
     }
 
-    private static boolean checkVerticalRotationValidity(BuildBorder direction, ModulesContainer module, ModulesContainer neighbour) {
-        if (direction != BuildBorder.UP && direction != BuildBorder.DOWN) return true;
+    private static boolean checkVerticalRotationValidity(Direction direction, ModulesContainer module, ModulesContainer neighbour) {
+        if (direction != Direction.UP && direction != Direction.DOWN) return true;
         if (module.nothing || neighbour.nothing) return true;
         if (!neighbour.modulesConfigField.isEnforceVerticalRotation() && !module.modulesConfigField.isEnforceVerticalRotation())
             return true;
         return module.rotation == neighbour.rotation;
     }
 
-    private static boolean checkHorizontalRotationValidity(BuildBorder direction, ModulesContainer module, ModulesContainer neighbour) {
-        if (direction == BuildBorder.UP || direction == BuildBorder.DOWN) return true;
+    private static boolean checkHorizontalRotationValidity(Direction direction, ModulesContainer module, ModulesContainer neighbour) {
+        if (direction == Direction.UP || direction == Direction.DOWN) return true;
         if (module.nothing || neighbour.nothing) return true;
         if (!module.modulesConfigField.isEnforceHorizontalRotation() &&
                 !neighbour.modulesConfigField.isEnforceHorizontalRotation())
@@ -178,21 +171,27 @@ public class ModulesContainer {
             return module.rotation == neighbour.rotation;
     }
 
-    public static ModulesContainer pickRandomModuleFromSurroundings(ChunkData chunkData) {
-        List<ModulesContainer> validModules = getValidModulesFromSurroundings(chunkData);
+    public static ModulesContainer pickRandomModuleFromSurroundings(GridCell gridCell) {
+        List<ModulesContainer> validModules = getValidModulesFromSurroundings(gridCell);
         if (validModules == null) return null;
-        return pickWeightedRandomModule(validModules, chunkData);
+        return pickWeightedRandomModule(validModules, gridCell);
     }
 
+    public static ModulesContainer pickRandomModule(List<ModulesContainer> modulesContainerList, GridCell gridCell) {
+        if (modulesContainerList == null || modulesContainerList.isEmpty()) return null;
+        return pickWeightedRandomModule(modulesContainerList, gridCell);
+    }
+
+
     public static ModulesContainer pickWeightedRandomModule(List<ModulesContainer> modules,
-                                                            ChunkData chunkData) {
+                                                            GridCell gridCell) {
         Map<Integer, Double> weightMap = new HashMap<>();
         Map<Integer, ModulesContainer> moduleMap = new HashMap<>();
         for (int i = 0; i < modules.size(); i++) {
             ModulesContainer modulesContainer = modules.get(i);
             double weight = modulesContainer.getWeight();
             if (!modulesContainer.nothing && modulesContainer.getModulesConfigField().getRepetitionPenalty() != 0) {
-                for (ChunkData value : chunkData.getOrientedNeighbours().values()) {
+                for (GridCell value : gridCell.getOrientedNeighbours().values()) {
                     if (value.getModulesContainer() != null && modules.get(i).getClipboardFilename().equals(value.getModulesContainer().getClipboardFilename()))
                         weight += modules.get(i).getModulesConfigField().getRepetitionPenalty();
                 }
@@ -217,26 +216,22 @@ public class ModulesContainer {
             for (String tag : borderList) {
                 processedBorderList.add(new NeighborTag(tag));
             }
-            BuildBorder border = BuildBorder.fromString(direction);
+            Direction border = Direction.fromString(direction);
             if (border == null) {
                 Logger.warn("Invalid border " + direction + " for module " + configFilename);
                 continue;
             }
 
-            borderTags.put(BuildBorder.transformDirection(border, rotation), processedBorderList);
+            borderTags.put(Direction.transformDirection(border, rotation), processedBorderList);
         }
 
-//        Logger.debug("border map " + new Gson().toJson(borderMap));
-//        Logger.debug("border tags " + new Gson().toJson(borderTags));
-
         // Check for missing borders
-        for (BuildBorder border : BuildBorder.values()) {
+        for (Direction border : Direction.values()) {
             if (!borderTags.containsKey(border)) {
                 Logger.warn("Failed to get module border " + border.toString() + " for module " + configFilename);
             }
         }
 
-//        Logger.debug("Finished initializing module " + clipboardFilename + " with rotation " + rotation + " now its " + new Gson().toJson(borderTags));
     }
 
     private List<String> processBorderList(Object rawBorderList) {
@@ -249,16 +244,16 @@ public class ModulesContainer {
         return stringList;
     }
 
-    public record BorderTags(Map<BuildBorder, List<NeighborTag>> neighborMap) {
-        public void put(BuildBorder direction, List<NeighborTag> tags) {
+    public record BorderTags(Map<Direction, List<NeighborTag>> neighborMap) {
+        public void put(Direction direction, List<NeighborTag> tags) {
             neighborMap.put(direction, tags);
         }
 
-        public boolean containsKey(BuildBorder direction) {
+        public boolean containsKey(Direction direction) {
             return neighborMap.containsKey(direction);
         }
 
-        public Set<Map.Entry<BuildBorder, List<NeighborTag>>> entrySet() {
+        public Set<Map.Entry<Direction, List<NeighborTag>>> entrySet() {
             return neighborMap.entrySet();
         }
 

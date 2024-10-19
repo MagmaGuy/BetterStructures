@@ -1,16 +1,15 @@
 package com.magmaguy.betterstructures.modules;
 
-import com.magmaguy.betterstructures.config.modules.ModulesConfigFields;
 import com.magmaguy.magmacore.util.Logger;
 
 import javax.annotation.Nullable;
 
-public enum BuildBorder {
+public enum Direction {
     NORTH, SOUTH, EAST, WEST, UP, DOWN;
 
     @Nullable
-    public static BuildBorder fromString(String s) {
-        for (BuildBorder border : BuildBorder.values()) {
+    public static Direction fromString(String s) {
+        for (Direction border : Direction.values()) {
             if (border.name().equalsIgnoreCase(s)) {
                 return border;
             }
@@ -18,7 +17,7 @@ public enum BuildBorder {
         return null;
     }
 
-    public BuildBorder getOpposite() {
+    public Direction getOpposite() {
         return switch (this) {
             case NORTH -> SOUTH;
             case SOUTH -> NORTH;
@@ -30,29 +29,29 @@ public enum BuildBorder {
         };
     }
 
-    public static BuildBorder transformDirection(BuildBorder direction, Integer rotation) {
+    public static Direction transformDirection(Direction direction, Integer rotation) {
         if (rotation == null || rotation == 0) return direction;
         rotation = ((rotation % 360) + 360) % 360; //normalizes negative rotations
         return switch (rotation) {
             case 90 -> switch (direction) {
-                case NORTH -> BuildBorder.EAST;
-                case EAST -> BuildBorder.SOUTH;
-                case SOUTH -> BuildBorder.WEST;
-                case WEST -> BuildBorder.NORTH;
+                case NORTH -> Direction.EAST;
+                case EAST -> Direction.SOUTH;
+                case SOUTH -> Direction.WEST;
+                case WEST -> Direction.NORTH;
                 default -> direction;
             };
             case 180 -> switch (direction) {
-                case NORTH -> BuildBorder.SOUTH;
-                case EAST -> BuildBorder.WEST;
-                case SOUTH -> BuildBorder.NORTH;
-                case WEST -> BuildBorder.EAST;
+                case NORTH -> Direction.SOUTH;
+                case EAST -> Direction.WEST;
+                case SOUTH -> Direction.NORTH;
+                case WEST -> Direction.EAST;
                 default -> direction;
             };
             case 270 -> switch (direction) {
-                case NORTH -> BuildBorder.WEST;
-                case EAST -> BuildBorder.NORTH;
-                case SOUTH -> BuildBorder.EAST;
-                case WEST -> BuildBorder.SOUTH;
+                case NORTH -> Direction.WEST;
+                case EAST -> Direction.NORTH;
+                case SOUTH -> Direction.EAST;
+                case WEST -> Direction.SOUTH;
                 default -> direction;
             };
             default -> {

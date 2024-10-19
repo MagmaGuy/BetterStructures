@@ -1,6 +1,6 @@
 package com.magmaguy.betterstructures.config.modules;
 
-import com.magmaguy.betterstructures.modules.ChunkData;
+import com.magmaguy.betterstructures.modules.GridCell;
 import com.magmaguy.magmacore.util.Logger;
 import com.sk89q.worldedit.EditSession;
 import com.sk89q.worldedit.WorldEdit;
@@ -64,18 +64,18 @@ public class Module {
         }
     }
 
-    public static void batchPaste(List<ChunkData> chunkDataList, org.bukkit.World world) {
+    public static void batchPaste(List<GridCell> gridCellList, org.bukkit.World world) {
         World worldEditWorld = BukkitAdapter.adapt(world);
         try (EditSession editSession = WorldEdit.getInstance().newEditSession(worldEditWorld)) {
 
             editSession.setTrackingHistory(false);
             editSession.setSideEffectApplier(SideEffectSet.none());
 
-            for (ChunkData chunkData : chunkDataList) {
-                if (chunkData == null || chunkData.getModulesContainer() == null) continue;
+            for (GridCell gridCell : gridCellList) {
+                if (gridCell == null || gridCell.getModulesContainer() == null) continue;
                 //todo: this is scuffed af
-                int rotation = chunkData.getModulesContainer().getRotation();
-                Location location = chunkData.getRealLocation().add(-1, 0, -1);
+                int rotation = gridCell.getModulesContainer().getRotation();
+                Location location = gridCell.getRealLocation().add(-1, 0, -1);
                 if (rotation == 90) rotation = 270;
                 else if (rotation == 270) rotation = 90;
                 switch (rotation) {
@@ -94,7 +94,7 @@ public class Module {
                         Logger.warn("How did that even happen? Invalid rotation!");
                 }
 
-                ClipboardHolder holder = new ClipboardHolder(chunkData.getModulesContainer().getClipboard());
+                ClipboardHolder holder = new ClipboardHolder(gridCell.getModulesContainer().getClipboard());
                 holder.setTransform(new AffineTransform().rotateY(rotation));
                 Operation operation = holder
                         .createPaste(editSession)
@@ -109,7 +109,7 @@ public class Module {
         }
 
         HashSet<Chunk> chunks = new HashSet<>();
-        chunkDataList.forEach(chunkData -> {
+        gridCellList.forEach(chunkData -> {
             if (chunkData != null) chunks.add(chunkData.getRealLocation().getChunk());
         });
         chunks.forEach(chunk -> chunk.unload(true));
