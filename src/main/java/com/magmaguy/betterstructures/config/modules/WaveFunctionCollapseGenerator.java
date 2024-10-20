@@ -14,6 +14,7 @@ import org.joml.Vector3i;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class WaveFunctionCollapseGenerator {
     private final int massPasteSize = DefaultConfig.getModularChunkPastingSpeed();
@@ -79,6 +80,7 @@ public class WaveFunctionCollapseGenerator {
 
     private void start(String startingModule) {
         GridCell startChunk = new GridCell(new Vector3i(), world, spatialGrid.getCellMap());
+//        startChunk.setSpecial(true);
         spatialGrid.getCellMap().put(new Vector3i(), startChunk);
         spatialGrid.initializeCellNeighbors(startChunk);
 
@@ -126,9 +128,12 @@ public class WaveFunctionCollapseGenerator {
     }
 
     private void paste(Vector3i chunkLocation, ModulesContainer modulesContainer) {
+
         // Access the ChunkData from chunkArray
         GridCell gridCell = getChunkDataAt(chunkLocation.x, chunkLocation.y, chunkLocation.z);
-        if (gridCell == null) {
+        if (gridCell == null
+//                || gridCell.isSpecial()
+        ) {
             Logger.warn("ChunkData not found at location: " + chunkLocation);
             return;
         }
@@ -182,6 +187,11 @@ public class WaveFunctionCollapseGenerator {
     }
 
     private void generateNextChunk(GridCell gridCell) {
+//        if (gridCell.isSpecial()) {
+//             Skip special cells
+//            return;
+//        }
+
         spatialGrid.initializeCellNeighbors(gridCell);
 
         // Update valid options
@@ -212,34 +222,8 @@ public class WaveFunctionCollapseGenerator {
         }
     }
 
-    private void rollbackChunk(GridCell gridCell) {
-        // Logger.debug("Rolling back chunk at " + gridCell.getCellLocation());
-        chunkRollbackCounter.put(gridCell, chunkRollbackCounter.getOrDefault(gridCell, 0) + 1);
-        int rollBackRadius = Math.max((int) (chunkRollbackCounter.get(gridCell) / 30d), 1);
-        rollbackCounter++;
-        if (rollbackCounter % 1000 == 0) {
-            Vector3i location = gridCell.getCellLocation();
-            Logger.warn("Current rollback status: " + rollbackCounter + " chunks rolled back. Latest rollback location: " + location.x + ", " + location.y + ", " + location.z);
-            player.sendMessage("Current rollback status: " + rollbackCounter + " chunks rolled back. Latest rollback location: " + location.x + ", " + location.y + ", " + location.z);
-        }
-        int cellsReset = gridCell.hardReset(spatialGrid, slowGenerationForShowcase, rollBackRadius);
-        generatedChunks -= cellsReset; // Subtract only the number of generated cells that were reset
-    }
-
 //    private void rollbackChunk(GridCell gridCell) {
-////        Logger.debug("Attempting to resolve cell at " + gridCell.getCellLocation() + " by adjusting neighbors.");
-//
-//        // Try to resolve by adjusting neighbors
-//        boolean resolved = tryAdjustingNeighbors(gridCell);
-//
-//        if (resolved) {
-//            Logger.debug("Successfully resolved cell at " + gridCell.getCellLocation() + " by adjusting neighbors.");
-//            return;
-//        }
-//
-//        // If not resolved, proceed with rollback as before
-////        Logger.debug("Could not resolve cell at " + gridCell.getCellLocation() + " by adjusting neighbors. Performing rollback.");
-//
+//        // Logger.debug("Rolling back chunk at " + gridCell.getCellLocation());
 //        chunkRollbackCounter.put(gridCell, chunkRollbackCounter.getOrDefault(gridCell, 0) + 1);
 //        int rollBackRadius = Math.max((int) (chunkRollbackCounter.get(gridCell) / 30d), 1);
 //        rollbackCounter++;
@@ -251,111 +235,181 @@ public class WaveFunctionCollapseGenerator {
 //        int cellsReset = gridCell.hardReset(spatialGrid, slowGenerationForShowcase, rollBackRadius);
 //        generatedChunks -= cellsReset; // Subtract only the number of generated cells that were reset
 //    }
-//
-//    private boolean tryAdjustingNeighbors(GridCell gridCell) {
-//        // Get the immediate neighbors of the failed cell
-//        Map<Direction, GridCell> neighbors = gridCell.getOrientedNeighbors();
-//
-//        // Store the original modules of neighbors to revert back if needed
-//        Map<GridCell, ModulesContainer> originalModules = new HashMap<>();
-//
-//        // Collect neighbors that are generated and not null
-//        List<GridCell> generatedNeighbors = new ArrayList<>();
-//        for (GridCell neighbor : neighbors.values()) {
-//            if (neighbor != null && neighbor.isGenerated()) {
-//                generatedNeighbors.add(neighbor);
-//                originalModules.put(neighbor, neighbor.getModulesContainer());
-//            }
+
+    private void rollbackChunk(GridCell gridCell) {
+//        if (gridCell.isSpecial()) {
+//             Do not rollback special cells
+//            return;
 //        }
-//
-//        // Try all combinations of valid alternatives for the neighbors
-//        return tryNeighborConfigurations(generatedNeighbors, gridCell, originalModules);
-//    }
-//
-//    private boolean tryNeighborConfigurations(List<GridCell> neighbors, GridCell failedCell, Map<GridCell, ModulesContainer> originalModules) {
-//        // Base case: If no neighbors to adjust, return false
-//        if (neighbors.isEmpty()) {
-//            return false;
+//        Logger.debug("Attempting to resolve cell at " + gridCell.getCellLocation() + " by adjusting neighbors.");
+
+        // Try to resolve by adjusting neighbors
+        boolean resolved = tryAdjustingNeighbors(gridCell);
+
+        if (resolved) {
+//            Logger.debug("Successfully resolved cell at " + gridCell.getCellLocation() + " by adjusting neighbors.");
+            return;
+        }
+
+        // If not resolved, proceed with rollback as before
+//        Logger.debug("Could not resolve cell at " + gridCell.getCellLocation() + " by adjusting neighbors. Performing rollback.");
+
+        chunkRollbackCounter.put(gridCell, chunkRollbackCounter.getOrDefault(gridCell, 0) + 1);
+        int rollBackRadius = Math.max((int) (chunkRollbackCounter.get(gridCell) / 5d), 1);
+        rollbackCounter++;
+        if (rollbackCounter % 1000 == 0) {
+            Vector3i location = gridCell.getCellLocation();
+            Logger.warn("Current rollback status: " + rollbackCounter + " chunks rolled back. Latest rollback location: " + location.x + ", " + location.y + ", " + location.z);
+            player.sendMessage("Current rollback status: " + rollbackCounter + " chunks rolled back. Latest rollback location: " + location.x + ", " + location.y + ", " + location.z);
+        }
+        int cellsReset = gridCell.hardReset(spatialGrid, slowGenerationForShowcase, rollBackRadius);
+        generatedChunks -= cellsReset; // Subtract only the number of generated cells that were reset
+    }
+
+    private boolean tryAdjustingNeighbors(GridCell gridCell) {
+        // Get the immediate neighbors of the failed cell
+        Map<Direction, GridCell> neighbors = gridCell.getOrientedNeighbors();
+
+        // Store the original modules of neighbors to revert back if needed
+        Map<GridCell, ModulesContainer> originalModules = new HashMap<>();
+
+        // Collect neighbors that are generated and not null
+        List<GridCell> generatedNeighbors = new ArrayList<>();
+        for (GridCell neighbor : neighbors.values()) {
+            if (neighbor != null && neighbor.isGenerated()
+//                    && !neighbor.isSpecial()
+            )
+            {
+                // Only consider non-special neighbors
+                generatedNeighbors.add(neighbor);
+                originalModules.put(neighbor, neighbor.getModulesContainer());
+            }
+        }
+
+        boolean resolved = tryNeighborConfigurations(generatedNeighbors, gridCell, originalModules);
+
+        if (resolved) {
+            // Update and select a module for the gridCell
+            gridCell.updateValidOptions();
+            List<ModulesContainer> validOptions = gridCell.getValidOptions();
+            if (validOptions == null || validOptions.isEmpty()) {
+                // Revert neighbors and return false
+                revertNeighbors(originalModules);
+                return false;
+            }
+            ModulesContainer modulesContainer = ModulesContainer.pickRandomModule(validOptions, gridCell);
+            if (modulesContainer == null) {
+                // Revert neighbors and return false
+                revertNeighbors(originalModules);
+                return false;
+            }
+            // Paste the module for the gridCell
+            paste(gridCell.getCellLocation(), modulesContainer);
+
+            // Paste the adjusted neighbors
+            for (GridCell neighbor : generatedNeighbors) {
+                paste(neighbor.getCellLocation(), neighbor.getModulesContainer());
+            }
+
+            return true;
+        } else {
+            // Revert neighbors to their original modules
+            revertNeighbors(originalModules);
+            return false;
+        }
+    }
+
+    private void revertNeighbors(Map<GridCell, ModulesContainer> originalModules) {
+        for (GridCell neighbor : originalModules.keySet()) {
+            neighbor.setModulesContainer(originalModules.get(neighbor));
+            neighbor.updateValidOptions();
+        }
+    }
+
+    private boolean tryNeighborConfigurations(List<GridCell> neighbors, GridCell failedCell, Map<GridCell, ModulesContainer> originalModules) {
+        // Base case: If no neighbors to adjust, return false
+        if (neighbors.isEmpty()) {
+            return false;
+        }
+
+//        // Limit the number of neighbors to adjust to prevent exponential growth
+//        int maxNeighborsToAdjust = 3; // You can adjust this value as needed
+//        if (neighbors.size() > maxNeighborsToAdjust) {
+//            neighbors = neighbors.subList(0, maxNeighborsToAdjust);
 //        }
-//
-////        // Limit the number of neighbors to adjust to prevent exponential growth
-////        int maxNeighborsToAdjust = 3; // You can adjust this value as needed
-////        if (neighbors.size() > maxNeighborsToAdjust) {
-////            neighbors = neighbors.subList(0, maxNeighborsToAdjust);
-////        }
-//
-//        // Generate all combinations of valid modules for the neighbors
-//        List<List<ModulesContainer>> neighborOptions = new ArrayList<>();
-//        List<GridCell> adjustableNeighbors = new ArrayList<>();
-//
-//        for (GridCell neighbor : neighbors) {
-//            neighbor.updateValidOptions();
-//            List<ModulesContainer> options = new ArrayList<>(neighbor.getValidOptions());
-//
-//            if (options.isEmpty()) {
-//                // Cannot adjust this neighbor, skip it
-//                continue;
-//            }
-//
-//            neighborOptions.add(options);
-//            adjustableNeighbors.add(neighbor);
-//        }
-//
-//        // Update the neighbors list to only include adjustable neighbors
-//        neighbors = adjustableNeighbors;
-//
-//        // If no neighbors can be adjusted, return false
-//        if (neighbors.isEmpty()) {
-//            return false;
-//        }
-//
-//        // Initialize indices for tracking combinations
-//        int[] indices = new int[neighborOptions.size()];
-//
-//        // Iterate over all combinations
-//        while (true) {
-//            // Assign the current combination of modules to the neighbors
-//            for (int i = 0; i < neighbors.size(); i++) {
-//                GridCell neighbor = neighbors.get(i);
-//                ModulesContainer module = neighborOptions.get(i).get(indices[i]);
-//                neighbor.setModulesContainer(module);
-//            }
-//
-//            // Update the failed cell's valid options
-//            failedCell.updateValidOptions();
-//
-//            // Check if the failed cell now has valid options
-//            if (failedCell.getValidOptionCount() > 0) {
-//                // Found a valid configuration
-//                return true;
-//            }
-//
-//            // Increment indices to get the next combination
-//            int position = 0;
-//            while (position < indices.length) {
-//                indices[position]++;
-//                if (indices[position] < neighborOptions.get(position).size()) {
-//                    break;
-//                } else {
-//                    indices[position] = 0;
-//                    position++;
-//                }
-//            }
-//
-//            // If we've exhausted all combinations, break
-//            if (position == indices.length) {
-//                break;
-//            }
-//        }
-//
-//        // Revert neighbors to their original modules
-//        for (GridCell neighbor : neighbors) {
-//            neighbor.setModulesContainer(originalModules.get(neighbor));
-//        }
-//
-//        // No valid configuration found
-//        return false;
-//    }
+
+        // Generate all combinations of valid modules for the neighbors
+        List<List<ModulesContainer>> neighborOptions = new ArrayList<>();
+        List<GridCell> adjustableNeighbors = new ArrayList<>();
+
+        for (GridCell neighbor : neighbors) {
+            neighbor.updateValidOptions();
+            List<ModulesContainer> options = new ArrayList<>(neighbor.getValidOptions());
+
+            if (options.isEmpty()) {
+                // Cannot adjust this neighbor, skip it
+                continue;
+            }
+
+            neighborOptions.add(options);
+            adjustableNeighbors.add(neighbor);
+        }
+
+        // Update the neighbors list to only include adjustable neighbors
+        neighbors = adjustableNeighbors;
+
+        // If no neighbors can be adjusted, return false
+        if (neighbors.isEmpty()) {
+            return false;
+        }
+
+        // Initialize indices for tracking combinations
+        int[] indices = new int[neighborOptions.size()];
+
+        // Iterate over all combinations
+        while (true) {
+            // Assign the current combination of modules to the neighbors
+            for (int i = 0; i < neighbors.size(); i++) {
+                GridCell neighbor = neighbors.get(i);
+                ModulesContainer module = neighborOptions.get(i).get(indices[i]);
+                neighbor.setModulesContainer(module);
+            }
+
+            // Update the failed cell's valid options
+            failedCell.updateValidOptions();
+
+            // Check if the failed cell now has valid options
+            if (failedCell.getValidOptionCount() > 0) {
+                // Found a valid configuration
+                return true;
+            }
+
+            // Increment indices to get the next combination
+            int position = 0;
+            while (position < indices.length) {
+                indices[position]++;
+                if (indices[position] < neighborOptions.get(position).size()) {
+                    break;
+                } else {
+                    indices[position] = 0;
+                    position++;
+                }
+            }
+
+            // If we've exhausted all combinations, break
+            if (position == indices.length) {
+                break;
+            }
+        }
+
+        // Revert neighbors to their original modules
+        for (GridCell neighbor : neighbors) {
+            neighbor.setModulesContainer(originalModules.get(neighbor));
+        }
+
+        // No valid configuration found
+        return false;
+    }
 
 
     private void done() {

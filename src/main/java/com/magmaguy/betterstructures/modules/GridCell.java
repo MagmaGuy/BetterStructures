@@ -23,11 +23,13 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public class GridCell {
     private final Vector3i cellLocation;
+    @Getter
     private final int magnitudeSquared;
     @Getter
     private final World world;
     private final Map<Vector3i, GridCell> cellMap;
     @Getter
+    @Setter
     private ModulesContainer modulesContainer;
     @Getter
     @Setter
@@ -35,6 +37,8 @@ public class GridCell {
     private List<TextDisplay> textDisplays;
     @Getter
     private List<ModulesContainer> validOptions = null;
+//    @Getter @Setter
+//    private boolean isSpecial = false;
 
     public GridCell(Vector3i cellLocation, World world, Map<Vector3i, GridCell> cellMap) {
         this.cellLocation = cellLocation;
@@ -47,17 +51,7 @@ public class GridCell {
         return new Vector3i(cellLocation);
     }
 
-    private int computeMagnitudeSquared(Vector3i location) {
-        return location.x * location.x + location.y * location.y + location.z * location.z;
-    }
-
-    public int getMagnitudeSquared() {
-        return magnitudeSquared;
-    }
-
     public void updateValidOptions() {
-//        if (isGenerated()) return;
-//        if (validOptions != null && !forceUpdate) return;
         validOptions = ModulesContainer.getValidModulesFromSurroundings(this);
     }
 
@@ -167,6 +161,10 @@ public class GridCell {
     }
 
     public int hardReset(SpatialGrid spatialGrid, boolean slowGenerationForShowcase, int radius) {
+//        if (isSpecial) {
+//            // Do not reset special cells
+//            return 0;
+//        }
         Set<GridCell> visited = new HashSet<>();
         Set<GridCell> resetCells = new HashSet<>();
         int resetGeneratedCells = hardResetRecursive(slowGenerationForShowcase, radius, visited, resetCells);

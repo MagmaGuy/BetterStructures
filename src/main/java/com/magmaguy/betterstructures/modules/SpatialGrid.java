@@ -31,6 +31,9 @@ public class SpatialGrid {
         Comparator<GridCell> cellComparator = Comparator
                 .comparingInt(GridCell::getMagnitudeSquared)
                 .thenComparingInt(GridCell::getValidOptionCount);
+//        Comparator<GridCell> cellComparator = Comparator
+//                .comparingInt(GridCell::getValidOptionCount)
+//                .thenComparingInt(GridCell::getMagnitudeSquared);
         this.gridCellQueue = new PriorityQueue<>(cellComparator);
     }
 
