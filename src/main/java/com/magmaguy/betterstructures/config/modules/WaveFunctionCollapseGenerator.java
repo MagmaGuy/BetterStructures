@@ -226,6 +226,138 @@ public class WaveFunctionCollapseGenerator {
         generatedChunks -= cellsReset; // Subtract only the number of generated cells that were reset
     }
 
+//    private void rollbackChunk(GridCell gridCell) {
+////        Logger.debug("Attempting to resolve cell at " + gridCell.getCellLocation() + " by adjusting neighbors.");
+//
+//        // Try to resolve by adjusting neighbors
+//        boolean resolved = tryAdjustingNeighbors(gridCell);
+//
+//        if (resolved) {
+//            Logger.debug("Successfully resolved cell at " + gridCell.getCellLocation() + " by adjusting neighbors.");
+//            return;
+//        }
+//
+//        // If not resolved, proceed with rollback as before
+////        Logger.debug("Could not resolve cell at " + gridCell.getCellLocation() + " by adjusting neighbors. Performing rollback.");
+//
+//        chunkRollbackCounter.put(gridCell, chunkRollbackCounter.getOrDefault(gridCell, 0) + 1);
+//        int rollBackRadius = Math.max((int) (chunkRollbackCounter.get(gridCell) / 30d), 1);
+//        rollbackCounter++;
+//        if (rollbackCounter % 1000 == 0) {
+//            Vector3i location = gridCell.getCellLocation();
+//            Logger.warn("Current rollback status: " + rollbackCounter + " chunks rolled back. Latest rollback location: " + location.x + ", " + location.y + ", " + location.z);
+//            player.sendMessage("Current rollback status: " + rollbackCounter + " chunks rolled back. Latest rollback location: " + location.x + ", " + location.y + ", " + location.z);
+//        }
+//        int cellsReset = gridCell.hardReset(spatialGrid, slowGenerationForShowcase, rollBackRadius);
+//        generatedChunks -= cellsReset; // Subtract only the number of generated cells that were reset
+//    }
+//
+//    private boolean tryAdjustingNeighbors(GridCell gridCell) {
+//        // Get the immediate neighbors of the failed cell
+//        Map<Direction, GridCell> neighbors = gridCell.getOrientedNeighbors();
+//
+//        // Store the original modules of neighbors to revert back if needed
+//        Map<GridCell, ModulesContainer> originalModules = new HashMap<>();
+//
+//        // Collect neighbors that are generated and not null
+//        List<GridCell> generatedNeighbors = new ArrayList<>();
+//        for (GridCell neighbor : neighbors.values()) {
+//            if (neighbor != null && neighbor.isGenerated()) {
+//                generatedNeighbors.add(neighbor);
+//                originalModules.put(neighbor, neighbor.getModulesContainer());
+//            }
+//        }
+//
+//        // Try all combinations of valid alternatives for the neighbors
+//        return tryNeighborConfigurations(generatedNeighbors, gridCell, originalModules);
+//    }
+//
+//    private boolean tryNeighborConfigurations(List<GridCell> neighbors, GridCell failedCell, Map<GridCell, ModulesContainer> originalModules) {
+//        // Base case: If no neighbors to adjust, return false
+//        if (neighbors.isEmpty()) {
+//            return false;
+//        }
+//
+////        // Limit the number of neighbors to adjust to prevent exponential growth
+////        int maxNeighborsToAdjust = 3; // You can adjust this value as needed
+////        if (neighbors.size() > maxNeighborsToAdjust) {
+////            neighbors = neighbors.subList(0, maxNeighborsToAdjust);
+////        }
+//
+//        // Generate all combinations of valid modules for the neighbors
+//        List<List<ModulesContainer>> neighborOptions = new ArrayList<>();
+//        List<GridCell> adjustableNeighbors = new ArrayList<>();
+//
+//        for (GridCell neighbor : neighbors) {
+//            neighbor.updateValidOptions();
+//            List<ModulesContainer> options = new ArrayList<>(neighbor.getValidOptions());
+//
+//            if (options.isEmpty()) {
+//                // Cannot adjust this neighbor, skip it
+//                continue;
+//            }
+//
+//            neighborOptions.add(options);
+//            adjustableNeighbors.add(neighbor);
+//        }
+//
+//        // Update the neighbors list to only include adjustable neighbors
+//        neighbors = adjustableNeighbors;
+//
+//        // If no neighbors can be adjusted, return false
+//        if (neighbors.isEmpty()) {
+//            return false;
+//        }
+//
+//        // Initialize indices for tracking combinations
+//        int[] indices = new int[neighborOptions.size()];
+//
+//        // Iterate over all combinations
+//        while (true) {
+//            // Assign the current combination of modules to the neighbors
+//            for (int i = 0; i < neighbors.size(); i++) {
+//                GridCell neighbor = neighbors.get(i);
+//                ModulesContainer module = neighborOptions.get(i).get(indices[i]);
+//                neighbor.setModulesContainer(module);
+//            }
+//
+//            // Update the failed cell's valid options
+//            failedCell.updateValidOptions();
+//
+//            // Check if the failed cell now has valid options
+//            if (failedCell.getValidOptionCount() > 0) {
+//                // Found a valid configuration
+//                return true;
+//            }
+//
+//            // Increment indices to get the next combination
+//            int position = 0;
+//            while (position < indices.length) {
+//                indices[position]++;
+//                if (indices[position] < neighborOptions.get(position).size()) {
+//                    break;
+//                } else {
+//                    indices[position] = 0;
+//                    position++;
+//                }
+//            }
+//
+//            // If we've exhausted all combinations, break
+//            if (position == indices.length) {
+//                break;
+//            }
+//        }
+//
+//        // Revert neighbors to their original modules
+//        for (GridCell neighbor : neighbors) {
+//            neighbor.setModulesContainer(originalModules.get(neighbor));
+//        }
+//
+//        // No valid configuration found
+//        return false;
+//    }
+
+
     private void done() {
         if (player != null) {
             player.sendTitle("Done!", "Module assembly complete!");
@@ -237,6 +369,7 @@ public class WaveFunctionCollapseGenerator {
             messaging.timeMessage("Module assembly ", player);
             Logger.warn("Starting mass paste");
             if (player != null) player.sendMessage("Starting mass paste...");
+            spatialGrid.clearGridGenerationData();
             Bukkit.getScheduler().runTask(MetadataHandler.PLUGIN, this::instantPaste);
         } else {
             messaging.timeMessage("Generation", player);

@@ -135,9 +135,8 @@ public class GridCell {
     public void processPaste(ModulesContainer modulesContainer) {
         this.modulesContainer = modulesContainer;
         getOrientedNeighbors().values().forEach(neighbor -> {
-            if (neighbor != null && !neighbor.isGenerated()) {
-                neighbor.updateValidOptions();
-            }
+            //Rollback strategy relies on reading options for already generated chunks to go faster
+            if (neighbor != null) neighbor.updateValidOptions();
         });
     }
 
