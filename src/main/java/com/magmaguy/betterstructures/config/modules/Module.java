@@ -1,5 +1,6 @@
 package com.magmaguy.betterstructures.config.modules;
 
+import com.magmaguy.betterstructures.MetadataHandler;
 import com.magmaguy.betterstructures.modules.GridCell;
 import com.magmaguy.magmacore.util.Logger;
 import com.sk89q.worldedit.EditSession;
@@ -16,6 +17,7 @@ import com.sk89q.worldedit.util.SideEffectSet;
 import com.sk89q.worldedit.world.World;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
+import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.HashSet;
 import java.util.List;
@@ -66,52 +68,66 @@ public class Module {
 
     public static void batchPaste(List<GridCell> gridCellList, org.bukkit.World world) {
         World worldEditWorld = BukkitAdapter.adapt(world);
-        try (EditSession editSession = WorldEdit.getInstance().newEditSession(worldEditWorld)) {
+        EditSession editSession = WorldEdit.getInstance().newEditSession(worldEditWorld);
 
-            editSession.setTrackingHistory(false);
-            editSession.setSideEffectApplier(SideEffectSet.none());
+        editSession.setTrackingHistory(false);
+//        editSession.setSideEffectApplier(SideEffectSet.none());
+//        editSession.setSideEffectApplier(new SideEffectSet(Map.of(SideEffect.VALIDATION, SideEffect.State.ON)));
 
-            for (GridCell gridCell : gridCellList) {
-                if (gridCell == null || gridCell.getModulesContainer() == null) continue;
-                //todo: this is scuffed af
-                int rotation = gridCell.getModulesContainer().getRotation();
-                Location location = gridCell.getRealLocation().add(-1, 0, -1);
-                if (rotation == 90) rotation = 270;
-                else if (rotation == 270) rotation = 90;
-                switch (rotation) {
-                    case 0:
-                        break;
-                    case 90:
-                        location.add(0, 0, 17);
-                        break;
-                    case 180:
-                        location.add(17, 0, 17);
-                        break;
-                    case 270:
-                        location.add(17, 0, 0);
-                        break;
-                    default:
-                        Logger.warn("How did that even happen? Invalid rotation!");
-                }
-
-                ClipboardHolder holder = new ClipboardHolder(gridCell.getModulesContainer().getClipboard());
-                holder.setTransform(new AffineTransform().rotateY(rotation));
-                Operation operation = holder
-                        .createPaste(editSession)
-                        .to(BlockVector3.at(location.getX(), location.getY(), location.getZ()))
-                        // configure here
-                        .build();
-                Operations.complete(operation);
+        for (GridCell gridCell : gridCellList) {
+            if (gridCell == null || gridCell.getModulesContainer() == null) continue;
+            //todo: this is scuffed af
+            int rotation = gridCell.getModulesContainer().getRotation();
+            Location location = gridCell.getRealLocation().add(-1, 0, -1);
+            if (rotation == 90) rotation = 270;
+            else if (rotation == 270) rotation = 90;
+            switch (rotation) {
+                case 0:
+                    break;
+                case 90:
+                    location.add(0, 0, 17);
+                    break;
+                case 180:
+                    location.add(17, 0, 17);
+                    break;
+                case 270:
+                    location.add(17, 0, 0);
+                    break;
+                default:
+                    Logger.warn("How did that even happen? Invalid rotation!");
             }
 
-        } catch (WorldEditException e) {
-            throw new RuntimeException(e);
+            ClipboardHolder holder = new ClipboardHolder(gridCell.getModulesContainer().getClipboard());
+            holder.setTransform(new AffineTransform().rotateY(rotation));
+            Operation operation = holder
+                    .createPaste(editSession)
+                    .to(BlockVector3.at(location.getX(), location.getY(), location.getZ()))
+                    // configure here
+                    .build();
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    try {
+                        Operations.complete(operation);
+                    } catch (WorldEditException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            }.runTask(MetadataHandler.PLUGIN);
         }
+
+        editSession.close();
 
         HashSet<Chunk> chunks = new HashSet<>();
         gridCellList.forEach(chunkData -> {
             if (chunkData != null) chunks.add(chunkData.getRealLocation().getChunk());
         });
-        chunks.forEach(chunk -> chunk.unload(true));
+
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                chunks.forEach(chunk -> chunk.unload(true));
+            }
+        }.runTask(MetadataHandler.PLUGIN);
     }
 }

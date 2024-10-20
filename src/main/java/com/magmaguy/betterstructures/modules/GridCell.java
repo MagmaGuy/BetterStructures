@@ -1,15 +1,19 @@
 package com.magmaguy.betterstructures.modules;
 
+import com.magmaguy.betterstructures.MetadataHandler;
 import com.magmaguy.magmacore.util.Logger;
 import lombok.Getter;
 import lombok.Setter;
-import org.bukkit.*;
+import org.bukkit.Color;
+import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.World;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.TextDisplay;
+import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Transformation;
-import org.bukkit.util.Vector;
 import org.joml.AxisAngle4f;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
@@ -18,28 +22,37 @@ import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class GridCell {
-    @Getter
-    private World world;
     private final Vector3i cellLocation;
-    private Map<Vector3i, GridCell> cellMap;
+    private final int magnitudeSquared;
+    @Getter
+    private final World world;
+    private final Map<Vector3i, GridCell> cellMap;
     @Getter
     private ModulesContainer modulesContainer;
     @Getter
     @Setter
     private int generatedNeighborCount = 0;
     private List<TextDisplay> textDisplays;
-
     @Getter
     private List<ModulesContainer> validOptions = null;
-
-    public Vector3i getCellLocation() {
-        return new Vector3i(cellLocation);
-    }
 
     public GridCell(Vector3i cellLocation, World world, Map<Vector3i, GridCell> cellMap) {
         this.cellLocation = cellLocation;
         this.world = world;
         this.cellMap = cellMap;
+        this.magnitudeSquared = (int) cellLocation.lengthSquared();
+    }
+
+    public Vector3i getCellLocation() {
+        return new Vector3i(cellLocation);
+    }
+
+    private int computeMagnitudeSquared(Vector3i location) {
+        return location.x * location.x + location.y * location.y + location.z * location.z;
+    }
+
+    public int getMagnitudeSquared() {
+        return magnitudeSquared;
     }
 
     public void updateValidOptions() {
@@ -103,15 +116,20 @@ public class GridCell {
     }
 
     private void spawnDebugText(Location location, String text, Color color, int scale) {
-        TextDisplay textDisplay = (TextDisplay) world.spawnEntity(location, EntityType.TEXT_DISPLAY);
-        textDisplay.setBillboard(Display.Billboard.CENTER);
-        textDisplay.setTransformation(new Transformation(new Vector3f(), new AxisAngle4f(), new Vector3f(scale, scale, scale), new AxisAngle4f()));
-        textDisplay.setBackgroundColor(color);
-        textDisplay.setTextOpacity((byte) 1);
-        textDisplay.setSeeThrough(true);
-        textDisplay.setText(text);
-        textDisplay.setViewRange(0.1f);
-        textDisplays.add(textDisplay);
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                TextDisplay textDisplay = (TextDisplay) world.spawnEntity(location, EntityType.TEXT_DISPLAY);
+                textDisplay.setBillboard(Display.Billboard.CENTER);
+                textDisplay.setTransformation(new Transformation(new Vector3f(), new AxisAngle4f(), new Vector3f(scale, scale, scale), new AxisAngle4f()));
+                textDisplay.setBackgroundColor(color);
+                textDisplay.setTextOpacity((byte) 1);
+                textDisplay.setSeeThrough(true);
+                textDisplay.setText(text);
+                textDisplay.setViewRange(0.1f);
+                textDisplays.add(textDisplay);
+            }
+        }.runTask(MetadataHandler.PLUGIN);
     }
 
     public void processPaste(ModulesContainer modulesContainer) {
@@ -183,7 +201,7 @@ public class GridCell {
         return resetGeneratedCells;
     }
 
-    public void clearGridGenerationData(){
+    public void clearGridGenerationData() {
         textDisplays = null;
         validOptions = null;
     }
