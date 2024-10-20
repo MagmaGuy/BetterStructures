@@ -29,10 +29,7 @@ public class SpatialGrid {
     public SpatialGrid(int gridRadius) {
         this.gridRadius = gridRadius;
         Comparator<GridCell> cellComparator = Comparator
-                .comparingInt((GridCell cell) -> {
-                    Vector3i loc = cell.getCellLocation();
-                    return loc.x * loc.x + loc.y * loc.y + loc.z * loc.z;
-                })
+                .comparingInt(GridCell::getMagnitudeSquared)
                 .thenComparingInt(GridCell::getValidOptionCount);
         this.gridCellQueue = new PriorityQueue<>(cellComparator);
     }
