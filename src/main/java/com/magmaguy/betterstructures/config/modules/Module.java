@@ -116,8 +116,6 @@ public class Module {
             }.runTask(MetadataHandler.PLUGIN);
         }
 
-        editSession.close();
-
         HashSet<Chunk> chunks = new HashSet<>();
         gridCellList.forEach(chunkData -> {
             if (chunkData != null) chunks.add(chunkData.getRealLocation().getChunk());
@@ -127,6 +125,7 @@ public class Module {
             @Override
             public void run() {
                 chunks.forEach(chunk -> chunk.unload(true));
+                editSession.close();
             }
         }.runTask(MetadataHandler.PLUGIN);
     }
