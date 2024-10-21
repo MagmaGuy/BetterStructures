@@ -12,6 +12,7 @@ import org.bukkit.block.Biome;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 public class ModulesConfigFields extends CustomConfigFields {
 
@@ -41,6 +42,17 @@ public class ModulesConfigFields extends CustomConfigFields {
     private boolean westIsPassable = true;
     private boolean upIsPassable = true;
     private boolean downIsPassable = true;
+    private UUID uuid = UUID.randomUUID();
+    private String compoundModule = null;
+
+    //used to check if a config is either cloned or the same between two modules
+    public UUID getUuid() {
+        return clonedConfig == null ? uuid : clonedConfig.getUuid();
+    }
+
+    public String getCompoundModule() {
+        return clonedConfig == null ? compoundModule : clonedConfig.getCompoundModule();
+    }
 
     /**
      * Used by plugin-generated files (defaults)
@@ -151,6 +163,7 @@ public class ModulesConfigFields extends CustomConfigFields {
         this.westIsPassable = processBoolean("westIsPassable", westIsPassable, westIsPassable, true);
         this.upIsPassable = processBoolean("upIsPassable", upIsPassable, upIsPassable, true);
         this.downIsPassable = processBoolean("downIsPassable", downIsPassable, downIsPassable, true);
+        this.compoundModule = processString("compoundModule", compoundModule, compoundModule, true);
     }
 
     public void validateClones() {

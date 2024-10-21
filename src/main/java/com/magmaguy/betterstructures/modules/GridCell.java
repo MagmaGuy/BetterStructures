@@ -142,7 +142,7 @@ public class GridCell {
         return modulesContainer != null;
     }
 
-    private void resetData(boolean showGenerationForShowcase) {
+    public void resetData(boolean showGenerationForShowcase) {
         if (showGenerationForShowcase) {
             for (int x = 0; x < 16; x++) {
                 for (int y = 0; y < 16; y++) {
