@@ -116,7 +116,7 @@ public class ModulesContainer {
                 for (GridCell neighbourData : gridCell.getOrientedNeighbors().values()) {
                     if (neighbourData == null || neighbourData.getModulesContainer() == null) continue;
                     if (!modulesContainer.nothing && modulesContainer.getModulesConfigField().isNoRepeat() &&
-                            neighbourData.getModulesContainer().getClipboardFilename().equals(modulesContainer.getClipboardFilename())) {
+                            neighbourData.getModulesContainer().getModulesConfigField().getUuid().equals(modulesContainer.getModulesConfigField().getUuid())) {
                         repeatStop = true;
                         break;
                     }

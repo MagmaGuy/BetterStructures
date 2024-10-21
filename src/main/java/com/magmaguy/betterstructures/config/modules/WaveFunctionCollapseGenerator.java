@@ -75,7 +75,7 @@ public class WaveFunctionCollapseGenerator {
         totalChunks = xzRange * xzRange * yRange;
 
         // Initialize totalMassPasteChunks based on radius
-        totalMassPasteChunks = xzRange * xzRange;
+        totalMassPasteChunks = xzRange * xzRange * yRange;
     }
 
     private void start(String startingModule) {
@@ -137,6 +137,9 @@ public class WaveFunctionCollapseGenerator {
             Logger.warn("ChunkData not found at location: " + chunkLocation);
             return;
         }
+
+        //todo: compound modules, generating all of them and rolling them back if they don't work out
+//        if (modulesContainer.getModulesConfigField().getCompoundModule() != null){}
 
         // If this cell was not already generated, increment generatedChunks
         if (!gridCell.isGenerated()) {
@@ -222,21 +225,13 @@ public class WaveFunctionCollapseGenerator {
         }
     }
 
-//    private void rollbackChunk(GridCell gridCell) {
-//        // Logger.debug("Rolling back chunk at " + gridCell.getCellLocation());
-//        chunkRollbackCounter.put(gridCell, chunkRollbackCounter.getOrDefault(gridCell, 0) + 1);
-//        int rollBackRadius = Math.max((int) (chunkRollbackCounter.get(gridCell) / 30d), 1);
-//        rollbackCounter++;
-//        if (rollbackCounter % 1000 == 0) {
-//            Vector3i location = gridCell.getCellLocation();
-//            Logger.warn("Current rollback status: " + rollbackCounter + " chunks rolled back. Latest rollback location: " + location.x + ", " + location.y + ", " + location.z);
-//            player.sendMessage("Current rollback status: " + rollbackCounter + " chunks rolled back. Latest rollback location: " + location.x + ", " + location.y + ", " + location.z);
-//        }
-//        int cellsReset = gridCell.hardReset(spatialGrid, slowGenerationForShowcase, rollBackRadius);
-//        generatedChunks -= cellsReset; // Subtract only the number of generated cells that were reset
-//    }
-
     private void rollbackChunk(GridCell gridCell) {
+        rollbackCounter++;
+        if (rollbackCounter % 1000 == 0) {
+            Vector3i location = gridCell.getCellLocation();
+            Logger.warn("Current rollback status: " + rollbackCounter + " chunks rolled back. Latest rollback location: " + location.x + ", " + location.y + ", " + location.z);
+            player.sendMessage("Current rollback status: " + rollbackCounter + " chunks rolled back. Latest rollback location: " + location.x + ", " + location.y + ", " + location.z);
+        }
 //        if (gridCell.isSpecial()) {
 //             Do not rollback special cells
 //            return;
@@ -255,13 +250,7 @@ public class WaveFunctionCollapseGenerator {
 //        Logger.debug("Could not resolve cell at " + gridCell.getCellLocation() + " by adjusting neighbors. Performing rollback.");
 
         chunkRollbackCounter.put(gridCell, chunkRollbackCounter.getOrDefault(gridCell, 0) + 1);
-        int rollBackRadius = Math.max((int) (chunkRollbackCounter.get(gridCell) / 5d), 1);
-        rollbackCounter++;
-        if (rollbackCounter % 1000 == 0) {
-            Vector3i location = gridCell.getCellLocation();
-            Logger.warn("Current rollback status: " + rollbackCounter + " chunks rolled back. Latest rollback location: " + location.x + ", " + location.y + ", " + location.z);
-            player.sendMessage("Current rollback status: " + rollbackCounter + " chunks rolled back. Latest rollback location: " + location.x + ", " + location.y + ", " + location.z);
-        }
+        int rollBackRadius = Math.max((int) (chunkRollbackCounter.get(gridCell) / 10d), 2);
         int cellsReset = gridCell.hardReset(spatialGrid, slowGenerationForShowcase, rollBackRadius);
         generatedChunks -= cellsReset; // Subtract only the number of generated cells that were reset
     }
