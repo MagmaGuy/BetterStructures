@@ -37,10 +37,14 @@ public class ModulesContainer {
         this.modulesConfigField = modulesConfigField;
         this.configFilename = configFilename;
         this.rotation = rotation;
-        if (!clipboardFilename.equalsIgnoreCase("nothing"))
+        if (!clipboardFilename.equalsIgnoreCase("nothing")) {
             processBorders(modulesConfigField.getBorderMap());
-        else nothing = true;
-        modulesContainers.put(clipboardFilename + "_rotation_" + rotation, this);
+            modulesContainers.put(clipboardFilename + "_rotation_" + rotation, this);
+        }
+        else {
+            nothing = true;
+            modulesContainers.put(clipboardFilename,this);
+        }
     }
 
     public static void initializeModulesContainer(Clipboard clipboard, String clipboardFilename, ModulesConfigFields modulesConfigField, String configFilename) {
@@ -52,11 +56,18 @@ public class ModulesContainer {
             for (Map.Entry<Direction, List<NeighborTag>> buildBorderListEntry : value.borderTags.entrySet()) {
                 Direction direction = buildBorderListEntry.getKey();
                 List<NeighborTag> borderTags = buildBorderListEntry.getValue();
+
                 for (ModulesContainer neighborContainer : modulesContainers.values()) {
                     List<NeighborTag> neighborTags = neighborContainer.borderTags.neighborMap.get(direction.getOpposite());
                     for (NeighborTag borderTag : borderTags) {
                         boolean valid = false;
                         for (NeighborTag neighborTag : neighborTags) {
+                            //"nothing" is a special module, borders that share "nothing" should not be joined and instead they should only join with empty space
+                            if (borderTag.getTag().equalsIgnoreCase("nothing")){
+                                Logger.debug("nothing is null: "+ modulesContainers.get("nothing"));
+                                value.validBorders.computeIfAbsent(direction, k -> new ArrayList<>()).add(modulesContainers.get("nothing"));
+                                continue;
+                            }
                             if (borderTag.getTag().equals(neighborTag.getTag()) && (borderTag.isCanMirror() || neighborTag.isCanMirror())) {
                                 value.validBorders.computeIfAbsent(direction, k -> new ArrayList<>()).add(neighborContainer);
                                 valid = true;
@@ -87,10 +98,8 @@ public class ModulesContainer {
                 Direction.UP, Collections.singletonList(new NeighborTag("nothing")),
                 Direction.DOWN, Collections.singletonList(new NeighborTag("nothing"))));
         nothing.modulesConfigField = new ModulesConfigFields("nothing", true);
-//        tagOccurrences.forEach((key, value) -> {
-//            if (value < 2)
-//                Logger.warn("Tag " + key + " is only ever present once, which means it will never be valid and get the system stuck!");
-//        });
+
+        Logger.debug("paradox is null: " + modulesContainers.get("nothing"));
     }
 
     public static void shutdown() {

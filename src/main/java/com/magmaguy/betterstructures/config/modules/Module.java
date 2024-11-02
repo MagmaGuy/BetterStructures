@@ -27,37 +27,22 @@ public class Module {
     }
 
     public static void paste(Clipboard clipboard, Location location, Integer rotation) {
-        World world = BukkitAdapter.adapt(location.getWorld());
         if (rotation == null) {
             Logger.debug("rotation was null at the time of the paste, this will not do");
             return;
         }
-        //todo: this is scuffed af
-        if (rotation == 90) rotation = 270;
-        else if (rotation == 270) rotation = 90;
-        switch (rotation) {
-            case 0:
-                break;
-            case 90:
-                location.add(0, 0, 17);
-                break;
-            case 180:
-                location.add(17, 0, 17);
-                break;
-            case 270:
-                location.add(17, 0, 0);
-                break;
-            default:
-                Logger.warn("How did that even happen? Invalid rotation!");
-        }
+
+        World world = BukkitAdapter.adapt(location.getWorld());
+        Location adjustedLocation = adjustLocationForRotation(location, rotation, clipboard);
+
         try (EditSession editSession = WorldEdit.getInstance().newEditSession(world)) {
             editSession.setTrackingHistory(false);
             ClipboardHolder holder = new ClipboardHolder(clipboard);
-            holder.setTransform(new AffineTransform().rotateY(rotation));
+            holder.setTransform(new AffineTransform().rotateY(normalizeRotation(rotation)));
+
             Operation operation = holder
                     .createPaste(editSession)
-                    .to(BlockVector3.at(location.getX(), location.getY(), location.getZ()))
-                    // configure here
+                    .to(BlockVector3.at(adjustedLocation.getX(), adjustedLocation.getY(), adjustedLocation.getZ()))
                     .build();
             editSession.setSideEffectApplier(SideEffectSet.none());
             Operations.complete(operation);
@@ -69,57 +54,19 @@ public class Module {
     public static void batchPaste(List<GridCell> gridCellList, org.bukkit.World world) {
         World worldEditWorld = BukkitAdapter.adapt(world);
         EditSession editSession = WorldEdit.getInstance().newEditSession(worldEditWorld);
-
         editSession.setTrackingHistory(false);
-//        editSession.setSideEffectApplier(SideEffectSet.none());
-//        editSession.setSideEffectApplier(new SideEffectSet(Map.of(SideEffect.VALIDATION, SideEffect.State.ON)));
-
-        for (GridCell gridCell : gridCellList) {
-            if (gridCell == null || gridCell.getModulesContainer() == null) continue;
-            //todo: this is scuffed af
-            int rotation = gridCell.getModulesContainer().getRotation();
-            Location location = gridCell.getRealLocation().add(-1, 0, -1);
-            if (rotation == 90) rotation = 270;
-            else if (rotation == 270) rotation = 90;
-            switch (rotation) {
-                case 0:
-                    break;
-                case 90:
-                    location.add(0, 0, 17);
-                    break;
-                case 180:
-                    location.add(17, 0, 17);
-                    break;
-                case 270:
-                    location.add(17, 0, 0);
-                    break;
-                default:
-                    Logger.warn("How did that even happen? Invalid rotation!");
-            }
-
-            ClipboardHolder holder = new ClipboardHolder(gridCell.getModulesContainer().getClipboard());
-            holder.setTransform(new AffineTransform().rotateY(rotation));
-            Operation operation = holder
-                    .createPaste(editSession)
-                    .to(BlockVector3.at(location.getX(), location.getY(), location.getZ()))
-                    // configure here
-                    .build();
-            new BukkitRunnable() {
-                @Override
-                public void run() {
-                    try {
-                        Operations.complete(operation);
-                    } catch (WorldEditException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-            }.runTask(MetadataHandler.PLUGIN);
-        }
 
         HashSet<Chunk> chunks = new HashSet<>();
-        gridCellList.forEach(chunkData -> {
-            if (chunkData != null) chunks.add(chunkData.getRealLocation().getChunk());
-        });
+
+        for (GridCell gridCell : gridCellList) {
+            if (gridCell == null || gridCell.getModulesContainer() == null ||
+                    gridCell.getModulesContainer().getClipboard() == null) {
+                continue;
+            }
+
+            chunks.add(gridCell.getRealLocation().getChunk());
+            processSingleCell(gridCell, editSession);
+        }
 
         new BukkitRunnable() {
             @Override
@@ -128,5 +75,77 @@ public class Module {
                 editSession.close();
             }
         }.runTask(MetadataHandler.PLUGIN);
+    }
+
+    private static void processSingleCell(GridCell gridCell, EditSession editSession) {
+        Clipboard clipboard = gridCell.getModulesContainer().getClipboard();
+        int rotation = gridCell.getModulesContainer().getRotation();
+        Location baseLocation = gridCell.getRealLocation().add(-1, 0, -1);
+        Location adjustedLocation = adjustLocationForRotation(baseLocation, rotation, clipboard);
+
+        ClipboardHolder holder = new ClipboardHolder(clipboard);
+        holder.setTransform(new AffineTransform().rotateY(normalizeRotation(rotation)));
+
+        Operation operation = holder
+                .createPaste(editSession)
+                .ignoreAirBlocks(true)
+                .to(BlockVector3.at(adjustedLocation.getX(), adjustedLocation.getY(), adjustedLocation.getZ()))
+                .build();
+
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                try {
+                    Operations.complete(operation);
+                } catch (WorldEditException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }.runTask(MetadataHandler.PLUGIN);
+    }
+
+    /**
+     * Adjusts the paste location based on rotation and clipboard dimensions.
+     * Accounts for variable chunk sizes.
+     */
+    private static Location adjustLocationForRotation(Location location, int rotation, Clipboard clipboard) {
+        Location adjustedLocation = location.clone();
+
+        // Get clipboard dimensions
+        BlockVector3 dimensions = clipboard.getDimensions();
+        int width = dimensions.getX();
+        int length = dimensions.getZ();
+
+        // Normalize rotation to match WorldEdit's coordinate system
+        rotation = normalizeRotation(rotation);
+
+        // Adjust position based on rotation and dimensions
+        switch (rotation) {
+            case 0:
+                // No adjustment needed for 0 degrees
+                break;
+            case 90:
+                adjustedLocation.add(0, 0, width);
+                break;
+            case 180:
+                adjustedLocation.add(width, 0, length);
+                break;
+            case 270:
+                adjustedLocation.add(length, 0, 0);
+                break;
+            default:
+                Logger.warn("Invalid rotation angle: " + rotation);
+        }
+
+        return adjustedLocation;
+    }
+
+    /**
+     * Normalizes rotation angles to match WorldEdit's coordinate system.
+     * WorldEdit uses counterclockwise rotation while our system uses clockwise.
+     */
+    private static int normalizeRotation(int rotation) {
+        // Convert clockwise to counterclockwise
+        return (360 - rotation) % 360;
     }
 }
