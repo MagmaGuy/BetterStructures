@@ -44,6 +44,7 @@ public class ModulesConfigFields extends CustomConfigFields {
     private boolean downIsPassable = true;
     private UUID uuid = UUID.randomUUID();
     private String compoundModule = null;
+    private boolean edge = false;
 
     //used to check if a config is either cloned or the same between two modules
     public UUID getUuid() {
@@ -128,6 +129,10 @@ public class ModulesConfigFields extends CustomConfigFields {
         return clonedConfig == null ? downIsPassable : clonedConfig.isDownIsPassable();
     }
 
+    public boolean isEdge() {
+        return clonedConfig == null ? edge : clonedConfig.isEdge();
+    }
+
     @Override
     public void processConfigFields() {
         this.isEnabled = processBoolean("isEnabled", isEnabled, true, true);
@@ -157,13 +162,14 @@ public class ModulesConfigFields extends CustomConfigFields {
                 Logger.warn("Biome " + minecraftBiomeString + " is not a valid biome! Fix it in " + filename);
             }
         this.cloneConfig = processString("cloneConfig", cloneConfig, cloneConfig, true);
-        this.northIsPassable = processBoolean("northIsPassable", northIsPassable, northIsPassable, true);
-        this.southIsPassable = processBoolean("southIsPassable", southIsPassable, southIsPassable, true);
-        this.eastIsPassable = processBoolean("eastIsPassable", eastIsPassable, eastIsPassable, true);
-        this.westIsPassable = processBoolean("westIsPassable", westIsPassable, westIsPassable, true);
-        this.upIsPassable = processBoolean("upIsPassable", upIsPassable, upIsPassable, true);
-        this.downIsPassable = processBoolean("downIsPassable", downIsPassable, downIsPassable, true);
+//        this.northIsPassable = processBoolean("northIsPassable", northIsPassable, northIsPassable, true);
+//        this.southIsPassable = processBoolean("southIsPassable", southIsPassable, southIsPassable, true);
+//        this.eastIsPassable = processBoolean("eastIsPassable", eastIsPassable, eastIsPassable, true);
+//        this.westIsPassable = processBoolean("westIsPassable", westIsPassable, westIsPassable, true);
+//        this.upIsPassable = processBoolean("upIsPassable", upIsPassable, upIsPassable, true);
+//        this.downIsPassable = processBoolean("downIsPassable", downIsPassable, downIsPassable, true);
         this.compoundModule = processString("compoundModule", compoundModule, compoundModule, true);
+        this.edge = processBoolean("edge", edge, edge, true);
     }
 
     public void validateClones() {
@@ -189,6 +195,7 @@ public class ModulesConfigFields extends CustomConfigFields {
         fileConfiguration.set("westIsPassable", null);
         fileConfiguration.set("upIsPassable", null);
         fileConfiguration.set("downIsPassable", null);
+        fileConfiguration.set("edge", null);
         try {
             fileConfiguration.save(file);
         } catch (IOException e) {

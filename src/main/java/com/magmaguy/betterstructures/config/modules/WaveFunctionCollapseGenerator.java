@@ -11,47 +11,205 @@ import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.joml.Vector3i;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import lombok.Getter;
 
 public class WaveFunctionCollapseGenerator {
-    private final int massPasteSize = DefaultConfig.getModularChunkPastingSpeed();
-    private final HashMap<GridCell, Integer> chunkRollbackCounter = new HashMap<>();
-    public Messaging messaging;
-    int rollbackCounter = 0;
-    private Player player;
-    private int totalMassPasteChunks;
-    private boolean debug;
-    private SpatialGrid spatialGrid;
-    private int interval;
-    private boolean slowGenerationForShowcase = false;
-    private World world;
-    private int massPasteCount = 0;
-    private int totalChunks;
-    private int generatedChunks = 0;
+    private static final int DEFAULT_CHUNK_SIZE = 128;
 
-    public WaveFunctionCollapseGenerator(String worldName, int radius, boolean debug, int interval, Player player, String startingModule) {
-        initialize(radius, worldName, player, debug);
-        this.interval = interval;
-        slowGenerationForShowcase = true;
+    @Getter private final GenerationConfig config;
+    @Getter private final GenerationStats stats;
+    @Getter private final SpatialGrid spatialGrid;
+    private final Map<GridCell, Integer> chunkRollbackCounter;
+    @Getter private final Messaging messaging;
 
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                start(startingModule);
+    @Getter private World world;
+    private volatile boolean isGenerating;
+    private volatile boolean isCancelled;
+
+    /**
+     * Configuration class for the generator.
+     */
+    public static class GenerationConfig {
+        @Getter private final String worldName;
+        @Getter private final int radius;
+        @Getter private final int chunkSize;
+        @Getter private final boolean debug;
+        @Getter private final int interval;
+        @Getter private final boolean slowGeneration;
+        @Getter private final String startingModule;
+        @Getter private final Player player;
+        @Getter private final int massPasteSize;
+
+        private GenerationConfig(Builder builder) {
+            this.worldName = builder.worldName;
+            this.radius = builder.radius;
+            this.chunkSize = builder.chunkSize;
+            this.debug = builder.debug;
+            this.interval = builder.interval;
+            this.slowGeneration = builder.slowGeneration;
+            this.startingModule = builder.startingModule;
+            this.player = builder.player;
+            this.massPasteSize = builder.massPasteSize;
+        }
+
+        /**
+         * Builder for GenerationConfig.
+         */
+        public static class Builder {
+            private final String worldName;
+            private final int radius;
+            private int chunkSize = DEFAULT_CHUNK_SIZE;
+            private boolean debug = false;
+            private int interval = 1;
+            private boolean slowGeneration = false;
+            private String startingModule;
+            private Player player;
+            private int massPasteSize = DefaultConfig.getModularChunkPastingSpeed();
+
+            public Builder(String worldName, int radius) {
+                this.worldName = worldName;
+                this.radius = radius;
             }
-        }.runTaskAsynchronously(MetadataHandler.PLUGIN);
+
+            public Builder chunkSize(int chunkSize) {
+                this.chunkSize = chunkSize;
+                return this;
+            }
+
+            public Builder debug(boolean debug) {
+                this.debug = debug;
+                return this;
+            }
+
+            public Builder interval(int interval) {
+                this.interval = interval;
+                return this;
+            }
+
+            public Builder slowGeneration(boolean slowGeneration) {
+                this.slowGeneration = slowGeneration;
+                return this;
+            }
+
+            public Builder startingModule(String startingModule) {
+                this.startingModule = startingModule;
+                return this;
+            }
+
+            public Builder player(Player player) {
+                this.player = player;
+                return this;
+            }
+
+            public Builder massPasteSize(int massPasteSize) {
+                this.massPasteSize = massPasteSize;
+                return this;
+            }
+
+            public GenerationConfig build() {
+                validate();
+                return new GenerationConfig(this);
+            }
+
+            private void validate() {
+                if (worldName == null || worldName.isEmpty()) {
+                    throw new IllegalArgumentException("World name must be specified");
+                }
+                if (radius <= 0) {
+                    throw new IllegalArgumentException("Radius must be positive");
+                }
+                if (chunkSize <= 0) {
+                    throw new IllegalArgumentException("Chunk size must be positive");
+                }
+                if (interval <= 0) {
+                    throw new IllegalArgumentException("Interval must be positive");
+                }
+                if (massPasteSize <= 0) {
+                    throw new IllegalArgumentException("Mass paste size must be positive");
+                }
+            }
+        }
     }
 
+    /**
+     * Statistics tracking for generation progress.
+     */
+    public static class GenerationStats {
+        @Getter private final int totalChunks;
+        private final AtomicInteger generatedChunks = new AtomicInteger(0);
+        @Getter private final AtomicInteger massPasteCount = new AtomicInteger(0);
+        @Getter private final AtomicInteger rollbackCounter = new AtomicInteger(0);
+
+        public GenerationStats(int radius, SpatialGrid spatialGrid) {
+            int xzRange = 2 * radius + 1;
+            int yRange = spatialGrid.getMaxYLevel() - spatialGrid.getMinYLevel() + 1;
+            this.totalChunks = xzRange * xzRange * yRange;
+        }
+
+        public int getGeneratedChunks() {
+            return generatedChunks.get();
+        }
+
+        public void incrementGeneratedChunks() {
+            generatedChunks.incrementAndGet();
+        }
+
+        public void decrementGeneratedChunks(int count) {
+            generatedChunks.addAndGet(-count);
+        }
+
+        public double getProgress() {
+            return (double) generatedChunks.get() / totalChunks;
+        }
+    }
+
+    /**
+     * Creates a new WaveFunctionCollapseGenerator with slow generation.
+     */
+    public WaveFunctionCollapseGenerator(String worldName, int radius, boolean debug, int interval, Player player, String startingModule) {
+        this(new GenerationConfig.Builder(worldName, radius)
+                .debug(debug)
+                .interval(interval)
+                .slowGeneration(true)
+                .player(player)
+                .startingModule(startingModule)
+                .build());
+    }
+
+    /**
+     * Creates a new WaveFunctionCollapseGenerator with fast generation.
+     */
     public WaveFunctionCollapseGenerator(String worldName, int radius, boolean debug, Player player, String startingModule) {
-        initialize(radius, worldName, player, debug);
+        this(new GenerationConfig.Builder(worldName, radius)
+                .debug(debug)
+                .player(player)
+                .startingModule(startingModule)
+                .build());
+    }
+
+    /**
+     * Main constructor using GenerationConfig.
+     */
+    public WaveFunctionCollapseGenerator(GenerationConfig config) {
+        this.config = config;
+        this.spatialGrid = new SpatialGrid(config.radius, config.chunkSize);
+        this.stats = new GenerationStats(config.radius, getSpatialGrid());
+        this.chunkRollbackCounter = new HashMap<>();
+        this.messaging = new Messaging(config.player);
+
+        initialize();
+    }
+
+    private void initialize() {
+        this.world = WorldInitializer.generateWorld(config.worldName, config.player);
+        this.messaging.updateProgress(0, "Initializing...");
 
         new BukkitRunnable() {
             @Override
             public void run() {
-                start(startingModule);
+                start(config.startingModule);
             }
         }.runTaskAsynchronously(MetadataHandler.PLUGIN);
     }
@@ -60,145 +218,160 @@ public class WaveFunctionCollapseGenerator {
         Messaging.shutdown();
     }
 
-    private void initialize(int radius, String worldName, Player player, boolean debug) {
-        spatialGrid = new SpatialGrid(radius);
-        messaging = new Messaging(player);
+    private void start(String startingModule) {
+        if (isGenerating) {
+            return;
+        }
+        isGenerating = true;
 
-        this.player = player;
-        this.debug = debug;
-        world = WorldInitializer.generateWorld(worldName, player);
-        messaging.updateProgress(0, "Initializing...");
+        try {
+            GridCell startChunk = createStartChunk(startingModule);
+            if (startChunk == null) {
+                return;
+            }
 
-        // Calculate total chunks for progress tracking
-        int xzRange = 2 * radius + 1;
-        int yRange = SpatialGrid.MAX_Y_LEVEL - SpatialGrid.MIN_Y_LEVEL + 1;
-        totalChunks = xzRange * xzRange * yRange;
-
-        // Initialize totalMassPasteChunks based on radius
-        totalMassPasteChunks = xzRange * xzRange * yRange;
+            if (config.slowGeneration) {
+                generateSlowly();
+            } else {
+                generateFast();
+            }
+        } catch (Exception e) {
+            Logger.warn("Error during generation: " + e.getMessage());
+            e.printStackTrace();
+            cleanup();
+        }
     }
 
-    private void start(String startingModule) {
-        GridCell startChunk = new GridCell(new Vector3i(), world, spatialGrid.getCellMap());
-//        startChunk.setSpecial(true);
+    private GridCell createStartChunk(String startingModule) {
+        GridCell startChunk = new GridCell(new Vector3i(), world, spatialGrid, spatialGrid.getCellMap());
         spatialGrid.getCellMap().put(new Vector3i(), startChunk);
         spatialGrid.initializeCellNeighbors(startChunk);
 
         ModulesContainer modulesContainer = ModulesContainer.getModulesContainers().get(startingModule);
-        if (startingModule == null) {
-            Logger.sendMessage(player, "Starting chunk was null! Canceling!");
-            Logger.warn("Starting chunk was null! Canceling!");
-            return;
+        if (modulesContainer == null) {
+            Logger.sendMessage(config.player, "Starting module was null! Canceling!");
+            return null;
         }
+
         paste(new Vector3i(), modulesContainer);
-        // Begin the recursive generation
-        searchNextChunkToGenerate();
+        return startChunk;
     }
 
-    private void searchNextChunkToGenerate() {
-        if (slowGenerationForShowcase) {
-            GridCell selectedChunkLocationKey = spatialGrid.getNextGridCell();
-            if (selectedChunkLocationKey == null) {
-                done();
-            } else {
-                generateNextChunk(selectedChunkLocationKey);
-                new BukkitRunnable() {
-                    @Override
-                    public void run() {
-                        searchNextChunkToGenerate();
-                    }
-                }.runTaskLater(MetadataHandler.PLUGIN, interval);
-            }
-        } else {
-            while (true) {
-                GridCell selectedChunkLocationKey = spatialGrid.getNextGridCell();
-                if (selectedChunkLocationKey == null) {
-                    done();
+    private void generateSlowly() {
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (isCancelled) {
+                    this.cancel();
                     return;
                 }
-                generateNextChunk(selectedChunkLocationKey);
+
+                GridCell nextCell = spatialGrid.getNextGridCell();
+                if (nextCell == null) {
+                    done();
+                    this.cancel();
+                    return;
+                }
+
+                generateNextChunk(nextCell);
+                updateProgress();
+            }
+        }.runTaskTimer(MetadataHandler.PLUGIN, 0L, config.interval);
+    }
+
+    private void generateFast() {
+        while (!isCancelled) {
+            GridCell nextCell = spatialGrid.getNextGridCell();
+            if (nextCell == null) {
+                done();
+                break;
+            }
+
+            generateNextChunk(nextCell);
+            if (stats.getGeneratedChunks() % 100 == 0) {
+                updateProgress();
             }
         }
     }
 
-    private void updateAssemblingProgress() {
-        double progress = Round.twoDecimalPlaces(((double) generatedChunks) / totalChunks * 100);
-        Logger.debug("[" + progress + "%] Generated " + generatedChunks + " out of " + totalChunks + " chunks");
-        messaging.updateProgress(progress / 100.0, "Assembling modules - " + progress + "% done...");
+    private void updateProgress() {
+        double progress = stats.getProgress() * 100;
+        String formattedProgress = Round.twoDecimalPlaces(progress) + "";
+        Logger.debug("[" + formattedProgress + "%] Generated " + stats.getGeneratedChunks() +
+                " out of " + stats.totalChunks + " chunks");
+        messaging.updateProgress(progress / 100.0, "Assembling modules - " + formattedProgress + "% done...");
     }
 
     private void paste(Vector3i chunkLocation, ModulesContainer modulesContainer) {
-
-        // Access the ChunkData from chunkArray
-        GridCell gridCell = getChunkDataAt(chunkLocation.x, chunkLocation.y, chunkLocation.z);
-        if (gridCell == null
-//                || gridCell.isSpecial()
-        ) {
+        GridCell gridCell = spatialGrid.getCellMap().get(chunkLocation);
+        if (gridCell == null) {
             Logger.warn("ChunkData not found at location: " + chunkLocation);
             return;
         }
 
-        //todo: compound modules, generating all of them and rolling them back if they don't work out
-//        if (modulesContainer.getModulesConfigField().getCompoundModule() != null){}
-
-        // If this cell was not already generated, increment generatedChunks
         if (!gridCell.isGenerated()) {
-            generatedChunks++;
+            stats.incrementGeneratedChunks();
         }
 
         gridCell.processPaste(modulesContainer);
-        for (GridCell neighbor : gridCell.getOrientedNeighbors().values()) {
-            if (neighbor != null && !neighbor.isGenerated()) {
-                spatialGrid.updateCellPriority(neighbor);
-            }
-        }
+        updateNeighbors(gridCell);
 
-        // If a successful paste is done then the rollback counter should at least reset
         chunkRollbackCounter.remove(gridCell);
 
-        if (slowGenerationForShowcase) {
-            new BukkitRunnable() {
-                @Override
-                public void run() {
-                    actualPaste(gridCell);
-                }
-            }.runTask(MetadataHandler.PLUGIN);
-        }
-
-        // Update progress every 100 chunks or as needed
-        if (generatedChunks % 100 == 0) {
-            updateAssemblingProgress();
+        if (config.slowGeneration) {
+            scheduleActualPaste(gridCell);
         }
     }
 
-    private GridCell getChunkDataAt(int x, int y, int z) {
-        return spatialGrid.getCellMap().get(new Vector3i(x, y, z));
+    private void updateNeighbors(GridCell gridCell) {
+        gridCell.getOrientedNeighbors().values().stream()
+                .filter(neighbor -> neighbor != null && !neighbor.isGenerated())
+                .forEach(spatialGrid::updateCellPriority);
+    }
+
+    private void scheduleActualPaste(GridCell gridCell) {
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                actualPaste(gridCell);
+            }
+        }.runTask(MetadataHandler.PLUGIN);
     }
 
     private void actualPaste(GridCell gridCell) {
         ModulesContainer modulesContainer = gridCell.getModulesContainer();
-        if (modulesContainer == null || modulesContainer.getClipboard() == null) return;
-        Module.paste(modulesContainer.getClipboard(), gridCell.getRealLocation().add(-1, 0, -1), gridCell.getModulesContainer().getRotation());
-        if (debug) gridCell.showDebugTextDisplays();
+        if (modulesContainer == null || modulesContainer.getClipboard() == null) {
+            return;
+        }
+
+        Module.paste(modulesContainer.getClipboard(),
+                gridCell.getRealLocation().add(-1, 0, -1),
+                modulesContainer.getRotation());
+
+        if (config.debug) {
+            gridCell.showDebugTextDisplays();
+        }
     }
 
     private void actualBatchPaste(List<GridCell> batchedChunkData) {
-        Module.batchPaste(batchedChunkData, world);
-        if (debug) batchedChunkData.forEach(chunkData -> {
-            if (chunkData != null) chunkData.showDebugTextDisplays();
-        });
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                Module.batchPaste(batchedChunkData, world);
+                if (config.debug) {
+                    batchedChunkData.forEach(chunkData -> {
+                        if (chunkData != null) {
+                            chunkData.showDebugTextDisplays();
+                        }
+                    });
+                }
+            }
+        }.runTask(MetadataHandler.PLUGIN);
     }
 
     private void generateNextChunk(GridCell gridCell) {
-//        if (gridCell.isSpecial()) {
-//             Skip special cells
-//            return;
-//        }
-
-        spatialGrid.initializeCellNeighbors(gridCell);
-
-        // Update valid options
         gridCell.updateValidOptions();
+
         List<ModulesContainer> validOptions = gridCell.getValidOptions();
         if (validOptions == null || validOptions.isEmpty()) {
             rollbackChunk(gridCell);
@@ -212,296 +385,303 @@ public class WaveFunctionCollapseGenerator {
             return;
         }
 
-        // Paste the module
-        paste(gridCell.getCellLocation(), modulesContainer);
+        spatialGrid.initializeCellNeighbors(gridCell);
 
-        if (slowGenerationForShowcase) {
-            new BukkitRunnable() {
-                @Override
-                public void run() {
-                    actualPaste(gridCell);
-                }
-            }.runTask(MetadataHandler.PLUGIN);
-        }
+        paste(gridCell.getCellLocation(), modulesContainer);
     }
 
     private void rollbackChunk(GridCell gridCell) {
-        rollbackCounter++;
-        if (rollbackCounter % 1000 == 0) {
-            Vector3i location = gridCell.getCellLocation();
-            Logger.warn("Current rollback status: " + rollbackCounter + " chunks rolled back. Latest rollback location: " + location.x + ", " + location.y + ", " + location.z);
-            player.sendMessage("Current rollback status: " + rollbackCounter + " chunks rolled back. Latest rollback location: " + location.x + ", " + location.y + ", " + location.z);
+        int rollbacks = stats.rollbackCounter.incrementAndGet();
+        if (rollbacks % 1000 == 0) {
+            logRollbackStatus(gridCell, rollbacks);
         }
-//        if (gridCell.isSpecial()) {
-//             Do not rollback special cells
-//            return;
-//        }
-//        Logger.debug("Attempting to resolve cell at " + gridCell.getCellLocation() + " by adjusting neighbors.");
 
-        // Try to resolve by adjusting neighbors
         boolean resolved = tryAdjustingNeighbors(gridCell);
-
-        if (resolved) {
-//            Logger.debug("Successfully resolved cell at " + gridCell.getCellLocation() + " by adjusting neighbors.");
-            return;
+        if (!resolved) {
+            performHardReset(gridCell);
         }
+    }
 
-        // If not resolved, proceed with rollback as before
-//        Logger.debug("Could not resolve cell at " + gridCell.getCellLocation() + " by adjusting neighbors. Performing rollback.");
+    private void logRollbackStatus(GridCell gridCell, int rollbacks) {
+        Vector3i location = gridCell.getCellLocation();
+        String message = String.format("Current rollback status: %d chunks rolled back. Latest rollback location: %d, %d, %d",
+                rollbacks, location.x, location.y, location.z);
+        Logger.warn(message);
+        if (config.player != null) {
+            config.player.sendMessage(message);
+        }
+    }
 
-        chunkRollbackCounter.put(gridCell, chunkRollbackCounter.getOrDefault(gridCell, 0) + 1);
-        int rollBackRadius = Math.max((int) (chunkRollbackCounter.get(gridCell) / 10d), 2);
-        int cellsReset = gridCell.hardReset(spatialGrid, slowGenerationForShowcase, rollBackRadius);
-        generatedChunks -= cellsReset; // Subtract only the number of generated cells that were reset
+    private void performHardReset(GridCell gridCell) {
+        int currentCount = chunkRollbackCounter.merge(gridCell, 1, Integer::sum);
+        int rollBackRadius = Math.max(currentCount / 10, 2);
+
+        int cellsReset = gridCell.hardReset(spatialGrid, config.slowGeneration, rollBackRadius);
+        stats.decrementGeneratedChunks(cellsReset);
     }
 
     private boolean tryAdjustingNeighbors(GridCell gridCell) {
-        // Get the immediate neighbors of the failed cell
         Map<Direction, GridCell> neighbors = gridCell.getOrientedNeighbors();
-
-        // Store the original modules of neighbors to revert back if needed
         Map<GridCell, ModulesContainer> originalModules = new HashMap<>();
-
-        // Collect neighbors that are generated and not null
         List<GridCell> generatedNeighbors = new ArrayList<>();
-        for (GridCell neighbor : neighbors.values()) {
-            if (neighbor != null && neighbor.isGenerated()
-//                    && !neighbor.isSpecial()
-            )
-            {
-                // Only consider non-special neighbors
-                generatedNeighbors.add(neighbor);
-                originalModules.put(neighbor, neighbor.getModulesContainer());
-            }
-        }
+
+        collectGeneratedNeighbors(neighbors, originalModules, generatedNeighbors);
 
         boolean resolved = tryNeighborConfigurations(generatedNeighbors, gridCell, originalModules);
-
-        if (resolved) {
-            // Update and select a module for the gridCell
-            gridCell.updateValidOptions();
-            List<ModulesContainer> validOptions = gridCell.getValidOptions();
-            if (validOptions == null || validOptions.isEmpty()) {
-                // Revert neighbors and return false
-                revertNeighbors(originalModules);
-                return false;
-            }
-            ModulesContainer modulesContainer = ModulesContainer.pickRandomModule(validOptions, gridCell);
-            if (modulesContainer == null) {
-                // Revert neighbors and return false
-                revertNeighbors(originalModules);
-                return false;
-            }
-            // Paste the module for the gridCell
-            paste(gridCell.getCellLocation(), modulesContainer);
-
-            // Paste the adjusted neighbors
-            for (GridCell neighbor : generatedNeighbors) {
-                paste(neighbor.getCellLocation(), neighbor.getModulesContainer());
-            }
-
-            return true;
-        } else {
-            // Revert neighbors to their original modules
+        if (!resolved) {
             revertNeighbors(originalModules);
-            return false;
         }
+
+        return resolved;
     }
 
-    private void revertNeighbors(Map<GridCell, ModulesContainer> originalModules) {
-        for (GridCell neighbor : originalModules.keySet()) {
-            neighbor.setModulesContainer(originalModules.get(neighbor));
-            neighbor.updateValidOptions();
-        }
+    private void collectGeneratedNeighbors(Map<Direction, GridCell> neighbors,
+                                           Map<GridCell, ModulesContainer> originalModules,
+                                           List<GridCell> generatedNeighbors) {
+        neighbors.values().stream()
+                .filter(neighbor -> neighbor != null && neighbor.isGenerated())
+                .forEach(neighbor -> {
+                    generatedNeighbors.add(neighbor);
+                    originalModules.put(neighbor, neighbor.getModulesContainer());
+                });
     }
 
-    private boolean tryNeighborConfigurations(List<GridCell> neighbors, GridCell failedCell, Map<GridCell, ModulesContainer> originalModules) {
-        // Base case: If no neighbors to adjust, return false
+    private boolean tryNeighborConfigurations(List<GridCell> neighbors, GridCell failedCell,
+                                              Map<GridCell, ModulesContainer> originalModules) {
         if (neighbors.isEmpty()) {
             return false;
         }
 
-//        // Limit the number of neighbors to adjust to prevent exponential growth
-//        int maxNeighborsToAdjust = 3; // You can adjust this value as needed
-//        if (neighbors.size() > maxNeighborsToAdjust) {
-//            neighbors = neighbors.subList(0, maxNeighborsToAdjust);
-//        }
-
-        // Generate all combinations of valid modules for the neighbors
         List<List<ModulesContainer>> neighborOptions = new ArrayList<>();
         List<GridCell> adjustableNeighbors = new ArrayList<>();
 
+        // Collect valid options for each neighbor
         for (GridCell neighbor : neighbors) {
             neighbor.updateValidOptions();
             List<ModulesContainer> options = new ArrayList<>(neighbor.getValidOptions());
 
-            if (options.isEmpty()) {
-                // Cannot adjust this neighbor, skip it
-                continue;
+            if (!options.isEmpty()) {
+                neighborOptions.add(options);
+                adjustableNeighbors.add(neighbor);
             }
-
-            neighborOptions.add(options);
-            adjustableNeighbors.add(neighbor);
         }
 
-        // Update the neighbors list to only include adjustable neighbors
-        neighbors = adjustableNeighbors;
-
-        // If no neighbors can be adjusted, return false
-        if (neighbors.isEmpty()) {
+        if (adjustableNeighbors.isEmpty()) {
             return false;
         }
 
-        // Initialize indices for tracking combinations
+        // Try different combinations of neighbor modules
+        return tryAllCombinations(adjustableNeighbors, neighborOptions, failedCell);
+    }
+
+    private boolean tryAllCombinations(List<GridCell> neighbors,
+                                       List<List<ModulesContainer>> neighborOptions,
+                                       GridCell failedCell) {
         int[] indices = new int[neighborOptions.size()];
 
-        // Iterate over all combinations
-        while (true) {
-            // Assign the current combination of modules to the neighbors
+        do {
+            // Apply current combination
             for (int i = 0; i < neighbors.size(); i++) {
                 GridCell neighbor = neighbors.get(i);
                 ModulesContainer module = neighborOptions.get(i).get(indices[i]);
                 neighbor.setModulesContainer(module);
             }
 
-            // Update the failed cell's valid options
+            // Check if this combination works
             failedCell.updateValidOptions();
-
-            // Check if the failed cell now has valid options
             if (failedCell.getValidOptionCount() > 0) {
-                // Found a valid configuration
                 return true;
             }
 
-            // Increment indices to get the next combination
-            int position = 0;
-            while (position < indices.length) {
-                indices[position]++;
-                if (indices[position] < neighborOptions.get(position).size()) {
-                    break;
-                } else {
-                    indices[position] = 0;
-                    position++;
-                }
-            }
+        } while (incrementIndices(indices, neighborOptions));
 
-            // If we've exhausted all combinations, break
-            if (position == indices.length) {
-                break;
-            }
-        }
-
-        // Revert neighbors to their original modules
-        for (GridCell neighbor : neighbors) {
-            neighbor.setModulesContainer(originalModules.get(neighbor));
-        }
-
-        // No valid configuration found
         return false;
     }
 
+    private boolean incrementIndices(int[] indices, List<List<ModulesContainer>> options) {
+        for (int i = 0; i < indices.length; i++) {
+            indices[i]++;
+            if (indices[i] < options.get(i).size()) {
+                return true;
+            }
+            indices[i] = 0;
+        }
+        return false;
+    }
+
+    private void revertNeighbors(Map<GridCell, ModulesContainer> originalModules) {
+        originalModules.forEach((cell, module) -> {
+            cell.setModulesContainer(module);
+            cell.updateValidOptions();
+        });
+    }
 
     private void done() {
-        if (player != null) {
-            player.sendTitle("Done!", "Module assembly complete!");
+        isGenerating = false;
+
+        if (config.player != null) {
+            config.player.sendTitle("Done!", "Module assembly complete!");
         }
 
         Logger.warn("Done with infinity generator!");
 
-        if (!slowGenerationForShowcase) {
-            messaging.timeMessage("Module assembly ", player);
+        if (!config.slowGeneration) {
+            messaging.timeMessage("Module assembly ", config.player);
             Logger.warn("Starting mass paste");
-            if (player != null) player.sendMessage("Starting mass paste...");
+            if (config.player != null) {
+                config.player.sendMessage("Starting mass paste...");
+            }
             spatialGrid.clearGridGenerationData();
             Bukkit.getScheduler().runTask(MetadataHandler.PLUGIN, this::instantPaste);
         } else {
-            messaging.timeMessage("Generation", player);
+            messaging.timeMessage("Generation", config.player);
             messaging.clearBar();
             cleanup();
         }
     }
 
     private void cleanup() {
-        boolean firstNotUsed = false;
-        for (ModulesContainer modulesContainer : ModulesContainer.getModulesContainers().values()) {
-            boolean used = false;
-            for (GridCell gridCell : spatialGrid.getCellMap().values()) {
-                if (gridCell.getModulesContainer() != null &&
-                        modulesContainer.getClipboardFilename().equals(gridCell.getModulesContainer().getClipboardFilename())) {
-                    used = true;
-                    break;
-                }
-            }
-            if (!used) {
-                if (!firstNotUsed) {
-                    firstNotUsed = true;
-                    Logger.sendMessage(player, "Failed to use the following modules:");
-                    Logger.warn("Failed to use the following modules:");
-                }
-                Logger.sendMessage(player, modulesContainer.getClipboardFilename());
-                Logger.warn(modulesContainer.getClipboardFilename());
-            }
-        }
+        reportUnusedModules();
         spatialGrid.clearAllData();
         messaging.clearBar();
     }
 
+    private void reportUnusedModules() {
+        Set<String> usedModules = new HashSet<>();
+
+        // Collect all used modules
+        spatialGrid.getCellMap().values().stream()
+                .filter(cell -> cell.getModulesContainer() != null)
+                .forEach(cell -> usedModules.add(cell.getModulesContainer().getClipboardFilename()));
+
+        // Report unused modules
+        List<String> unusedModules = ModulesContainer.getModulesContainers().values().stream()
+                .map(ModulesContainer::getClipboardFilename)
+                .filter(filename -> !usedModules.contains(filename))
+                .toList();
+
+        if (!unusedModules.isEmpty()) {
+            Logger.sendMessage(config.player, "Failed to use the following modules:");
+            Logger.warn("Failed to use the following modules:");
+            unusedModules.forEach(module -> {
+                Logger.sendMessage(config.player, module);
+                Logger.warn(module);
+            });
+        }
+    }
+
     private void instantPaste() {
-        BukkitRunnable pasteTask = new BukkitRunnable() {
-            // Initialize spiral variables
-            int x = 0, z = 0;
-            int dx = 0, dz = -1;
-            final int max = (2 * spatialGrid.getGridRadius() + 1) * (2 * spatialGrid.getGridRadius() + 1);
-            int i = 0;
+        new BukkitRunnable() {
+            private final SpiralIterator iterator = new SpiralIterator(spatialGrid.getGridRadius());
 
             @Override
             public void run() {
+                List<GridCell> batchedChunks = new ArrayList<>();
                 int batchCount = 0;
 
-                List<GridCell> batchedChunks = new ArrayList<>();
+                while (iterator.hasNext() && batchCount < config.massPasteSize) {
+                    Vector3i pos = iterator.next();
 
-                while (i < max && batchCount < massPasteSize) {
-                    if (-spatialGrid.getGridRadius() <= x && x <= spatialGrid.getGridRadius() && -spatialGrid.getGridRadius() <= z && z <= spatialGrid.getGridRadius()) {
-                        // Process position (x, z)
-                        for (int y = SpatialGrid.MIN_Y_LEVEL; y <= SpatialGrid.MAX_Y_LEVEL; y++) {
-                            GridCell gridCell = getChunkDataAt(x, y, z);
-                            if (gridCell != null) {
-                                batchedChunks.add(gridCell);
-                                massPasteCount++;
-                            }
-                        }
+                    if (isWithinBounds(pos)) {
+                        processCellColumn(pos, batchedChunks);
                         batchCount++;
                     }
-
-                    if (x == z || (x < 0 && x == -z) || (x > 0 && x == 1 - z)) {
-                        int temp = dx;
-                        dx = -dz;
-                        dz = temp;
-                    }
-                    x += dx;
-                    z += dz;
-                    i++;
                 }
 
-                // Update progress after each batch
-                if (massPasteCount % 1000 == 0) {
-                    double progress = Round.twoDecimalPlaces((massPasteCount / (double) totalMassPasteChunks) * 100);
-                    Logger.info("[" + progress + "%] Pasting chunk " + massPasteCount + "/" + totalMassPasteChunks);
-                    messaging.updateProgress(progress / 100.0, "Pasting world - " + progress + "% done...");
-                }
-
+                updatePasteProgress();
                 actualBatchPaste(batchedChunks);
 
-                if (i >= max) {
-                    messaging.timeMessage("Mass paste", player);
+                if (!iterator.hasNext()) {
+                    finishPasting();
                     this.cancel();
-                    cleanup();
                 }
             }
-        };
 
-        // Schedule the task to run every tick until it's canceled
-        pasteTask.runTaskTimerAsynchronously(MetadataHandler.PLUGIN, 0, 1);
+            private boolean isWithinBounds(Vector3i pos) {
+                return Math.abs(pos.x) <= spatialGrid.getGridRadius() &&
+                        Math.abs(pos.z) <= spatialGrid.getGridRadius();
+            }
+
+            private void processCellColumn(Vector3i pos, List<GridCell> batchedChunks) {
+                for (int y = spatialGrid.getMinYLevel(); y <= spatialGrid.getMaxYLevel(); y++) {
+                    GridCell cell = spatialGrid.getCellMap().get(new Vector3i(pos.x, y, pos.z));
+                    if (cell != null) {
+                        batchedChunks.add(cell);
+                        stats.massPasteCount.incrementAndGet();
+                    }
+                }
+            }
+
+            private void updatePasteProgress() {
+                if (stats.massPasteCount.get() % 1000 == 0) {
+                    double progress = (stats.massPasteCount.get() / (double) stats.totalChunks) * 100;
+                    String formattedProgress = Round.twoDecimalPlaces(progress) + "";
+                    Logger.info("[" + formattedProgress + "%] Pasting chunk " +
+                            stats.massPasteCount + "/" + stats.totalChunks);
+                    messaging.updateProgress(progress / 100.0,
+                            "Pasting world - " + formattedProgress + "% done...");
+                }
+            }
+
+            private void finishPasting() {
+                messaging.timeMessage("Mass paste", config.player);
+                cleanup();
+            }
+        }.runTaskTimerAsynchronously(MetadataHandler.PLUGIN, 0, 1);
     }
 
+    /**
+     * Helper class for spiral iteration through the grid.
+     */
+    private static class SpiralIterator {
+        private final int maxRadius;
+        private int x = 0, z = 0;
+        private int dx = 0, dz = -1;
+        private final int maxIterations;
+        private int iteration = 0;
+
+        public SpiralIterator(int radius) {
+            this.maxRadius = radius;
+            this.maxIterations = (2 * radius + 1) * (2 * radius + 1);
+        }
+
+        public boolean hasNext() {
+            return iteration < maxIterations;
+        }
+
+        public Vector3i next() {
+            if (!hasNext()) {
+                throw new NoSuchElementException();
+            }
+
+            Vector3i current = new Vector3i(x, 0, z);
+
+            if (x == z || (x < 0 && x == -z) || (x > 0 && x == 1 - z)) {
+                // Turn the spiral
+                int temp = dx;
+                dx = -dz;
+                dz = temp;
+            }
+
+            x += dx;
+            z += dz;
+            iteration++;
+
+            return current;
+        }
+    }
+
+    /**
+     * Cancels the generation process.
+     */
+    public void cancel() {
+        isCancelled = true;
+    }
+
+    /**
+     * @return true if generation is currently in progress
+     */
+    public boolean isGenerating() {
+        return isGenerating;
+    }
 }
