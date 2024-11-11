@@ -1,6 +1,7 @@
 package com.magmaguy.betterstructures.modules;
 
 import com.magmaguy.betterstructures.MetadataHandler;
+import com.magmaguy.betterstructures.config.modules.WaveFunctionCollapseGenerator;
 import com.magmaguy.magmacore.util.Logger;
 import lombok.Getter;
 import lombok.Setter;
@@ -24,33 +25,49 @@ import java.util.concurrent.ThreadLocalRandom;
 public class GridCell {
     private final Vector3i cellLocation;
     private final SpatialGrid grid;
-    @Getter private final World world;
+    @Getter
+    private final World world;
     private final Map<Vector3i, GridCell> cellMap;
-
-    @Getter @Setter private ModulesContainer modulesContainer;
-    @Getter @Setter private int generatedNeighborCount = 0;
-    @Getter private List<ModulesContainer> validOptions = null;
+    @Getter
+    private final int magnitudeSquared;
+    @Getter
+    @Setter
+    private ModulesContainer modulesContainer;
+    @Getter
+    @Setter
+    private int generatedNeighborCount = 0;
+    @Getter
+    private List<ModulesContainer> validOptions = null;
     private List<TextDisplay> textDisplays;
-
-    @Getter private final int magnitudeSquared;
+    @Getter
+    private WaveFunctionCollapseGenerator waveFunctionCollapseGenerator;
 
     /**
      * Creates a new GridCell.
+     *
      * @param cellLocation The grid coordinates of this cell
-     * @param world The world this cell belongs to
-     * @param grid The spatial grid this cell belongs to
-     * @param cellMap The global cell map reference
+     * @param world        The world this cell belongs to
+     * @param grid         The spatial grid this cell belongs to
+     * @param cellMap      The global cell map reference
      */
-    public GridCell(Vector3i cellLocation, World world, SpatialGrid grid, Map<Vector3i, GridCell> cellMap) {
+    public GridCell(Vector3i cellLocation, World world, SpatialGrid grid, Map<Vector3i, GridCell> cellMap, WaveFunctionCollapseGenerator waveFunctionCollapseGenerator) {
         this.cellLocation = new Vector3i(cellLocation);  // Defensive copy
         this.world = world;
         this.grid = grid;
         this.cellMap = cellMap;
         this.magnitudeSquared = (int) cellLocation.lengthSquared();
+        this.waveFunctionCollapseGenerator = waveFunctionCollapseGenerator;
+    }
+
+    public boolean isHorizontalEdge() {
+//        if (ThreadLocalRandom.current().nextDouble() < .001)
+//            Logger.debug("is edge: X " + (Math.abs(cellLocation.x) == grid.getGridRadius()) + " / Y " + (Math.abs(cellLocation.z) == grid.getGridRadius()));
+        return Math.abs(cellLocation.x) == grid.getGridRadius() || Math.abs(cellLocation.z) == grid.getGridRadius();
     }
 
     /**
      * Gets a safe copy of the cell location.
+     *
      * @return A new Vector3i containing the cell location
      */
     public Vector3i getCellLocation() {
@@ -66,6 +83,7 @@ public class GridCell {
 
     /**
      * Gets the count of valid module options for this cell.
+     *
      * @return The number of valid options, or 0 if none are available
      */
     public int getValidOptionCount() {
@@ -81,6 +99,7 @@ public class GridCell {
 
     /**
      * Gets a map of neighboring cells in each direction.
+     *
      * @return Map of Direction to GridCell for each neighbor
      */
     public Map<Direction, GridCell> getOrientedNeighbors() {
@@ -97,6 +116,7 @@ public class GridCell {
 
     /**
      * Gets the real world location of this cell's origin point.
+     *
      * @return Location object representing the cell's origin in the world
      */
     public Location getRealLocation() {
@@ -197,6 +217,7 @@ public class GridCell {
 
     /**
      * Process a module being pasted into this cell.
+     *
      * @param modulesContainer The module container to paste
      */
     public void processPaste(ModulesContainer modulesContainer) {
@@ -219,6 +240,7 @@ public class GridCell {
 
     /**
      * Checks if this cell has been generated.
+     *
      * @return true if the cell has a module container
      */
     public boolean isGenerated() {
@@ -227,10 +249,11 @@ public class GridCell {
 
     /**
      * Resets this cell's data.
+     *
      * @param showGenerationForShowcase Whether to clear blocks for showcase mode
      */
     public void resetData(boolean showGenerationForShowcase) {
-        if (cellLocation.equals(new Vector3i())) return;
+        if (isStartModule()) return;
         if (showGenerationForShowcase) {
             clearBlocks();
         }
@@ -257,9 +280,10 @@ public class GridCell {
 
     /**
      * Performs a hard reset of this cell and its neighbors.
-     * @param spatialGrid The spatial grid reference
+     *
+     * @param spatialGrid               The spatial grid reference
      * @param slowGenerationForShowcase Whether to show generation progress
-     * @param radius The radius of cells to reset
+     * @param radius                    The radius of cells to reset
      * @return Number of cells reset
      */
     public int hardReset(SpatialGrid spatialGrid, boolean slowGenerationForShowcase, int radius) {
@@ -269,19 +293,24 @@ public class GridCell {
         int resetCount = hardResetRecursive(slowGenerationForShowcase, radius, visited, resetCells);
 
         resetCells.forEach(spatialGrid::updateCellPriority);
+        resetCells.forEach(GridCell::updateNeighborCount);
         return resetCount;
+    }
+
+    private boolean isStartModule() {
+        return new Vector3i().equals(cellLocation);
     }
 
     private int hardResetRecursive(boolean showGenerationForShowcase, int radius,
                                    Set<GridCell> visited, Set<GridCell> resetCells) {
 
-        if (radius < 0 || !visited.add(this)) {
+        if (isStartModule() || radius < 0 || !visited.add(this)) {
             return 0;
         }
 
         boolean wasGenerated = this.isGenerated(); // Check if the cell was generated before reset
         resetData(showGenerationForShowcase);
-        updateNeighborCount();
+//        updateNeighborCount();
 
         resetCells.add(this);
 

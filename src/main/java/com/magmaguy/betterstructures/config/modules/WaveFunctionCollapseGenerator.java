@@ -243,9 +243,9 @@ public class WaveFunctionCollapseGenerator {
     }
 
     private GridCell createStartChunk(String startingModule) {
-        GridCell startChunk = new GridCell(new Vector3i(), world, spatialGrid, spatialGrid.getCellMap());
+        GridCell startChunk = new GridCell(new Vector3i(), world, spatialGrid, spatialGrid.getCellMap(), this);
         spatialGrid.getCellMap().put(new Vector3i(), startChunk);
-        spatialGrid.initializeCellNeighbors(startChunk);
+        spatialGrid.initializeCellNeighbors(startChunk, this);
 
         ModulesContainer modulesContainer = ModulesContainer.getModulesContainers().get(startingModule);
         if (modulesContainer == null) {
@@ -385,7 +385,7 @@ public class WaveFunctionCollapseGenerator {
             return;
         }
 
-        spatialGrid.initializeCellNeighbors(gridCell);
+        spatialGrid.initializeCellNeighbors(gridCell, this);
 
         paste(gridCell.getCellLocation(), modulesContainer);
     }
@@ -414,7 +414,8 @@ public class WaveFunctionCollapseGenerator {
 
     private void performHardReset(GridCell gridCell) {
         int currentCount = chunkRollbackCounter.merge(gridCell, 1, Integer::sum);
-        int rollBackRadius = Math.max(currentCount / 10, 2);
+//        int rollBackRadius = Math.min(currentCount / 10, 2);
+        int rollBackRadius = 1;
 
         int cellsReset = gridCell.hardReset(spatialGrid, config.slowGeneration, rollBackRadius);
         stats.decrementGeneratedChunks(cellsReset);
