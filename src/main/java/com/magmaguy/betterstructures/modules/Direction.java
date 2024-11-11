@@ -1,6 +1,7 @@
 package com.magmaguy.betterstructures.modules;
 
 import com.magmaguy.magmacore.util.Logger;
+import org.joml.Vector3i;
 
 import javax.annotation.Nullable;
 
@@ -15,6 +16,18 @@ public enum Direction {
             }
         }
         return null;
+    }
+
+    public Vector3i getOffsetVector(){
+        return switch (this) {
+            case NORTH -> new Vector3i(0, 0, -1);
+            case SOUTH -> new Vector3i(0, 0, 1);
+            case EAST -> new Vector3i(1, 0, 0);
+            case WEST -> new Vector3i(-1, 0, 0);
+            case UP -> new Vector3i(0, 1, 0);
+            case DOWN -> new Vector3i(0, -1, 0);
+            default -> throw new IllegalArgumentException("Invalid BuildBorder");
+        };
     }
 
     public Direction getOpposite() {

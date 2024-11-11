@@ -1,5 +1,6 @@
 package com.magmaguy.betterstructures.modules;
 
+import com.magmaguy.betterstructures.config.modules.WaveFunctionCollapseGenerator;
 import com.magmaguy.magmacore.util.Logger;
 import lombok.Getter;
 import org.joml.Vector3i;
@@ -112,7 +113,7 @@ public class SpatialGrid {
      *
      * @param gridCell The cell to initialize neighbors for
      */
-    public void initializeCellNeighbors(GridCell gridCell) {
+    public void initializeCellNeighbors(GridCell gridCell, WaveFunctionCollapseGenerator waveFunctionCollapseGenerator) {
         if (gridCell == null || isNothing(gridCell)) {
             Logger.debug("skipping because it's nothing");
             return;
@@ -136,15 +137,15 @@ public class SpatialGrid {
                 }
             } else {
                 // Create new neighbor only if the current cell isn't "nothing"
-                GridCell neighborCell = createNeighborCell(neighborLocation, gridCell);
+                GridCell neighborCell = createNeighborCell(neighborLocation, gridCell, waveFunctionCollapseGenerator);
                 cellMap.put(neighborLocation, neighborCell);
                 enqueueCell(neighborCell);
             }
         }
     }
 
-    private GridCell createNeighborCell(Vector3i location, GridCell referenceCell) {
-        return new GridCell(location, referenceCell.getWorld(), this, cellMap);
+    private GridCell createNeighborCell(Vector3i location, GridCell referenceCell, WaveFunctionCollapseGenerator waveFunctionCollapseGenerator) {
+        return new GridCell(location, referenceCell.getWorld(), this, cellMap, waveFunctionCollapseGenerator);
     }
 
     public boolean isWithinBounds(Vector3i location) {
