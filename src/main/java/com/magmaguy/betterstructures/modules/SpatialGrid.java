@@ -3,6 +3,7 @@ package com.magmaguy.betterstructures.modules;
 import com.magmaguy.betterstructures.config.modules.WaveFunctionCollapseGenerator;
 import com.magmaguy.magmacore.util.Logger;
 import lombok.Getter;
+import org.bukkit.World;
 import org.joml.Vector3i;
 
 import java.util.Comparator;
@@ -52,6 +53,25 @@ public class SpatialGrid {
 
         Comparator<GridCell> cellComparator = createCellComparator();
         this.gridCellQueue = new PriorityQueue<>(cellComparator);
+    }
+
+    public void generateWorldBorder(World world, WaveFunctionCollapseGenerator waveFunctionCollapseGenerator){
+        int worldBorderDistance = gridRadius + 1;
+        Logger.debug("running 2");
+        for (int i = -gridRadius; i <= gridRadius; i++) {
+            for (int y = getMinYLevel(); y < getMaxYLevel(); y++){
+                Vector3i chunkPosX = new Vector3i(i,y,worldBorderDistance);
+                GridCell gridCellX  =  new GridCell(chunkPosX,world, this, cellMap,waveFunctionCollapseGenerator);
+                gridCellX.setModulesContainer(ModulesContainer.getModulesContainers().get("world_border"));
+                Logger.debug("Generating edge at " + gridCellX);
+                cellMap.put(chunkPosX,gridCellX);
+                Vector3i chunkPosY = new Vector3i(worldBorderDistance,y,i);
+                GridCell gridCellY  =  new GridCell(chunkPosX,world, this, cellMap,waveFunctionCollapseGenerator);
+                gridCellY.setModulesContainer(ModulesContainer.getModulesContainers().get("world_border"));
+                Logger.debug("Generating edge at " + gridCellY);
+                cellMap.put(chunkPosY, gridCellY);
+            }
+        }
     }
 
     private void validateConstructorParameters(int gridRadius, int chunkSize, int minYLevel, int maxYLevel) {

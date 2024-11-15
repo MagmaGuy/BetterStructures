@@ -15,9 +15,10 @@ public class GenerateModulesInstantlyCommand extends AdvancedCommand {
         super(List.of("generateModulesInstantly"));
         addArgument("worldName", new ArrayList<>());
         addArgument("radius", new ArrayList<>());
+        addArgument("edgeModules", new ArrayList<>(List.of("true", "false")));
         addArgument("debug" , new ArrayList<>(List.of("true", "false")));
         addArgument("startingModule", ModulesContainer.getModulesContainers().keySet().stream().toList());
-        setUsage("/bs generateModulesInstantly <worldName> <radius> <debug> <startingModule>");
+        setUsage("/bs generateModulesInstantly <worldName> <radius> <edgeModules> <debug> <startingModule>");
         setPermission("betterstructures.generatemodules.instantly");
         setDescription("Generates modular builds in a dedicated world, instantly.");
         setSenderType(SenderType.PLAYER);
@@ -33,6 +34,7 @@ public class GenerateModulesInstantlyCommand extends AdvancedCommand {
         new WaveFunctionCollapseGenerator(
                 commandData.getStringArgument("worldName"),
                 commandData.getIntegerArgument("radius"),
+                Boolean.valueOf(commandData.getStringArgument("edgeModules")),
                 Boolean.valueOf(commandData.getStringArgument("debug")),
                 commandData.getPlayerSender(),
                 commandData.getStringArgument("startingModule"));
