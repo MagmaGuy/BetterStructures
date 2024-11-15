@@ -69,13 +69,13 @@ public class ModulesContainer {
                                 value.validBorders.computeIfAbsent(direction, k -> new ArrayList<>()).add(modulesContainers.get("nothing"));
                                 continue;
                             }
-//                            //"world_border" is a special module, borders that share "world_border" should not be joined and the only thing they should join with is spaces beyond the radius of the grid
-//                            if (borderTag.getTag().equalsIgnoreCase("world_border")) {
-//                                value.validBorders.computeIfAbsent(direction, k -> new ArrayList<>()).add(modulesContainers.get("world_border"));
-//                                Logger.debug("hit world border for build " + value.clipboardFilename);
-//                                value.horizontalEdge = true;
-//                                continue;
-//                            }
+                            //"world_border" is a special module, borders that share "world_border" should not be joined and the only thing they should join with is spaces beyond the radius of the grid
+                            if (borderTag.getTag().equalsIgnoreCase("world_border")) {
+                                value.validBorders.computeIfAbsent(direction, k -> new ArrayList<>()).add(modulesContainers.get("world_border"));
+                                Logger.debug("hit world border for build " + value.clipboardFilename);
+                                value.horizontalEdge = true;
+                                continue;
+                            }
                             if (borderTag.getTag().equals(neighborTag.getTag()) && (borderTag.isCanMirror() || neighborTag.isCanMirror())) {
                                 value.validBorders.computeIfAbsent(direction, k -> new ArrayList<>()).add(neighborContainer);
                                 valid = true;
@@ -200,14 +200,10 @@ public class ModulesContainer {
             return module.rotation == neighbour.rotation;
     }
 
-//    public static ModulesContainer pickRandomModuleFromSurroundings(GridCell gridCell) {
-//        List<ModulesContainer> validModules = getValidModulesFromSurroundings(gridCell);
-//        if (validModules == null) return null;
-//        return pickWeightedRandomModule(validModules, gridCell);
-//    }
-
     public static ModulesContainer pickRandomModule(List<ModulesContainer> modulesContainerList, GridCell gridCell) {
+        Logger.debug("About to pick module");
         if (modulesContainerList == null || modulesContainerList.isEmpty()) return null;
+        Logger.debug("Picking module with " + modulesContainerList.size() + " modules");
         return pickWeightedRandomModule(modulesContainerList, gridCell);
     }
 
@@ -245,7 +241,7 @@ public class ModulesContainer {
             for (String tag : borderList) {
                 processedBorderList.add(new NeighborTag(tag));
             }
-            Direction border = Direction.fromString(direction);
+             Direction border = Direction.fromString(direction);
             if (border == null) {
                 Logger.warn("Invalid border " + direction + " for module " + configFilename);
                 continue;

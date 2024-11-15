@@ -16,8 +16,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import lombok.Getter;
 
 public class WaveFunctionCollapseGenerator {
-    private static final int DEFAULT_CHUNK_SIZE = 128;
-
     @Getter private final GenerationConfig config;
     @Getter private final GenerationStats stats;
     @Getter private final SpatialGrid spatialGrid;
@@ -27,111 +25,6 @@ public class WaveFunctionCollapseGenerator {
     @Getter private World world;
     private volatile boolean isGenerating;
     private volatile boolean isCancelled;
-
-    /**
-     * Configuration class for the generator.
-     */
-    public static class GenerationConfig {
-        @Getter private final String worldName;
-        @Getter private final int radius;
-        @Getter private final int chunkSize;
-        @Getter private final boolean debug;
-        @Getter private final int interval;
-        @Getter private final boolean slowGeneration;
-        @Getter private final String startingModule;
-        @Getter private final Player player;
-        @Getter private final int massPasteSize;
-
-        private GenerationConfig(Builder builder) {
-            this.worldName = builder.worldName;
-            this.radius = builder.radius;
-            this.chunkSize = builder.chunkSize;
-            this.debug = builder.debug;
-            this.interval = builder.interval;
-            this.slowGeneration = builder.slowGeneration;
-            this.startingModule = builder.startingModule;
-            this.player = builder.player;
-            this.massPasteSize = builder.massPasteSize;
-        }
-
-        /**
-         * Builder for GenerationConfig.
-         */
-        public static class Builder {
-            private final String worldName;
-            private final int radius;
-            private int chunkSize = DEFAULT_CHUNK_SIZE;
-            private boolean debug = false;
-            private int interval = 1;
-            private boolean slowGeneration = false;
-            private String startingModule;
-            private Player player;
-            private int massPasteSize = DefaultConfig.getModularChunkPastingSpeed();
-
-            public Builder(String worldName, int radius) {
-                this.worldName = worldName;
-                this.radius = radius;
-            }
-
-            public Builder chunkSize(int chunkSize) {
-                this.chunkSize = chunkSize;
-                return this;
-            }
-
-            public Builder debug(boolean debug) {
-                this.debug = debug;
-                return this;
-            }
-
-            public Builder interval(int interval) {
-                this.interval = interval;
-                return this;
-            }
-
-            public Builder slowGeneration(boolean slowGeneration) {
-                this.slowGeneration = slowGeneration;
-                return this;
-            }
-
-            public Builder startingModule(String startingModule) {
-                this.startingModule = startingModule;
-                return this;
-            }
-
-            public Builder player(Player player) {
-                this.player = player;
-                return this;
-            }
-
-            public Builder massPasteSize(int massPasteSize) {
-                this.massPasteSize = massPasteSize;
-                return this;
-            }
-
-            public GenerationConfig build() {
-                validate();
-                return new GenerationConfig(this);
-            }
-
-            private void validate() {
-                if (worldName == null || worldName.isEmpty()) {
-                    throw new IllegalArgumentException("World name must be specified");
-                }
-                if (radius <= 0) {
-                    throw new IllegalArgumentException("Radius must be positive");
-                }
-                if (chunkSize <= 0) {
-                    throw new IllegalArgumentException("Chunk size must be positive");
-                }
-                if (interval <= 0) {
-                    throw new IllegalArgumentException("Interval must be positive");
-                }
-                if (massPasteSize <= 0) {
-                    throw new IllegalArgumentException("Mass paste size must be positive");
-                }
-            }
-        }
-    }
 
     /**
      * Statistics tracking for generation progress.
@@ -181,8 +74,14 @@ public class WaveFunctionCollapseGenerator {
     /**
      * Creates a new WaveFunctionCollapseGenerator with fast generation.
      */
-    public WaveFunctionCollapseGenerator(String worldName, int radius, boolean debug, Player player, String startingModule) {
+    public WaveFunctionCollapseGenerator(String worldName,
+                                         int radius,
+                                         boolean edgeModules,
+                                         boolean debug,
+                                         Player player,
+                                         String startingModule) {
         this(new GenerationConfig.Builder(worldName, radius)
+                .edgeModules(edgeModules)
                 .debug(debug)
                 .player(player)
                 .startingModule(startingModule)
@@ -194,22 +93,22 @@ public class WaveFunctionCollapseGenerator {
      */
     public WaveFunctionCollapseGenerator(GenerationConfig config) {
         this.config = config;
-        this.spatialGrid = new SpatialGrid(config.radius, config.chunkSize);
-        this.stats = new GenerationStats(config.radius, getSpatialGrid());
+        this.spatialGrid = new SpatialGrid(config.getRadius(), config.getChunkSize());
+        this.stats = new GenerationStats(config.getRadius(), getSpatialGrid());
         this.chunkRollbackCounter = new HashMap<>();
-        this.messaging = new Messaging(config.player);
+        this.messaging = new Messaging(config.getPlayer());
 
         initialize();
     }
 
     private void initialize() {
-        this.world = WorldInitializer.generateWorld(config.worldName, config.player);
+        this.world = WorldInitializer.generateWorld(config.getWorldName(), config.getPlayer());
         this.messaging.updateProgress(0, "Initializing...");
 
         new BukkitRunnable() {
             @Override
             public void run() {
-                start(config.startingModule);
+                start(config.getStartingModule());
             }
         }.runTaskAsynchronously(MetadataHandler.PLUGIN);
     }
@@ -230,7 +129,16 @@ public class WaveFunctionCollapseGenerator {
                 return;
             }
 
-            if (config.slowGeneration) {
+            Logger.debug("running 0");
+
+            if (config.isEdgeModules()){
+                Logger.debug("running 1");
+                spatialGrid.generateWorldBorder(world,this);
+            }
+
+            Logger.debug("continuing world gen");
+
+            if (config.isSlowGeneration()) {
                 generateSlowly();
             } else {
                 generateFast();
@@ -249,7 +157,7 @@ public class WaveFunctionCollapseGenerator {
 
         ModulesContainer modulesContainer = ModulesContainer.getModulesContainers().get(startingModule);
         if (modulesContainer == null) {
-            Logger.sendMessage(config.player, "Starting module was null! Canceling!");
+            Logger.sendMessage(config.getPlayer(), "Starting module was null! Canceling!");
             return null;
         }
 
@@ -276,7 +184,7 @@ public class WaveFunctionCollapseGenerator {
                 generateNextChunk(nextCell);
                 updateProgress();
             }
-        }.runTaskTimer(MetadataHandler.PLUGIN, 0L, config.interval);
+        }.runTaskTimer(MetadataHandler.PLUGIN, 0L, config.getInterval());
     }
 
     private void generateFast() {
@@ -318,7 +226,7 @@ public class WaveFunctionCollapseGenerator {
 
         chunkRollbackCounter.remove(gridCell);
 
-        if (config.slowGeneration) {
+        if (config.isSlowGeneration()) {
             scheduleActualPaste(gridCell);
         }
     }
@@ -348,7 +256,7 @@ public class WaveFunctionCollapseGenerator {
                 gridCell.getRealLocation().add(-1, 0, -1),
                 modulesContainer.getRotation());
 
-        if (config.debug) {
+        if (config.isDebug()) {
             gridCell.showDebugTextDisplays();
         }
     }
@@ -358,7 +266,7 @@ public class WaveFunctionCollapseGenerator {
             @Override
             public void run() {
                 Module.batchPaste(batchedChunkData, world);
-                if (config.debug) {
+                if (config.isDebug()) {
                     batchedChunkData.forEach(chunkData -> {
                         if (chunkData != null) {
                             chunkData.showDebugTextDisplays();
@@ -371,6 +279,8 @@ public class WaveFunctionCollapseGenerator {
 
     private void generateNextChunk(GridCell gridCell) {
         gridCell.updateValidOptions();
+
+        Logger.debug("Generating next chunk");
 
         List<ModulesContainer> validOptions = gridCell.getValidOptions();
         if (validOptions == null || validOptions.isEmpty()) {
@@ -392,6 +302,7 @@ public class WaveFunctionCollapseGenerator {
 
     private void rollbackChunk(GridCell gridCell) {
         int rollbacks = stats.rollbackCounter.incrementAndGet();
+        Logger.debug("Rolling back " + gridCell.getCellLocation());
         if (rollbacks % 1000 == 0) {
             logRollbackStatus(gridCell, rollbacks);
         }
@@ -407,8 +318,8 @@ public class WaveFunctionCollapseGenerator {
         String message = String.format("Current rollback status: %d chunks rolled back. Latest rollback location: %d, %d, %d",
                 rollbacks, location.x, location.y, location.z);
         Logger.warn(message);
-        if (config.player != null) {
-            config.player.sendMessage(message);
+        if (config.getPlayer() != null) {
+            config.getPlayer().sendMessage(message);
         }
     }
 
@@ -417,7 +328,7 @@ public class WaveFunctionCollapseGenerator {
 //        int rollBackRadius = Math.min(currentCount / 10, 2);
         int rollBackRadius = 1;
 
-        int cellsReset = gridCell.hardReset(spatialGrid, config.slowGeneration, rollBackRadius);
+        int cellsReset = gridCell.hardReset(spatialGrid, config.isSlowGeneration(), rollBackRadius);
         stats.decrementGeneratedChunks(cellsReset);
     }
 
@@ -520,22 +431,22 @@ public class WaveFunctionCollapseGenerator {
     private void done() {
         isGenerating = false;
 
-        if (config.player != null) {
-            config.player.sendTitle("Done!", "Module assembly complete!");
+        if (config.getPlayer() != null) {
+            config.getPlayer().sendTitle("Done!", "Module assembly complete!");
         }
 
         Logger.warn("Done with infinity generator!");
 
-        if (!config.slowGeneration) {
-            messaging.timeMessage("Module assembly ", config.player);
+        if (!config.isSlowGeneration()) {
+            messaging.timeMessage("Module assembly ", config.getPlayer());
             Logger.warn("Starting mass paste");
-            if (config.player != null) {
-                config.player.sendMessage("Starting mass paste...");
+            if (config.getPlayer() != null) {
+                config.getPlayer().sendMessage("Starting mass paste...");
             }
             spatialGrid.clearGridGenerationData();
             Bukkit.getScheduler().runTask(MetadataHandler.PLUGIN, this::instantPaste);
         } else {
-            messaging.timeMessage("Generation", config.player);
+            messaging.timeMessage("Generation", config.getPlayer());
             messaging.clearBar();
             cleanup();
         }
@@ -562,10 +473,10 @@ public class WaveFunctionCollapseGenerator {
                 .toList();
 
         if (!unusedModules.isEmpty()) {
-            Logger.sendMessage(config.player, "Failed to use the following modules:");
+            Logger.sendMessage(config.getPlayer(), "Failed to use the following modules:");
             Logger.warn("Failed to use the following modules:");
             unusedModules.forEach(module -> {
-                Logger.sendMessage(config.player, module);
+                Logger.sendMessage(config.getPlayer(), module);
                 Logger.warn(module);
             });
         }
@@ -580,7 +491,7 @@ public class WaveFunctionCollapseGenerator {
                 List<GridCell> batchedChunks = new ArrayList<>();
                 int batchCount = 0;
 
-                while (iterator.hasNext() && batchCount < config.massPasteSize) {
+                while (iterator.hasNext() && batchCount < config.getMassPasteSize()) {
                     Vector3i pos = iterator.next();
 
                     if (isWithinBounds(pos)) {
@@ -625,51 +536,10 @@ public class WaveFunctionCollapseGenerator {
             }
 
             private void finishPasting() {
-                messaging.timeMessage("Mass paste", config.player);
+                messaging.timeMessage("Mass paste", config.getPlayer());
                 cleanup();
             }
         }.runTaskTimerAsynchronously(MetadataHandler.PLUGIN, 0, 1);
-    }
-
-    /**
-     * Helper class for spiral iteration through the grid.
-     */
-    private static class SpiralIterator {
-        private final int maxRadius;
-        private int x = 0, z = 0;
-        private int dx = 0, dz = -1;
-        private final int maxIterations;
-        private int iteration = 0;
-
-        public SpiralIterator(int radius) {
-            this.maxRadius = radius;
-            this.maxIterations = (2 * radius + 1) * (2 * radius + 1);
-        }
-
-        public boolean hasNext() {
-            return iteration < maxIterations;
-        }
-
-        public Vector3i next() {
-            if (!hasNext()) {
-                throw new NoSuchElementException();
-            }
-
-            Vector3i current = new Vector3i(x, 0, z);
-
-            if (x == z || (x < 0 && x == -z) || (x > 0 && x == 1 - z)) {
-                // Turn the spiral
-                int temp = dx;
-                dx = -dz;
-                dz = temp;
-            }
-
-            x += dx;
-            z += dz;
-            iteration++;
-
-            return current;
-        }
     }
 
     /**
