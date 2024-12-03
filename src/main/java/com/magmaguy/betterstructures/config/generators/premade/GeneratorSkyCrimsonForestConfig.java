@@ -8,9 +8,9 @@ import java.util.Arrays;
 public class GeneratorSkyCrimsonForestConfig extends GeneratorConfigFields {
     public GeneratorSkyCrimsonForestConfig(){
         super("generator_sky_crimson_forest", true, Arrays.asList(StructureType.SKY));
-        setValidBiomes(Arrays.asList(
-                Biome.CRIMSON_FOREST,
-                Biome.CUSTOM));
+        setValidBiomesStrings(Arrays.asList(
+                "minecraft:crimson_forest",
+                "minecraft:custom"));
         setTreasureFilename("treasure_nether.yml");
     }
 }

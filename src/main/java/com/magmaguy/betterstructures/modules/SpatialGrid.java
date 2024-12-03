@@ -57,7 +57,7 @@ public class SpatialGrid {
 
     public void generateWorldBorder(World world, WaveFunctionCollapseGenerator waveFunctionCollapseGenerator){
         int worldBorderDistance = gridRadius + 1;
-        Logger.debug("running 2");
+//        Logger.debug("running 2");
         for (int i = -gridRadius; i <= gridRadius; i++) {
             for (int y = getMinYLevel(); y < getMaxYLevel(); y++){
                 Vector3i chunkPosX = new Vector3i(i,y,worldBorderDistance);
