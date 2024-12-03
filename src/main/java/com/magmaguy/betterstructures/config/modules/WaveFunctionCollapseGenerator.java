@@ -129,14 +129,14 @@ public class WaveFunctionCollapseGenerator {
                 return;
             }
 
-            Logger.debug("running 0");
+//            Logger.debug("running 0");
 
             if (config.isEdgeModules()){
-                Logger.debug("running 1");
+//                Logger.debug("running 1");
                 spatialGrid.generateWorldBorder(world,this);
             }
 
-            Logger.debug("continuing world gen");
+//            Logger.debug("continuing world gen");
 
             if (config.isSlowGeneration()) {
                 generateSlowly();

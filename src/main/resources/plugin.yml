@@ -1,5 +1,5 @@
 name: BetterStructures
-version: '1.7.2'
+version: '1.7.3'
 main: com.magmaguy.betterstructures.BetterStructures
 api-version: 1.14
 depend: [ WorldEdit ]
@@ -7,6 +7,10 @@ softdepend:
   - EliteMobs
   - WorldGuard
   - WorldEdit
+  - Terralith
+  - Iris
+  - Terra
+  - TerraformGenerator
 authors: [ MagmaGuy ]
 description: A plugin that adds random structures to your Minecraft world!
 website: magmaguy.com

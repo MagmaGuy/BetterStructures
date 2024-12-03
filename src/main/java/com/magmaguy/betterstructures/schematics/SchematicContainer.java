@@ -155,9 +155,9 @@ public class SchematicContainer {
     }
 
     public boolean isValidBiome(Biome biome) {
-        return generatorConfigFields.getValidBiomes() == null ||
-                generatorConfigFields.getValidBiomes().isEmpty() ||
-                generatorConfigFields.getValidBiomes().contains(biome);
+        return generatorConfigFields.getValidBiomesStrings() == null ||
+                generatorConfigFields.getValidBiomesStrings().isEmpty() ||
+                generatorConfigFields.getValidBiomesStrings().contains(biome);
     }
 
     public boolean isValidYLevel(int yLevel) {

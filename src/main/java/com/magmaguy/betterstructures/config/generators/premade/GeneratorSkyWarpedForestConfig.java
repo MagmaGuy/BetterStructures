@@ -8,9 +8,9 @@ import java.util.Arrays;
 public class GeneratorSkyWarpedForestConfig extends GeneratorConfigFields {
     public GeneratorSkyWarpedForestConfig() {
         super("generator_sky_warped_forest", true, Arrays.asList(StructureType.SKY));
-        setValidBiomes(Arrays.asList(
-                Biome.WARPED_FOREST,
-                Biome.CUSTOM));
+        setValidBiomesStrings(Arrays.asList(
+                "minecraft:warped_forest",
+                "minecraft:custom"));
         setTreasureFilename("treasure_nether.yml");
     }
 }

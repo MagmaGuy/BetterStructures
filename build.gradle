@@ -24,7 +24,7 @@ repositories {
 
 dependencies {
     annotationProcessor 'org.projectlombok:lombok:1.18.22'
-    implementation group: 'com.magmaguy', name: 'MagmaCore', version: '1.4'
+    implementation group: 'com.magmaguy', name: 'MagmaCore', version: '1.5-SNAPSHOT'
     implementation group: 'org.bstats', name: 'bstats-bukkit', version: '2.2.1'
     implementation 'org.apache.commons:commons-lang3:3.9'
     implementation group: 'org.reflections', name: 'reflections', version: '0.9.12'
@@ -35,7 +35,7 @@ dependencies {
     compileOnly group: 'com.sk89q.worldguard', name: 'worldguard-bukkit', version: '7.0.7'
     compileOnly group: 'com.sk89q.worldedit', name: 'worldedit-bukkit', version: '7.3.0'
     compileOnly 'org.projectlombok:lombok:1.18.22'
-    compileOnly 'org.spigotmc:spigot-api:1.21-R0.1-SNAPSHOT'
+    compileOnly 'org.spigotmc:spigot-api:1.21.3-R0.1-SNAPSHOT'
 }
 
 artifacts { // task 'build' runs generates uberjar

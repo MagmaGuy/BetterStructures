@@ -8,9 +8,9 @@ import java.util.Arrays;
 public class GeneratorSkyDesertConfig extends GeneratorConfigFields {
     public GeneratorSkyDesertConfig(){
         super("generator_sky_desert", true, Arrays.asList(StructureType.SKY));
-        setValidBiomes(Arrays.asList(
-                Biome.DESERT,
-                Biome.CUSTOM
+        setValidBiomesStrings(Arrays.asList(
+                "minecraft:desert",
+                "minecraft:custom"
         ));
         setTreasureFilename("treasure_overworld_surface.yml");
     }

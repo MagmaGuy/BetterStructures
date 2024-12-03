@@ -72,7 +72,7 @@ public class ModulesContainer {
                             //"world_border" is a special module, borders that share "world_border" should not be joined and the only thing they should join with is spaces beyond the radius of the grid
                             if (borderTag.getTag().equalsIgnoreCase("world_border")) {
                                 value.validBorders.computeIfAbsent(direction, k -> new ArrayList<>()).add(modulesContainers.get("world_border"));
-                                Logger.debug("hit world border for build " + value.clipboardFilename);
+//                                Logger.debug("hit world border for build " + value.clipboardFilename);
                                 value.horizontalEdge = true;
                                 continue;
                             }
