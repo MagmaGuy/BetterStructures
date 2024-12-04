@@ -104,8 +104,12 @@ public class SchematicContainer {
                             try {
                                 entityType = EntityType.valueOf(line2);
                             } catch (Exception ex) {
-                                Logger.warn("Failed to determine entity type for sign! Entry was " + line2 + " in schematic " + clipboardFilename + " ! Fix this by inputting a valid entity type!");
-                                continue;
+                                if (line2.equalsIgnoreCase("WITHER_CRYSTAL"))
+                                    entityType = EntityType.END_CRYSTAL;
+                                else {
+                                    Logger.warn("Failed to determine entity type for sign! Entry was " + line2 + " in schematic " + clipboardFilename + " ! Fix this by inputting a valid entity type!");
+                                    continue;
+                                }
                             }
                             vanillaSpawns.put(new Vector(x, y, z), entityType);
                         } else if (line1.toLowerCase(Locale.ROOT).contains("[elitemobs]")) {
@@ -155,9 +159,9 @@ public class SchematicContainer {
     }
 
     public boolean isValidBiome(Biome biome) {
-        return generatorConfigFields.getValidBiomesStrings() == null ||
-                generatorConfigFields.getValidBiomesStrings().isEmpty() ||
-                generatorConfigFields.getValidBiomesStrings().contains(biome);
+        return generatorConfigFields.getValidBiomes() == null ||
+                generatorConfigFields.getValidBiomes().isEmpty() ||
+                generatorConfigFields.getValidBiomes().contains(biome);
     }
 
     public boolean isValidYLevel(int yLevel) {
