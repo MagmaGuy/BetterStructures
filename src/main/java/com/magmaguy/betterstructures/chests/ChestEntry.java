@@ -16,8 +16,8 @@ public class ChestEntry {
     private final int minAmount;
     private final int maxAmount;
     private final ItemStack itemStack;
-    private boolean procedurallyGeneratedEnchantments;
-    private TreasureConfigFields treasureConfigFields;
+    private final boolean procedurallyGeneratedEnchantments;
+    private final TreasureConfigFields treasureConfigFields;
 
     public ChestEntry(Material material, double chance, int minAmount, int maxAmount, ItemStack itemStack, boolean procedurallyGeneratedEnchantments, TreasureConfigFields treasureConfigFields) {
         this.material = material;
@@ -33,21 +33,26 @@ public class ChestEntry {
         int amount;
         if (minAmount != maxAmount) amount = ThreadLocalRandom.current().nextInt(minAmount, maxAmount + 1);
         else amount = minAmount;
-        if (material != null) {
-            ItemStack itemStack = new ItemStack(material, amount);
-            if (!procedurallyGeneratedEnchantments)
+        try {
+            if (material != null) {
+                ItemStack itemStack = new ItemStack(material, amount);
+                if (!procedurallyGeneratedEnchantments)
+                    return itemStack;
+                List<TreasureConfigFields.ConfigurationEnchantment> configurationEnchantmentList = treasureConfigFields.getEnchantmentSettings().get(material);
+                if (configurationEnchantmentList == null || configurationEnchantmentList.isEmpty()) return itemStack;
+                ItemMeta itemMeta = itemStack.getItemMeta();
+                for (TreasureConfigFields.ConfigurationEnchantment configurationEnchantment : configurationEnchantmentList) {
+                    configurationEnchantment.rollEnchantment(itemMeta);
+                }
+                itemStack.setItemMeta(itemMeta);
                 return itemStack;
-            List<TreasureConfigFields.ConfigurationEnchantment> configurationEnchantmentList = treasureConfigFields.getEnchantmentSettings().get(material);
-            if (configurationEnchantmentList == null || configurationEnchantmentList.isEmpty()) return itemStack;
-            ItemMeta itemMeta = itemStack.getItemMeta();
-            for (TreasureConfigFields.ConfigurationEnchantment configurationEnchantment : configurationEnchantmentList) {
-                configurationEnchantment.rollEnchantment(itemMeta);
             }
-            itemStack.setItemMeta(itemMeta);
-            return itemStack;
+            ItemStack finalItemStack = itemStack.clone();
+            finalItemStack.setAmount(amount);
+            return finalItemStack;
+        } catch (Exception e) {
+            return  null;
+            //some items won't work in later versions as the materials get renamed
         }
-        ItemStack finalItemStack = itemStack.clone();
-        finalItemStack.setAmount(amount);
-        return finalItemStack;
     }
 }
