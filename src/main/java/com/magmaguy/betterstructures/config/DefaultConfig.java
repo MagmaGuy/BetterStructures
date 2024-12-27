@@ -54,12 +54,12 @@ public class DefaultConfig extends ConfigurationFile {
 
     public static void toggleSetupDone() {
         setupDone = !setupDone;
-        com.magmaguy.elitemobs.config.ConfigurationEngine.writeValue(setupDone, instance.file, instance.getFileConfiguration(), "setupDone");
+        ConfigurationEngine.writeValue(setupDone, instance.file, instance.getFileConfiguration(), "setupDone");
     }
 
     public static void toggleSetupDone(boolean value) {
         setupDone = value;
-        com.magmaguy.elitemobs.config.ConfigurationEngine.writeValue(setupDone, instance.file, instance.getFileConfiguration(), "setupDone");
+        ConfigurationEngine.writeValue(setupDone, instance.file, instance.getFileConfiguration(), "setupDone");
     }
 
 
