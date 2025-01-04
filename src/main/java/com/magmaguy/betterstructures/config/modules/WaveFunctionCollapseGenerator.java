@@ -1,10 +1,10 @@
 package com.magmaguy.betterstructures.config.modules;
 
 import com.magmaguy.betterstructures.MetadataHandler;
-import com.magmaguy.betterstructures.config.DefaultConfig;
 import com.magmaguy.betterstructures.modules.*;
 import com.magmaguy.magmacore.util.Logger;
 import com.magmaguy.magmacore.util.Round;
+import lombok.Getter;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
@@ -13,50 +13,23 @@ import org.joml.Vector3i;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
-import lombok.Getter;
 
 public class WaveFunctionCollapseGenerator {
-    @Getter private final GenerationConfig config;
-    @Getter private final GenerationStats stats;
-    @Getter private final SpatialGrid spatialGrid;
+    @Getter
+    private final GenerationConfig config;
+    @Getter
+    private final GenerationStats stats;
+    @Getter
+    private final SpatialGrid spatialGrid;
     private final Map<GridCell, Integer> chunkRollbackCounter;
-    @Getter private final Messaging messaging;
+    @Getter
+    private final Messaging messaging;
+    public static HashSet<WaveFunctionCollapseGenerator> waveFunctionCollapseGenerators = new HashSet<>();
 
-    @Getter private World world;
+    @Getter
+    private World world;
     private volatile boolean isGenerating;
     private volatile boolean isCancelled;
-
-    /**
-     * Statistics tracking for generation progress.
-     */
-    public static class GenerationStats {
-        @Getter private final int totalChunks;
-        private final AtomicInteger generatedChunks = new AtomicInteger(0);
-        @Getter private final AtomicInteger massPasteCount = new AtomicInteger(0);
-        @Getter private final AtomicInteger rollbackCounter = new AtomicInteger(0);
-
-        public GenerationStats(int radius, SpatialGrid spatialGrid) {
-            int xzRange = 2 * radius + 1;
-            int yRange = spatialGrid.getMaxYLevel() - spatialGrid.getMinYLevel() + 1;
-            this.totalChunks = xzRange * xzRange * yRange;
-        }
-
-        public int getGeneratedChunks() {
-            return generatedChunks.get();
-        }
-
-        public void incrementGeneratedChunks() {
-            generatedChunks.incrementAndGet();
-        }
-
-        public void decrementGeneratedChunks(int count) {
-            generatedChunks.addAndGet(-count);
-        }
-
-        public double getProgress() {
-            return (double) generatedChunks.get() / totalChunks;
-        }
-    }
 
     /**
      * Creates a new WaveFunctionCollapseGenerator with slow generation.
@@ -69,6 +42,7 @@ public class WaveFunctionCollapseGenerator {
                 .player(player)
                 .startingModule(startingModule)
                 .build());
+        waveFunctionCollapseGenerators.add(this);
     }
 
     /**
@@ -101,6 +75,11 @@ public class WaveFunctionCollapseGenerator {
         initialize();
     }
 
+    public static void shutdown() {
+        Messaging.shutdown();
+        waveFunctionCollapseGenerators.forEach(WaveFunctionCollapseGenerator::cancel);
+    }
+
     private void initialize() {
         this.world = WorldInitializer.generateWorld(config.getWorldName(), config.getPlayer());
         this.messaging.updateProgress(0, "Initializing...");
@@ -111,10 +90,6 @@ public class WaveFunctionCollapseGenerator {
                 start(config.getStartingModule());
             }
         }.runTaskAsynchronously(MetadataHandler.PLUGIN);
-    }
-
-    public static void shutdown() {
-        Messaging.shutdown();
     }
 
     private void start(String startingModule) {
@@ -129,14 +104,9 @@ public class WaveFunctionCollapseGenerator {
                 return;
             }
 
-//            Logger.debug("running 0");
-
-            if (config.isEdgeModules()){
-//                Logger.debug("running 1");
-                spatialGrid.generateWorldBorder(world,this);
+            if (config.isEdgeModules()) {
+                spatialGrid.generateWorldBorder(world, this);
             }
-
-//            Logger.debug("continuing world gen");
 
             if (config.isSlowGeneration()) {
                 generateSlowly();
@@ -280,10 +250,12 @@ public class WaveFunctionCollapseGenerator {
     private void generateNextChunk(GridCell gridCell) {
         gridCell.updateValidOptions();
 
-        Logger.debug("Generating next chunk");
-
-        List<ModulesContainer> validOptions = gridCell.getValidOptions();
+//        Logger.debug("Generating next chunk");
+        HashSet<ModulesContainer> validOptions = gridCell.getValidOptions();
         if (validOptions == null || validOptions.isEmpty()) {
+            Logger.debug("No valid options for cell at " + gridCell.getCellLocation() + " CANCELLING");
+            cancel();
+            //todo REENABLE THIS!
             rollbackChunk(gridCell);
             return;
         }
@@ -295,7 +267,10 @@ public class WaveFunctionCollapseGenerator {
             return;
         }
 
-        spatialGrid.initializeCellNeighbors(gridCell, this);
+        Logger.debug("picked module " + modulesContainer.getClipboardFilename() + " for coords " + gridCell.getCellLocation());
+
+        if (!modulesContainer.isNothing())
+            spatialGrid.initializeCellNeighbors(gridCell, this);
 
         paste(gridCell.getCellLocation(), modulesContainer);
     }
@@ -456,6 +431,7 @@ public class WaveFunctionCollapseGenerator {
         reportUnusedModules();
         spatialGrid.clearAllData();
         messaging.clearBar();
+        waveFunctionCollapseGenerators.remove(this);
     }
 
     private void reportUnusedModules() {
@@ -554,5 +530,40 @@ public class WaveFunctionCollapseGenerator {
      */
     public boolean isGenerating() {
         return isGenerating;
+    }
+
+    /**
+     * Statistics tracking for generation progress.
+     */
+    public static class GenerationStats {
+        @Getter
+        private final int totalChunks;
+        private final AtomicInteger generatedChunks = new AtomicInteger(0);
+        @Getter
+        private final AtomicInteger massPasteCount = new AtomicInteger(0);
+        @Getter
+        private final AtomicInteger rollbackCounter = new AtomicInteger(0);
+
+        public GenerationStats(int radius, SpatialGrid spatialGrid) {
+            int xzRange = 2 * radius + 1;
+            int yRange = spatialGrid.getMaxYLevel() - spatialGrid.getMinYLevel() + 1;
+            this.totalChunks = xzRange * xzRange * yRange;
+        }
+
+        public int getGeneratedChunks() {
+            return generatedChunks.get();
+        }
+
+        public void incrementGeneratedChunks() {
+            generatedChunks.incrementAndGet();
+        }
+
+        public void decrementGeneratedChunks(int count) {
+            generatedChunks.addAndGet(-count);
+        }
+
+        public double getProgress() {
+            return (double) generatedChunks.get() / totalChunks;
+        }
     }
 }

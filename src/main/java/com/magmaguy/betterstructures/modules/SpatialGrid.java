@@ -6,11 +6,7 @@ import lombok.Getter;
 import org.bukkit.World;
 import org.joml.Vector3i;
 
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.PriorityQueue;
-import java.util.EnumMap;
+import java.util.*;
 
 public class SpatialGrid {
     public static final int DEFAULT_MIN_Y_LEVEL = -4;
@@ -63,12 +59,12 @@ public class SpatialGrid {
                 Vector3i chunkPosX = new Vector3i(i,y,worldBorderDistance);
                 GridCell gridCellX  =  new GridCell(chunkPosX,world, this, cellMap,waveFunctionCollapseGenerator);
                 gridCellX.setModulesContainer(ModulesContainer.getModulesContainers().get("world_border"));
-                Logger.debug("Generating edge at " + gridCellX);
+                Logger.debug("Generating edge at " + gridCellX.getCellLocation());
                 cellMap.put(chunkPosX,gridCellX);
                 Vector3i chunkPosY = new Vector3i(worldBorderDistance,y,i);
-                GridCell gridCellY  =  new GridCell(chunkPosX,world, this, cellMap,waveFunctionCollapseGenerator);
+                GridCell gridCellY  =  new GridCell(chunkPosY,world, this, cellMap,waveFunctionCollapseGenerator);
                 gridCellY.setModulesContainer(ModulesContainer.getModulesContainers().get("world_border"));
-                Logger.debug("Generating edge at " + gridCellY);
+                Logger.debug("Generating edge at " + gridCellY.getCellLocation());
                 cellMap.put(chunkPosY, gridCellY);
             }
         }
@@ -97,15 +93,18 @@ public class SpatialGrid {
     }
 
     public void enqueueCell(GridCell gridCell) {
-        if (gridCell == null || isNothing(gridCell)) {
+        if (gridCell.getCellLocation().x ==0 && gridCell.getCellLocation().y ==0 && gridCell.getCellLocation().z == 0) Logger.debug("ABOUT TO ENQUEUE ZERO");
+        if (gridCell == null || isNothing(gridCell) || isWorldBorder(gridCell)) {
             return;
         }
+        Logger.debug("enqueuing " + gridCell.getCellLocation());
+        if (gridCell.getCellLocation().x ==0 && gridCell.getCellLocation().y ==0 && gridCell.getCellLocation().z == 0) Logger.debug("ENQUEUED ZERO");
         gridCell.updateValidOptions();
         gridCellQueue.add(gridCell);
     }
 
     public void updateCellPriority(GridCell gridCell) {
-        if (gridCell == null || isNothing(gridCell)) {
+        if (gridCell == null || isNothing(gridCell) || isWorldBorder(gridCell)) {
             return;
         }
         gridCellQueue.remove(gridCell);
@@ -116,6 +115,11 @@ public class SpatialGrid {
     private boolean isNothing(GridCell cell) {
         return cell.getModulesContainer() != null &&
                 cell.getModulesContainer().isNothing();
+    }
+
+    private boolean isWorldBorder(GridCell cell){
+        return cell.getModulesContainer() != null &&
+                cell.getModulesContainer().getClipboardFilename().equals("world_border");
     }
 
     public void clearGridGenerationData() {
@@ -150,12 +154,7 @@ public class SpatialGrid {
 
             // Check if neighbor already exists
             GridCell existingNeighbor = cellMap.get(neighborLocation);
-            if (existingNeighbor != null) {
-                // If it's a "nothing" cell, don't propagate further
-                if (!isNothing(existingNeighbor)) {
-                    continue;
-                }
-            } else {
+            if (existingNeighbor == null) {
                 // Create new neighbor only if the current cell isn't "nothing"
                 GridCell neighborCell = createNeighborCell(neighborLocation, gridCell, waveFunctionCollapseGenerator);
                 cellMap.put(neighborLocation, neighborCell);
@@ -174,6 +173,17 @@ public class SpatialGrid {
                 location.y <= maxYLevel &&
                 Math.abs(location.z) <= gridRadius;
     }
+
+
+    public boolean isBorder(Vector3i location) {
+        return location.x == -gridRadius
+                || location.x == gridRadius
+                || location.z == -gridRadius
+                || location.z == gridRadius
+                || location.y == minYLevel
+                || location.y == maxYLevel;
+    }
+
 
     public GridCell getNextGridCell() {
         GridCell next = gridCellQueue.poll();
