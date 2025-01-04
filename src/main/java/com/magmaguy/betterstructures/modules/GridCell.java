@@ -37,7 +37,7 @@ public class GridCell {
     @Setter
     private int generatedNeighborCount = 0;
     @Getter
-    private List<ModulesContainer> validOptions = null;
+    private HashSet<ModulesContainer> validOptions = null;
     private List<TextDisplay> textDisplays;
     @Getter
     private WaveFunctionCollapseGenerator waveFunctionCollapseGenerator;
@@ -60,8 +60,6 @@ public class GridCell {
     }
 
     public boolean isHorizontalEdge() {
-//        if (ThreadLocalRandom.current().nextDouble() < .001)
-//            Logger.debug("is edge: X " + (Math.abs(cellLocation.x) == grid.getGridRadius()) + " / Y " + (Math.abs(cellLocation.z) == grid.getGridRadius()));
         return Math.abs(cellLocation.x) == grid.getGridRadius() || Math.abs(cellLocation.z) == grid.getGridRadius();
     }
 
@@ -269,9 +267,9 @@ public class GridCell {
             for (int y = 0; y < size; y++) {
                 for (int z = 0; z < size; z++) {
                     Location blockLocation = new Location(world,
-                            worldPos.x + x - (size / 2),
-                            worldPos.y + y - (size / 2),
-                            worldPos.z + z - (size / 2));
+                            worldPos.x + x,
+                            worldPos.y + y,
+                            worldPos.z + z);
                     blockLocation.getBlock().setType(Material.AIR);
                 }
             }
