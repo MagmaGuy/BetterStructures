@@ -1,6 +1,5 @@
 package com.magmaguy.betterstructures.modules;
 
-import com.google.gson.Gson;
 import com.magmaguy.betterstructures.config.modules.ModulesConfigFields;
 import com.magmaguy.betterstructures.util.WeighedProbability;
 import com.magmaguy.magmacore.util.Logger;
@@ -26,7 +25,7 @@ public class ModulesContainer {
     private final int rotation;
     private final Map<Direction, HashSet<ModulesContainer>> validBorders = new HashMap<>();
     @Getter
-    private ModulesConfigFields modulesConfigField;
+    private final ModulesConfigFields modulesConfigField;
     @Getter
     private BorderTags borderTags = new BorderTags(new EnumMap<>(Direction.class));
     @Getter
@@ -74,7 +73,8 @@ public class ModulesContainer {
                             }
                             //"world_border" is a special module, borders that share "world_border" should not be joined and the only thing they should join with is spaces beyond the radius of the grid
                             if (borderTag.getTag().equalsIgnoreCase("world_border")) {
-                                modulesContainer.validBorders.computeIfAbsent(direction, k -> new HashSet<>()).add(modulesContainers.get("world_border"));
+//                                modulesContainer.validBorders.computeIfAbsent(direction, k -> new HashSet<>()).add(modulesContainers.get("world_border"));
+                                modulesContainer.validBorders.computeIfAbsent(direction, k -> new HashSet<>()).add(neighborContainer);
 //                                Logger.debug("hit world border for build " + value.clipboardFilename);
                                 modulesContainer.horizontalEdge = true;
                                 continue;
@@ -100,7 +100,7 @@ public class ModulesContainer {
 
     public static void initializeSpecialModules() {
         //Initialize "nothing", a reserved name with special behavior
-        ModulesContainer nothing = new ModulesContainer(null, "nothing",  new ModulesConfigFields("nothing", true), null, 0);
+        ModulesContainer nothing = new ModulesContainer(null, "nothing", new ModulesConfigFields("nothing", true), null, 0);
         nothing.borderTags = new BorderTags(Map.of(
                 Direction.NORTH, Collections.singletonList(new NeighborTag("nothing")),
                 Direction.SOUTH, Collections.singletonList(new NeighborTag("nothing")),
@@ -108,16 +108,6 @@ public class ModulesContainer {
                 Direction.WEST, Collections.singletonList(new NeighborTag("nothing")),
                 Direction.UP, Collections.singletonList(new NeighborTag("nothing")),
                 Direction.DOWN, Collections.singletonList(new NeighborTag("nothing"))));
-
-        //Initialize "world_border", a reserved name with special behavior
-        ModulesContainer worldBorder = new ModulesContainer(null, "world_border", new ModulesConfigFields("world_border", true), null, 0);
-        worldBorder.borderTags = new BorderTags(Map.of(
-                Direction.NORTH, Collections.singletonList(new NeighborTag("world_border")),
-                Direction.SOUTH, Collections.singletonList(new NeighborTag("world_border")),
-                Direction.EAST, Collections.singletonList(new NeighborTag("world_border")),
-                Direction.WEST, Collections.singletonList(new NeighborTag("world_border")),
-                Direction.UP, Collections.singletonList(new NeighborTag("world_border")),
-                Direction.DOWN, Collections.singletonList(new NeighborTag("world_border"))));
     }
 
     public static void shutdown() {
@@ -152,15 +142,14 @@ public class ModulesContainer {
 
                 if (isGridBorder && modulesContainer.clipboardFilename.contains("border")) Logger.debug("0");
 
-                if (modulesContainer.isHorizontalEdge() != isGridBorder) continue;
-
-                if (isGridBorder && modulesContainer.clipboardFilename.contains("border")) Logger.debug("1");
+                if (modulesContainer.isHorizontalEdge() != isGridBorder)
+                    //'nothing' should be compatible anywhere
+                    if (!(isGridBorder && modulesContainer.nothing))
+                        continue;
 
                 if (!isGridBorder) canOnlyBeNothingOrBorder = false;
-                else if (!modulesContainer.nothing)
+                else if (!modulesContainer.nothing && !modulesContainer.isHorizontalEdge())
                     canOnlyBeNothingOrBorder = false;
-
-                if (modulesContainer.clipboardFilename.contains("border")) Logger.debug("2");
 
                 boolean repeatStop = false;
                 for (GridCell neighbourData : gridCell.getOrientedNeighbors().values()) {
@@ -175,14 +164,32 @@ public class ModulesContainer {
 
                 if (repeatStop) continue;
 
-                if (modulesContainer.clipboardFilename.contains("border")) Logger.debug("3");
+                boolean worldBorderFacesTheOutside = true;
+
+                //If it's on the border, check if world_border is facing towards the outside
+                if (isGridBorder) {
+                    for (Map.Entry<Direction, List<NeighborTag>> directionListEntry : modulesContainer.getBorderTags().entrySet()) {
+                        if (directionListEntry.getKey() == direction.getOpposite()) {
+                            for (NeighborTag tag : directionListEntry.getValue()) {
+                                boolean isBeyondGrid = !gridCell.getWaveFunctionCollapseGenerator().getSpatialGrid().isWithinBounds(
+                                        gridCell.getCellLocation().add(directionListEntry.getKey().getOffsetVector()));
+                                boolean isWorldBorderTag = tag.getTag().equalsIgnoreCase("world_border");
+                                if (isBeyondGrid != isWorldBorderTag) {
+//                                    Logger.debug("triggered world border skip!");
+                                    worldBorderFacesTheOutside = false;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (!worldBorderFacesTheOutside) continue;
 
                 if (!checkVerticalRotationValidity(direction, buildBorderChunkDataEntry.getValue().getModulesContainer(), modulesContainer) ||
                         !checkHorizontalRotationValidity(direction, buildBorderChunkDataEntry.getValue().getModulesContainer(), modulesContainer)) {
                     continue;
                 }
-
-                if (modulesContainer.clipboardFilename.contains("border")) Logger.debug("4");
 
                 Vector3i loc = gridCell.getCellLocation();
                 if (loc.y < modulesContainer.modulesConfigField.getMinY() ||
@@ -190,13 +197,8 @@ public class ModulesContainer {
                     continue;
                 }
 
-                if (modulesContainer.clipboardFilename.contains("border")) Logger.debug("5");
-
                 validBorderSpecificModules.add(modulesContainer);
             }
-
-            if (isGridBorder)
-                Logger.debug(gridCell.getCellLocation() + " list before " + debugGridCellList(validBorderSpecificModules));
 
             if (validModules == null) {
                 validModules = new HashSet<>(validBorderSpecificModules);
@@ -205,30 +207,22 @@ public class ModulesContainer {
                     validModules.retainAll(validBorderSpecificModules);
             }
 
-            if (isGridBorder)
-                Logger.debug(gridCell.getCellLocation() + " list after " + debugGridCellList(validBorderSpecificModules));
-
-            if (validBorderSpecificModules.isEmpty() && canOnlyBeNothingOrBorder) {
+            if (validModules.isEmpty() && canOnlyBeNothingOrBorder) {
                 validModules.add(modulesContainers.get("nothing"));
             }
-
-            if (isGridBorder)
-                Logger.debug(gridCell.getCellLocation() + " list after merge " + debugGridCellList(validModules));
         }
 
         if (validModules == null || validModules.isEmpty()) {
             Logger.debug(gridCell.getCellLocation() + " list was empty");
-//            Logger.debug("was null or empty");
             return new HashSet<>();
         }
-        Logger.debug(gridCell.getCellLocation() + " about to return list " + debugGridCellList(validModules));
         return validModules;
     }
 
-    private static String debugGridCellList(HashSet<ModulesContainer> validBorderSpecificModules){
+    private static String debugGridCellList(HashSet<ModulesContainer> validBorderSpecificModules) {
         String string = "";
         for (ModulesContainer validBorderSpecificModule : validBorderSpecificModules) {
-            string+=validBorderSpecificModule.clipboardFilename + ", ";
+            string += validBorderSpecificModule.clipboardFilename + ", ";
         }
         return string;
     }
@@ -254,7 +248,7 @@ public class ModulesContainer {
     public static ModulesContainer pickRandomModule(HashSet<ModulesContainer> modulesContainerList, GridCell gridCell) {
 //        Logger.debug("About to pick module");
         if (modulesContainerList == null || modulesContainerList.isEmpty()) return null;
-        Logger.debug("Picking module from " + modulesContainerList.size() + " modules");
+//        Logger.debug("Picking module from " + modulesContainerList.size() + " modules");
         return pickWeightedRandomModule(modulesContainerList, gridCell);
     }
 

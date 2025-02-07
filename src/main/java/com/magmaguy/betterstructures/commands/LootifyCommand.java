@@ -5,6 +5,8 @@ import com.magmaguy.betterstructures.config.treasures.TreasureConfigFields;
 import com.magmaguy.betterstructures.util.ItemStackSerialization;
 import com.magmaguy.magmacore.command.AdvancedCommand;
 import com.magmaguy.magmacore.command.CommandData;
+import com.magmaguy.magmacore.command.arguments.IntegerCommandArgument;
+import com.magmaguy.magmacore.command.arguments.ListStringCommandArgument;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
@@ -17,11 +19,11 @@ public class LootifyCommand extends AdvancedCommand {
     public LootifyCommand() {
         super(List.of("lootify"));
         ArrayList<String> treasures = new ArrayList<>(TreasureConfig.getTreasureConfigurations().keySet());
-        addArgument("generator", treasures);
-        addArgument("rarity", new ArrayList<>());
-        addArgument("minAmount", new ArrayList<>());
-        addArgument("maxAmount", new ArrayList<>());
-        addArgument("weight", new ArrayList<>());
+        addArgument("generator", new ListStringCommandArgument(treasures,"<treasures>"));
+        addArgument("rarity", new ListStringCommandArgument("<rarity>"));
+        addArgument("minAmount", new IntegerCommandArgument("<minAmount>"));
+        addArgument("maxAmount", new IntegerCommandArgument("<maxAmount>"));
+        addArgument("weight", new IntegerCommandArgument("<weight>"));
         setPermission("betterstructures.*");
         setUsage("/betterstructures lootify <generator> <rarity> <minAmount> <maxAmount> <weight>");
         setDescription("Adds a held item to the loot settings of a generator");

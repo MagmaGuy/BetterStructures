@@ -25,6 +25,8 @@ public class Schematic {
     private Schematic() {
     }
 
+    private static boolean erroredOnce = false;
+
     public static Clipboard load(File schematicFile) {
         /*
         File file = Path.of(Bukkit.getPluginManager().getPlugin("BetterStructures").getDataFolder().getAbsolutePath()
@@ -42,6 +44,12 @@ public class Schematic {
         } catch (NoSuchElementException e) {
             Logger.warn("Failed to get element from schematic " + schematicFile.getName());
             e.printStackTrace();
+            return null;
+        } catch (Exception e){
+            Logger.warn("Failed to load schematic " + schematicFile.getName() + " ! 99% of the time, this is because you are not using the correct WorldEdit version for your Minecraft server. You should be downloading WorldEdit from here https://dev.bukkit.org/projects/worldedit . You can check which versions the download links are compatible with by hovering over them.");
+            erroredOnce = true;
+            if (!erroredOnce)            e.printStackTrace();
+            else Logger.warn("Hiding stacktrace for this error, as it has already been printed once");
             return null;
         }
         return clipboard;

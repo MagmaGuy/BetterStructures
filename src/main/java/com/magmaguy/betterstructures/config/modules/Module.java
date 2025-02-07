@@ -1,7 +1,7 @@
 package com.magmaguy.betterstructures.config.modules;
 
-import com.magmaguy.betterstructures.MetadataHandler;
 import com.magmaguy.betterstructures.modules.GridCell;
+import com.magmaguy.betterstructures.MetadataHandler;
 import com.magmaguy.magmacore.util.Logger;
 import com.sk89q.worldedit.EditSession;
 import com.sk89q.worldedit.WorldEdit;

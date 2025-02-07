@@ -1,15 +1,15 @@
 package com.magmaguy.betterstructures.listeners;
 
-import com.magmaguy.betterstructures.MetadataHandler;
 import com.magmaguy.betterstructures.buildingfitter.FitAirBuilding;
 import com.magmaguy.betterstructures.buildingfitter.FitLiquidBuilding;
 import com.magmaguy.betterstructures.buildingfitter.FitSurfaceBuilding;
 import com.magmaguy.betterstructures.buildingfitter.FitUndergroundShallowBuilding;
 import com.magmaguy.betterstructures.buildingfitter.util.FitUndergroundDeepBuilding;
+import com.magmaguy.betterstructures.schematics.SchematicContainer;
+import com.magmaguy.betterstructures.MetadataHandler;
 import com.magmaguy.betterstructures.config.DefaultConfig;
 import com.magmaguy.betterstructures.config.ValidWorldsConfig;
 import com.magmaguy.betterstructures.config.generators.GeneratorConfigFields;
-import com.magmaguy.betterstructures.schematics.SchematicContainer;
 import org.bukkit.Chunk;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;

@@ -1,5 +1,5 @@
 name: BetterStructures
-version: '1.7.7'
+version: '1.7.8'
 main: com.magmaguy.betterstructures.BetterStructures
 api-version: 1.14
 depend: [ WorldEdit ]
@@ -19,7 +19,12 @@ commands:
     description: Main command
     aliases:
       - bs
+  logify:
+    description: Posts current latest.log in mclo.gs, to make reporting bugs easier for admins.
 permissions:
+  logify.*:
+    description: Lets admins run the /logify command, which sends the current latest server log to mclo.gs.
+    default: op
   betterstructures.setup:
     description: Gives admins access to the /betterstructures setup command
     default: op
@@ -31,4 +36,7 @@ permissions:
     default: op
   betterstructures.generatemodules.instantly:
     description: Gives admins access to the /betterstructures generateModulesInstantly command
+    default: op
+  betterstructures.generatemodules:
+    description: Gives admins access to the /betterstructures generateModules command
     default: op

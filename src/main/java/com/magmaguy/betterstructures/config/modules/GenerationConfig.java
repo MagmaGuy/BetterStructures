@@ -1,8 +1,12 @@
 package com.magmaguy.betterstructures.config.modules;
 
 import com.magmaguy.betterstructures.config.DefaultConfig;
+import com.magmaguy.magmacore.util.Logger;
 import lombok.Getter;
 import org.bukkit.entity.Player;
+
+import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Configuration class for the generator.
@@ -76,6 +80,12 @@ public class GenerationConfig {
 
         public Builder startingModule(String startingModule) {
             this.startingModule = startingModule;
+            return this;
+        }
+
+        public Builder startingModules(List<String> startingModules) {
+            this.startingModule = startingModules.get(ThreadLocalRandom.current().nextInt(startingModules.size()))+ "_rotation_0";
+            Logger.debug("Using starting module " + startingModule);
             return this;
         }
 

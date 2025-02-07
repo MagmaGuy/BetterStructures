@@ -3,6 +3,8 @@ package com.magmaguy.betterstructures.commands;
 import com.magmaguy.magmacore.command.AdvancedCommand;
 import com.magmaguy.magmacore.command.CommandData;
 import com.magmaguy.magmacore.command.SenderType;
+import com.magmaguy.magmacore.command.arguments.IntegerCommandArgument;
+import com.magmaguy.magmacore.command.arguments.WorldCommandArgument;
 import com.magmaguy.magmacore.util.Logger;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -15,10 +17,10 @@ import java.util.List;
 public class TeleportCommand extends AdvancedCommand {
     public TeleportCommand() {
         super(List.of("teleport", "tp"));
-        addArgument("world", new ArrayList<>());
-        addArgument("x", new ArrayList<>());
-        addArgument("y", new ArrayList<>());
-        addArgument("z", new ArrayList<>());
+        addArgument("world", new WorldCommandArgument("<world>"));
+        addArgument("x", new IntegerCommandArgument("<x>"));
+        addArgument("y", new IntegerCommandArgument("<y>"));
+        addArgument("z", new IntegerCommandArgument("<z>"));
         setUsage("/teleport <worldname> <x> <y> <z>");
         setPermission("betterstructures.*");
         setDescription("Teleports a player to specific coordinates.");

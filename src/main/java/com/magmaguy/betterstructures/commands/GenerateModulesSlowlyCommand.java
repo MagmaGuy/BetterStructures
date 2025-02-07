@@ -5,6 +5,9 @@ import com.magmaguy.betterstructures.modules.ModulesContainer;
 import com.magmaguy.magmacore.command.AdvancedCommand;
 import com.magmaguy.magmacore.command.CommandData;
 import com.magmaguy.magmacore.command.SenderType;
+import com.magmaguy.magmacore.command.arguments.IntegerCommandArgument;
+import com.magmaguy.magmacore.command.arguments.ListStringCommandArgument;
+import com.magmaguy.magmacore.command.arguments.WorldCommandArgument;
 import com.magmaguy.magmacore.util.Logger;
 
 import java.util.ArrayList;
@@ -13,11 +16,11 @@ import java.util.List;
 public class GenerateModulesSlowlyCommand extends AdvancedCommand {
     public GenerateModulesSlowlyCommand() {
         super(List.of("generateModulesSlowly"));
-        addArgument("worldName", new ArrayList<>());
-        addArgument("radius", new ArrayList<>());
-        addArgument("interval", new ArrayList<>());
-        addArgument("debug" , new ArrayList<>(List.of("true", "false")));
-        addArgument("startingModule", ModulesContainer.getModulesContainers().keySet().stream().toList());
+        addArgument("worldName", new WorldCommandArgument("<world>"));
+        addArgument("radius", new IntegerCommandArgument("<radius>"));
+        addArgument("interval", new IntegerCommandArgument("<timeBetweenPastes>"));
+        addArgument("debug" , new ListStringCommandArgument(List.of("true", "false"), "<debug>"));
+        addArgument("startingModule", new ListStringCommandArgument(ModulesContainer.getModulesContainers().keySet().stream().toList(), "<startingModule>"));
         setUsage("/bs generateModulesSlowly <worldName> <radius> <debug> <interval> <startingModule>");
         setPermission("betterstructures.generatemodules.slowly");
         setDescription("Generates modular builds in a dedicated world, slowly.");
