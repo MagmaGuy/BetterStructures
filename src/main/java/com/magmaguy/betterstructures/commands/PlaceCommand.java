@@ -6,6 +6,7 @@ import com.magmaguy.betterstructures.schematics.SchematicContainer;
 import com.magmaguy.magmacore.command.AdvancedCommand;
 import com.magmaguy.magmacore.command.CommandData;
 import com.magmaguy.magmacore.command.SenderType;
+import com.magmaguy.magmacore.command.arguments.ListStringCommandArgument;
 import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
@@ -17,8 +18,8 @@ public class PlaceCommand extends AdvancedCommand {
         super(List.of("place"));
         ArrayList<String> loadedSchematics = new ArrayList<>();
         SchematicContainer.getSchematics().values().forEach(schematicContainer -> loadedSchematics.add(schematicContainer.getClipboardFilename()));
-        addArgument("schematic", loadedSchematics);
-        addArgument("type", new ArrayList<>(Arrays.asList(GeneratorConfigFields.StructureType.SURFACE.toString(), GeneratorConfigFields.StructureType.UNDERGROUND_SHALLOW.toString(), GeneratorConfigFields.StructureType.UNDERGROUND_DEEP.toString(), GeneratorConfigFields.StructureType.SKY.toString(), GeneratorConfigFields.StructureType.LIQUID_SURFACE.toString())));
+        addArgument("schematic", new ListStringCommandArgument(loadedSchematics, "<schematic>"));
+        addArgument("type", new ListStringCommandArgument(List.of(GeneratorConfigFields.StructureType.SURFACE.toString(), GeneratorConfigFields.StructureType.UNDERGROUND_SHALLOW.toString(), GeneratorConfigFields.StructureType.UNDERGROUND_DEEP.toString(), GeneratorConfigFields.StructureType.SKY.toString(), GeneratorConfigFields.StructureType.LIQUID_SURFACE.toString()),"<type>"));
         setPermission("betterstructures.*");
         setDescription("Allows players to place structures.");
         setSenderType(SenderType.PLAYER);

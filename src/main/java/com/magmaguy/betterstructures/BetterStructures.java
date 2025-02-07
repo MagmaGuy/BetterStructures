@@ -5,6 +5,7 @@ import com.magmaguy.betterstructures.config.DefaultConfig;
 import com.magmaguy.betterstructures.config.ValidWorldsConfig;
 import com.magmaguy.betterstructures.config.contentpackages.ContentPackageConfig;
 import com.magmaguy.betterstructures.config.generators.GeneratorConfig;
+import com.magmaguy.betterstructures.config.modulegenerators.ModuleGeneratorsConfig;
 import com.magmaguy.betterstructures.config.modules.ModulesConfig;
 import com.magmaguy.betterstructures.config.modules.WaveFunctionCollapseGenerator;
 import com.magmaguy.betterstructures.config.schematics.SchematicConfig;
@@ -50,11 +51,12 @@ public final class BetterStructures extends JavaPlugin {
         new DefaultConfig();
         new ValidWorldsConfig();
         //Creates import folder if one doesn't exist, imports any content inside
-        MagmaCore.initializeImporter();
         MagmaCore.onEnable();
+        MagmaCore.initializeImporter();
 
         new TreasureConfig();
         new GeneratorConfig();
+        new ModuleGeneratorsConfig();
         new SchematicConfig();
         new ModulesConfig();
         new ContentPackageConfig();
@@ -69,6 +71,7 @@ public final class BetterStructures extends JavaPlugin {
         commandManager.registerCommand(new FirstTimeSetupCommand());
         commandManager.registerCommand(new GenerateModulesInstantlyCommand());
         commandManager.registerCommand(new GenerateModulesSlowlyCommand());
+        commandManager.registerCommand(new GenerateModulesCommand());
 
         VersionChecker.checkPluginVersion();
         if (Bukkit.getPluginManager().getPlugin("WorldGuard") != null &&

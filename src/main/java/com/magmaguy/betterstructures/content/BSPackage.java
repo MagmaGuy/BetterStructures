@@ -1,7 +1,6 @@
 package com.magmaguy.betterstructures.content;
 
 import com.magmaguy.betterstructures.MetadataHandler;
-import com.magmaguy.betterstructures.commands.ReloadCommand;
 import com.magmaguy.betterstructures.config.contentpackages.ContentPackageConfigFields;
 import com.magmaguy.betterstructures.config.schematics.SchematicConfig;
 import com.magmaguy.betterstructures.config.schematics.SchematicConfigField;

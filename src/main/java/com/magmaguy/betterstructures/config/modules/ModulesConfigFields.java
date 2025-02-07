@@ -1,8 +1,8 @@
 package com.magmaguy.betterstructures.config.modules;
 
-import com.magmaguy.betterstructures.chests.ChestContents;
 import com.magmaguy.betterstructures.config.treasures.TreasureConfig;
 import com.magmaguy.betterstructures.config.treasures.TreasureConfigFields;
+import com.magmaguy.betterstructures.chests.ChestContents;
 import com.magmaguy.magmacore.config.CustomConfigFields;
 import com.magmaguy.magmacore.util.Logger;
 import lombok.Getter;

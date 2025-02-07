@@ -1,6 +1,7 @@
 package com.magmaguy.betterstructures.config.modules;
 
 import com.magmaguy.betterstructures.MetadataHandler;
+import com.magmaguy.betterstructures.config.modulegenerators.ModuleGeneratorsConfigFields;
 import com.magmaguy.betterstructures.modules.*;
 import com.magmaguy.magmacore.util.Logger;
 import com.magmaguy.magmacore.util.Round;
@@ -11,6 +12,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.joml.Vector3i;
 
+import java.io.File;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -62,6 +64,30 @@ public class WaveFunctionCollapseGenerator {
                 .build());
     }
 
+    public static void generateFromConfig(ModuleGeneratorsConfigFields generatorsConfigFields, Player player) {
+        String baseWorldName = generatorsConfigFields.getFilename().replace(".yml", "");
+        File worldContainer = Bukkit.getWorldContainer();
+        int i = 0;
+
+        // Increment until a unique world name is found
+        String worldName;
+        do {
+            worldName = baseWorldName + "_" + i;
+            i++;
+        } while (new File(worldContainer, worldName).exists());
+        new WaveFunctionCollapseGenerator(generatorsConfigFields, player, worldName);
+    }
+
+    public WaveFunctionCollapseGenerator(ModuleGeneratorsConfigFields generatorsConfigFields, Player player, String worldName) {
+        // Use the unique world name
+        this(new GenerationConfig.Builder(worldName, generatorsConfigFields.getRadius())
+                .edgeModules(generatorsConfigFields.isEdges())
+                .debug(generatorsConfigFields.isDebug())
+                .player(player)
+                .startingModules(generatorsConfigFields.getStartModules())
+                .build());
+    }
+
     /**
      * Main constructor using GenerationConfig.
      */
@@ -104,9 +130,9 @@ public class WaveFunctionCollapseGenerator {
                 return;
             }
 
-            if (config.isEdgeModules()) {
-                spatialGrid.generateWorldBorder(world, this);
-            }
+//            if (config.isEdgeModules()) {
+//                spatialGrid.generateWorldBorder(world, this);
+//            }
 
             if (config.isSlowGeneration()) {
                 generateSlowly();
