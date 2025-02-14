@@ -261,7 +261,7 @@ public class WaveFunctionCollapseGenerator {
         new BukkitRunnable() {
             @Override
             public void run() {
-                Module.batchPaste(batchedChunkData, world);
+                Module.batchPaste(batchedChunkData);
                 if (config.isDebug()) {
                     batchedChunkData.forEach(chunkData -> {
                         if (chunkData != null) {
