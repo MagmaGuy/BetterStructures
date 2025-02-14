@@ -140,6 +140,8 @@ public class ModulesContainer {
                     continue;
                 }
 
+                if (!modulesContainer.getModulesConfigField().isAutomaticallyPlaced()) continue;
+
                 if (isGridBorder && modulesContainer.clipboardFilename.contains("border")) Logger.debug("0");
 
                 if (modulesContainer.isHorizontalEdge() != isGridBorder)

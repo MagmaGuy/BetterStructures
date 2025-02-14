@@ -6,7 +6,7 @@ plugins {
 }
 
 group = 'com.magmaguy'
-version = '1.7.8'
+version = '1.8.0'
 
 repositories {
     mavenCentral()
@@ -24,11 +24,14 @@ repositories {
 
 dependencies {
     annotationProcessor 'org.projectlombok:lombok:1.18.22'
-    implementation group: 'com.magmaguy', name: 'MagmaCore', version: '1.8'
+    implementation group: 'com.magmaguy', name: 'MagmaCore', version: '1.10'
     implementation group: 'org.bstats', name: 'bstats-bukkit', version: '2.2.1'
     implementation 'org.apache.commons:commons-lang3:3.9'
     implementation group: 'org.reflections', name: 'reflections', version: '0.9.12'
     implementation group: 'org.joml', name: 'joml', version: '1.10.8'
+    implementation(group: 'com.magmaguy', name: 'EasyMinecraftGoals-dist', version: '1.18.0-SNAPSHOT') {
+        changing = true
+    }
     compileOnly group: 'com.magmaguy', name: 'EliteMobs', version: '9.1.11'
     compileOnly group: 'io.lumine', name: 'Mythic-Dist', version: '5.2.1'
     compileOnly group: 'io.lumine', name: 'MythicLib-dist', version: '1.5.2-SNAPSHOT'
@@ -37,6 +40,11 @@ dependencies {
     compileOnly group: 'com.sk89q.worldedit', name: 'worldedit-bukkit', version: '7.3.0'
     compileOnly 'org.projectlombok:lombok:1.18.22'
     compileOnly 'org.spigotmc:spigot-api:1.21.3-R0.1-SNAPSHOT'
+}
+
+//This allows any modules tagged as changing to be updated every time, which is extremely convenient for some of the shaded libs
+configurations.all {
+    resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
 }
 
 artifacts { // task 'build' runs generates uberjar
