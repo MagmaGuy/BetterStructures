@@ -26,6 +26,7 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.IOException;
+import com.magmaguy.easyminecraftgoals.NMSManager;
 
 public final class BetterStructures extends JavaPlugin {
 
@@ -53,6 +54,8 @@ public final class BetterStructures extends JavaPlugin {
         //Creates import folder if one doesn't exist, imports any content inside
         MagmaCore.onEnable();
         MagmaCore.initializeImporter();
+
+        NMSManager.initializeAdapter(this);
 
         new TreasureConfig();
         new GeneratorConfig();

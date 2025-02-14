@@ -249,7 +249,7 @@ public class WaveFunctionCollapseGenerator {
         }
 
         Module.paste(modulesContainer.getClipboard(),
-                gridCell.getRealLocation().add(-1, 0, -1),
+                gridCell.getRealLocation().add(0, 0, 0),
                 modulesContainer.getRotation());
 
         if (config.isDebug()) {
@@ -276,12 +276,10 @@ public class WaveFunctionCollapseGenerator {
     private void generateNextChunk(GridCell gridCell) {
         gridCell.updateValidOptions();
 
-//        Logger.debug("Generating next chunk");
         HashSet<ModulesContainer> validOptions = gridCell.getValidOptions();
         if (validOptions == null || validOptions.isEmpty()) {
             Logger.debug("No valid options for cell at " + gridCell.getCellLocation() + " CANCELLING");
             cancel();
-            //todo REENABLE THIS!
             rollbackChunk(gridCell);
             return;
         }

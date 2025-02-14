@@ -1,7 +1,8 @@
 package com.magmaguy.betterstructures.config.modules;
 
-import com.magmaguy.betterstructures.modules.GridCell;
 import com.magmaguy.betterstructures.MetadataHandler;
+import com.magmaguy.betterstructures.modules.GridCell;
+import com.magmaguy.easyminecraftgoals.NMSManager;
 import com.magmaguy.magmacore.util.Logger;
 import com.sk89q.worldedit.EditSession;
 import com.sk89q.worldedit.WorldEdit;
@@ -10,20 +11,73 @@ import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
 import com.sk89q.worldedit.function.operation.Operation;
 import com.sk89q.worldedit.function.operation.Operations;
+import com.sk89q.worldedit.internal.util.ClipboardTransformBaker;
 import com.sk89q.worldedit.math.BlockVector3;
 import com.sk89q.worldedit.math.transform.AffineTransform;
 import com.sk89q.worldedit.session.ClipboardHolder;
 import com.sk89q.worldedit.util.SideEffectSet;
 import com.sk89q.worldedit.world.World;
+import com.sk89q.worldedit.world.block.BlockState;
+import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
+import org.bukkit.block.data.BlockData;
 import org.bukkit.scheduler.BukkitRunnable;
 
+import javax.sound.sampled.Clip;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 
 public class Module {
     private Module() {
+    }
+
+    public static void testPaste(Clipboard clipboard, Location location, Integer rotation) {
+        org.bukkit.World world = location.getWorld();
+        BlockVector3 clipboardMin = clipboard.getMinimumPoint(); // if such a method exists
+        BlockVector3 clipboardDimensions = clipboard.getDimensions();
+
+        //todo: might need tweaking
+        clipboard = ClipboardTransformBaker.bakeTransform(clipboard, new AffineTransform().rotateY(normalizeRotation(rotation)));
+
+        List<LightEmitters> lightEmitters = new ArrayList<>();
+        HashSet<Chunk> chunks = new HashSet<>();
+
+        for (int x = 0; x < clipboardDimensions.getX(); x++) {
+            for (int y = 0; y < clipboardDimensions.getY(); y++) {
+                for (int z = 0; z < clipboardDimensions.getZ(); z++) {
+                    BlockVector3 clipboardPosition = BlockVector3.at(
+                            clipboardMin.getX() + x,
+                            clipboardMin.getY() + y,
+                            clipboardMin.getZ() + z
+                    );
+                    // Now calculate the world coordinates relative to the min
+                    int worldX = location.getBlockX() + x;
+                    int worldY = location.getBlockY() + y;
+                    int worldZ = location.getBlockZ() + z;
+
+                    BlockState blockState = clipboard.getBlock(clipboardPosition);
+                    BlockData blockData = Bukkit.createBlockData(blockState.getAsString());
+
+                    Location pasteLoc = new Location(world, worldX, worldY, worldZ);
+                    chunks.add(pasteLoc.getChunk());
+                    if (blockData.getLightEmission() > 0)
+                        lightEmitters.add(new LightEmitters(pasteLoc, blockData));
+                    else
+                        NMSManager.getAdapter().setBlockInNativeDataPalette(world, worldX, worldY, worldZ, blockData, true);
+                }
+            }
+        }
+
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                lightEmitters.forEach(emitters -> {
+                    emitters.location.getBlock().setBlockData(emitters.blockData);
+                });
+            }
+        }.runTaskLater(MetadataHandler.PLUGIN, 20);
     }
 
     public static void paste(Clipboard clipboard, Location location, Integer rotation) {
@@ -52,10 +106,6 @@ public class Module {
     }
 
     public static void batchPaste(List<GridCell> gridCellList, org.bukkit.World world) {
-        World worldEditWorld = BukkitAdapter.adapt(world);
-        EditSession editSession = WorldEdit.getInstance().newEditSession(worldEditWorld);
-        editSession.setTrackingHistory(false);
-
         HashSet<Chunk> chunks = new HashSet<>();
 
         for (GridCell gridCell : gridCellList) {
@@ -65,17 +115,47 @@ public class Module {
             }
 
             chunks.add(gridCell.getRealLocation().getChunk());
-            processSingleCell(gridCell, editSession);
+
+            Clipboard clipboard = gridCell.getModulesContainer().getClipboard();
+            int rotation = gridCell.getModulesContainer().getRotation();
+            Location location = gridCell.getRealLocation().add(-1, 0, -1);
+
+            testPaste(clipboard, location, rotation);
         }
 
         new BukkitRunnable() {
             @Override
             public void run() {
                 chunks.forEach(chunk -> chunk.unload(true));
-                editSession.close();
             }
         }.runTask(MetadataHandler.PLUGIN);
     }
+
+//    public static void batchPaste(List<GridCell> gridCellList, org.bukkit.World world) {
+//        World worldEditWorld = BukkitAdapter.adapt(world);
+//        EditSession editSession = WorldEdit.getInstance().newEditSession(worldEditWorld);
+//        editSession.setTrackingHistory(false);
+//
+//        HashSet<Chunk> chunks = new HashSet<>();
+//
+//        for (GridCell gridCell : gridCellList) {
+//            if (gridCell == null || gridCell.getModulesContainer() == null ||
+//                    gridCell.getModulesContainer().getClipboard() == null) {
+//                continue;
+//            }
+//
+//            chunks.add(gridCell.getRealLocation().getChunk());
+//            processSingleCell(gridCell, editSession);
+//        }
+//
+//        new BukkitRunnable() {
+//            @Override
+//            public void run() {
+//                chunks.forEach(chunk -> chunk.unload(true));
+//                editSession.close();
+//            }
+//        }.runTask(MetadataHandler.PLUGIN);
+//    }
 
     private static void processSingleCell(GridCell gridCell, EditSession editSession) {
         Clipboard clipboard = gridCell.getModulesContainer().getClipboard();
@@ -147,5 +227,8 @@ public class Module {
     private static int normalizeRotation(int rotation) {
         // Convert clockwise to counterclockwise
         return (360 - rotation) % 360;
+    }
+
+    private record LightEmitters(Location location, BlockData blockData) {
     }
 }

@@ -44,6 +44,7 @@ public class ModulesConfigFields extends CustomConfigFields {
     private boolean downIsPassable = true;
     private UUID uuid = UUID.randomUUID();
     private String compoundModule = null;
+    private boolean isAutomaticallyPlaced = true;
 
     //used to check if a config is either cloned or the same between two modules
     public UUID getUuid() {
@@ -128,6 +129,10 @@ public class ModulesConfigFields extends CustomConfigFields {
         return clonedConfig == null ? downIsPassable : clonedConfig.isDownIsPassable();
     }
 
+    public boolean isAutomaticallyPlaced() {
+        return clonedConfig == null ? isAutomaticallyPlaced : clonedConfig.isAutomaticallyPlaced();
+    }
+
     @Override
     public void processConfigFields() {
         this.isEnabled = processBoolean("isEnabled", isEnabled, true, true);
@@ -164,6 +169,7 @@ public class ModulesConfigFields extends CustomConfigFields {
 //        this.upIsPassable = processBoolean("upIsPassable", upIsPassable, upIsPassable, true);
 //        this.downIsPassable = processBoolean("downIsPassable", downIsPassable, downIsPassable, true);
         this.compoundModule = processString("compoundModule", compoundModule, compoundModule, true);
+        this.isAutomaticallyPlaced = processBoolean("isAutomaticallyPlaced", isAutomaticallyPlaced, isAutomaticallyPlaced, true);
     }
 
     public void validateClones() {
