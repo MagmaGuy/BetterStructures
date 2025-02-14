@@ -35,11 +35,21 @@ public class Module {
 
     public static void testPaste(Clipboard clipboard, Location location, Integer rotation) {
         org.bukkit.World world = location.getWorld();
-        BlockVector3 clipboardMin = clipboard.getMinimumPoint(); // if such a method exists
-        BlockVector3 clipboardDimensions = clipboard.getDimensions();
 
-        //todo: might need tweaking
-        clipboard = ClipboardTransformBaker.bakeTransform(clipboard, new AffineTransform().rotateY(normalizeRotation(rotation)));
+//        rotation = 0;
+
+        // Apply rotation to the clipboard
+        try {
+            clipboard = ClipboardTransformBaker.bakeTransform(clipboard, new AffineTransform().rotateY(normalizeRotation(rotation)));
+        } catch (WorldEditException e) {
+            throw new RuntimeException(e);
+        }
+
+        // Get the origin and minimum point of the transformed clipboard
+        BlockVector3 origin = clipboard.getOrigin();
+        BlockVector3 clipboardMin = clipboard.getMinimumPoint();
+        origin = new BlockVector3(clipboardMin.x(), origin.y(), clipboardMin.z());
+        BlockVector3 clipboardDimensions = clipboard.getDimensions();
 
         List<LightEmitters> lightEmitters = new ArrayList<>();
         HashSet<Chunk> chunks = new HashSet<>();
@@ -47,21 +57,20 @@ public class Module {
         for (int x = 0; x < clipboardDimensions.getX(); x++) {
             for (int y = 0; y < clipboardDimensions.getY(); y++) {
                 for (int z = 0; z < clipboardDimensions.getZ(); z++) {
-                    BlockVector3 clipboardPosition = BlockVector3.at(
-                            clipboardMin.getX() + x,
-                            clipboardMin.getY() + y,
-                            clipboardMin.getZ() + z
-                    );
-                    // Now calculate the world coordinates relative to the min
-                    int worldX = location.getBlockX() + x;
-                    int worldY = location.getBlockY() + y;
-                    int worldZ = location.getBlockZ() + z;
+                    // Current block position in the clipboard
+                    BlockVector3 blockPos = clipboardMin.add(x, y, z);
 
-                    BlockState blockState = clipboard.getBlock(clipboardPosition);
+                    // Calculate world coordinates adjusted for the origin
+                    int worldX = location.getBlockX() + (blockPos.getX() - origin.getX());
+                    int worldY = location.getBlockY() + (blockPos.getY() - origin.getY());
+                    int worldZ = location.getBlockZ() + (blockPos.getZ() - origin.getZ());
+
+                    BlockState blockState = clipboard.getBlock(blockPos);
                     BlockData blockData = Bukkit.createBlockData(blockState.getAsString());
 
                     Location pasteLoc = new Location(world, worldX, worldY, worldZ);
                     chunks.add(pasteLoc.getChunk());
+
                     if (blockData.getLightEmission() > 0)
                         lightEmitters.add(new LightEmitters(pasteLoc, blockData));
                     else
@@ -73,8 +82,8 @@ public class Module {
         new BukkitRunnable() {
             @Override
             public void run() {
-                lightEmitters.forEach(emitters -> {
-                    emitters.location.getBlock().setBlockData(emitters.blockData);
+                lightEmitters.forEach(emitter -> {
+                    emitter.location.getBlock().setBlockData(emitter.blockData);
                 });
             }
         }.runTaskLater(MetadataHandler.PLUGIN, 20);
@@ -105,7 +114,7 @@ public class Module {
         }
     }
 
-    public static void batchPaste(List<GridCell> gridCellList, org.bukkit.World world) {
+    public static void batchPaste(List<GridCell> gridCellList) {
         HashSet<Chunk> chunks = new HashSet<>();
 
         for (GridCell gridCell : gridCellList) {
@@ -118,9 +127,14 @@ public class Module {
 
             Clipboard clipboard = gridCell.getModulesContainer().getClipboard();
             int rotation = gridCell.getModulesContainer().getRotation();
-            Location location = gridCell.getRealLocation().add(-1, 0, -1);
+//            Location location = gridCell.getRealLocation().add(-1, 0, -1);
 
-            testPaste(clipboard, location, rotation);
+//            Location baseLocation = gridCell.getRealLocation().add(-1, 0, -1);
+            Location baseLocation = gridCell.getRealLocation();
+            Location adjustedLocation = adjustLocationForRotation(baseLocation, rotation, clipboard);
+
+//            testPaste(clipboard, adjustedLocation, rotation);
+            testPaste(clipboard, baseLocation, rotation);
         }
 
         new BukkitRunnable() {
@@ -131,58 +145,32 @@ public class Module {
         }.runTask(MetadataHandler.PLUGIN);
     }
 
-//    public static void batchPaste(List<GridCell> gridCellList, org.bukkit.World world) {
-//        World worldEditWorld = BukkitAdapter.adapt(world);
-//        EditSession editSession = WorldEdit.getInstance().newEditSession(worldEditWorld);
-//        editSession.setTrackingHistory(false);
+//    private static void processSingleCell(GridCell gridCell, EditSession editSession) {
+//        Clipboard clipboard = gridCell.getModulesContainer().getClipboard();
+//        int rotation = gridCell.getModulesContainer().getRotation();
+//        Location baseLocation = gridCell.getRealLocation().add(-1, 0, -1);
+//        Location adjustedLocation = adjustLocationForRotation(baseLocation, rotation, clipboard);
 //
-//        HashSet<Chunk> chunks = new HashSet<>();
+//        ClipboardHolder holder = new ClipboardHolder(clipboard);
+//        holder.setTransform(new AffineTransform().rotateY(normalizeRotation(rotation)));
 //
-//        for (GridCell gridCell : gridCellList) {
-//            if (gridCell == null || gridCell.getModulesContainer() == null ||
-//                    gridCell.getModulesContainer().getClipboard() == null) {
-//                continue;
-//            }
-//
-//            chunks.add(gridCell.getRealLocation().getChunk());
-//            processSingleCell(gridCell, editSession);
-//        }
+//        Operation operation = holder
+//                .createPaste(editSession)
+//                .ignoreAirBlocks(true)
+//                .to(BlockVector3.at(adjustedLocation.getX(), adjustedLocation.getY(), adjustedLocation.getZ()))
+//                .build();
 //
 //        new BukkitRunnable() {
 //            @Override
 //            public void run() {
-//                chunks.forEach(chunk -> chunk.unload(true));
-//                editSession.close();
+//                try {
+//                    Operations.complete(operation);
+//                } catch (WorldEditException e) {
+//                    throw new RuntimeException(e);
+//                }
 //            }
 //        }.runTask(MetadataHandler.PLUGIN);
 //    }
-
-    private static void processSingleCell(GridCell gridCell, EditSession editSession) {
-        Clipboard clipboard = gridCell.getModulesContainer().getClipboard();
-        int rotation = gridCell.getModulesContainer().getRotation();
-        Location baseLocation = gridCell.getRealLocation().add(-1, 0, -1);
-        Location adjustedLocation = adjustLocationForRotation(baseLocation, rotation, clipboard);
-
-        ClipboardHolder holder = new ClipboardHolder(clipboard);
-        holder.setTransform(new AffineTransform().rotateY(normalizeRotation(rotation)));
-
-        Operation operation = holder
-                .createPaste(editSession)
-                .ignoreAirBlocks(true)
-                .to(BlockVector3.at(adjustedLocation.getX(), adjustedLocation.getY(), adjustedLocation.getZ()))
-                .build();
-
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                try {
-                    Operations.complete(operation);
-                } catch (WorldEditException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-        }.runTask(MetadataHandler.PLUGIN);
-    }
 
     /**
      * Adjusts the paste location based on rotation and clipboard dimensions.
@@ -205,10 +193,10 @@ public class Module {
                 // No adjustment needed for 0 degrees
                 break;
             case 90:
-                adjustedLocation.add(0, 0, width);
+                adjustedLocation.add(0, 0, -width);
                 break;
             case 180:
-                adjustedLocation.add(width, 0, length);
+                adjustedLocation.add(-width, 0, length);
                 break;
             case 270:
                 adjustedLocation.add(length, 0, 0);
