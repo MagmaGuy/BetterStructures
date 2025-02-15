@@ -15,8 +15,8 @@ public class Topology {
     public static double scan(double startingScore, int scanStep, Clipboard schematicClipboard, Location iteratedLocation, Vector schematicOffset) {
         //if (schematicOffset == null) Bukkit.getLogger().info("oops the schematic offset is null");
         double score = startingScore;
-        int width = schematicClipboard.getDimensions().getX();
-        int depth = schematicClipboard.getDimensions().getZ();
+        int width = schematicClipboard.getDimensions().x();
+        int depth = schematicClipboard.getDimensions().z();
 
         ArrayList<Integer> heights = new ArrayList<>();
 

@@ -16,7 +16,7 @@ public class WorldInitializer {
         worldCreator.generator(new VoidGenerator());
         World world = worldCreator.createWorld();
         world.setAutoSave(false);
-        player.teleport(new Location(world, 8, 16, 8));
+//        player.teleport(new Location(world, 8, 16, 8));
         player.setGameMode(GameMode.SPECTATOR);
         return world;
     }

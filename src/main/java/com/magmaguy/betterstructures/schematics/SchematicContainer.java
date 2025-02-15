@@ -64,9 +64,9 @@ public class SchematicContainer {
             Logger.warn("Failed to assign generator for configuration of schematic " + schematicConfigField.getFilename() + " ! This means this structure will not appear in the world.");
             return;
         }
-        for (int x = 0; x <= clipboard.getDimensions().getX(); x++)
-            for (int y = 0; y <= clipboard.getDimensions().getY(); y++)
-                for (int z = 0; z <= clipboard.getDimensions().getZ(); z++) {
+        for (int x = 0; x <= clipboard.getDimensions().x(); x++)
+            for (int y = 0; y <= clipboard.getDimensions().y(); y++)
+                for (int z = 0; z <= clipboard.getDimensions().z(); z++) {
                     BlockVector3 translatedLocation = BlockVector3.at(x, y, z).add(clipboard.getMinimumPoint());
                     BlockState weBlockState = clipboard.getBlock(translatedLocation);
                     Material minecraftMaterial = BukkitAdapter.adapt(weBlockState.getBlockType());
