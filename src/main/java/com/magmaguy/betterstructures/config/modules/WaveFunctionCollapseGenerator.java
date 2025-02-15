@@ -11,7 +11,6 @@ import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
-import org.bukkit.scheduler.BukkitTask;
 import org.joml.Vector3i;
 
 import java.io.File;
@@ -110,13 +109,13 @@ public class WaveFunctionCollapseGenerator {
         waveFunctionCollapseGenerators.clear();
     }
 
-    private void teleportToSpawn(Player player){
+    private void teleportToSpawn(Player player) {
         //Pass to sync
         new BukkitRunnable() {
             @Override
             public void run() {
                 if (modularWorld == null || modularWorld.getSpawnLocations().isEmpty())
-                    player.teleport(new Location(world, config.getChunkSize()/2f, 100, config.getChunkSize()/2f));
+                    player.teleport(new Location(world, config.getChunkSize() / 2f, 100, config.getChunkSize() / 2f));
                 else {
                     Vector3i spawnCoords = modularWorld.getSpawnLocations().get(ThreadLocalRandom.current().nextInt(0, modularWorld.getSpawnLocations().size()));
                     Location spawnLocation = new Location(modularWorld.getWorld(), spawnCoords.x, spawnCoords.y, spawnCoords.z);
@@ -238,29 +237,13 @@ public class WaveFunctionCollapseGenerator {
             return;
         }
 
-        Module.paste(modulesContainer.getClipboard(),
+        ModulePasting.paste(modulesContainer.getClipboard(),
                 gridCell.getRealLocation().add(0, 0, 0),
                 modulesContainer.getRotation());
 
         if (config.isDebug()) {
             gridCell.showDebugTextDisplays();
         }
-    }
-
-    private void actualBatchPaste(List<GridCell> batchedChunkData) {
-        new BatchPasteTask() {
-            @Override
-            public void run() {
-                Module.batchPaste(batchedChunkData);
-                if (config.isDebug()) {
-                    batchedChunkData.forEach(chunkData -> {
-                        if (chunkData != null) {
-                            chunkData.showDebugTextDisplays();
-                        }
-                    });
-                }
-            }
-        }.runTask(MetadataHandler.PLUGIN);
     }
 
     private void generateNextChunk(GridCell gridCell) {
@@ -471,63 +454,27 @@ public class WaveFunctionCollapseGenerator {
     }
 
     private void instantPaste() {
-        new InstantPaste() {
-            private final SpiralIterator iterator = new SpiralIterator(spatialGrid.getGridRadius());
-
-            @Override
-            public void run() {
-                List<GridCell> batchedChunks = new ArrayList<>();
-                int batchCount = 0;
-
-                while (iterator.hasNext() && batchCount < config.getMassPasteSize()) {
-                    Vector3i pos = iterator.next();
-
-                    if (isWithinBounds(pos)) {
-                        processCellColumn(pos, batchedChunks);
-                        batchCount++;
-                    }
-                }
-
-                updatePasteProgress();
-                actualBatchPaste(batchedChunks);
-
-                if (!iterator.hasNext()) {
-                    finishPasting();
-                    this.cancel();
-                }
-            }
-
-            private boolean isWithinBounds(Vector3i pos) {
-                return Math.abs(pos.x) <= spatialGrid.getGridRadius() &&
-                        Math.abs(pos.z) <= spatialGrid.getGridRadius();
-            }
-
-            private void processCellColumn(Vector3i pos, List<GridCell> batchedChunks) {
+        //This guarantees that the paste order is grouped by chunk, making pasting faster down the line
+        List<GridCell> orderedPasteList = new ArrayList<>();
+        for (int x = -spatialGrid.getGridRadius(); x < spatialGrid.getGridRadius(); x++)
+            for (int z = -spatialGrid.getGridRadius(); z < spatialGrid.getGridRadius(); z++) {
                 for (int y = spatialGrid.getMinYLevel(); y <= spatialGrid.getMaxYLevel(); y++) {
-                    GridCell cell = spatialGrid.getCellMap().get(new Vector3i(pos.x, y, pos.z));
-                    if (cell != null) {
-                        batchedChunks.add(cell);
-                        stats.massPasteCount.incrementAndGet();
-                    }
+                    GridCell cell = spatialGrid.getCellMap().get(new Vector3i(x, y, z));
+                    if (cell != null) orderedPasteList.add(cell);
                 }
             }
 
-            private void updatePasteProgress() {
-                if (stats.massPasteCount.get() % 1000 == 0) {
-                    double progress = (stats.massPasteCount.get() / (double) stats.totalChunks) * 100;
-                    String formattedProgress = Round.twoDecimalPlaces(progress) + "";
-                    Logger.info("[" + formattedProgress + "%] Pasting chunk " +
-                            stats.massPasteCount + "/" + stats.totalChunks);
-                    messaging.updateProgress(progress / 100.0,
-                            "Pasting world - " + formattedProgress + "% done...");
-                }
-            }
+        ModulePasting.batchPaste(orderedPasteList);
 
-            private void finishPasting() {
-                messaging.timeMessage("Mass paste", config.getPlayer());
-                cleanup();
-            }
-        }.runTaskTimerAsynchronously(MetadataHandler.PLUGIN, 0, 1);
+        if (config.isDebug()) {
+            orderedPasteList.forEach(chunkData -> {
+                if (chunkData != null) {
+                    chunkData.showDebugTextDisplays();
+                }
+            });
+        }
+
+        cleanup();
     }
 
     /**
@@ -535,25 +482,6 @@ public class WaveFunctionCollapseGenerator {
      */
     public void cancel() {
         isCancelled = true;
-    }
-
-    /**
-     * @return true if generation is currently in progress
-     */
-    public boolean isGenerating() {
-        return isGenerating;
-    }
-
-    private static class InstantPaste extends BukkitRunnable {
-        @Override
-        public void run() {
-        }
-    }
-
-    private static class BatchPasteTask extends BukkitRunnable {
-        @Override
-        public void run() {
-        }
     }
 
     /**
