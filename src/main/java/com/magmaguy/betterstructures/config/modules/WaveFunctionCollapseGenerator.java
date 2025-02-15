@@ -420,18 +420,9 @@ public class WaveFunctionCollapseGenerator {
     private void done() {
         isGenerating = false;
 
-        if (config.getPlayer() != null) {
-            config.getPlayer().sendTitle("1/2 done...", "Module assembly complete!");
-        }
-
-        Logger.warn("Done with infinity generator!");
-
         if (!config.isSlowGeneration()) {
             messaging.timeMessage("Module assembly ", config.getPlayer());
             Logger.warn("Starting mass paste");
-            if (config.getPlayer() != null) {
-                config.getPlayer().sendMessage("Starting mass paste...");
-            }
             spatialGrid.clearGridGenerationData();
             instantPaste();
         } else {
