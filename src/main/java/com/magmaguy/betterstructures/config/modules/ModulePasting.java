@@ -2,6 +2,7 @@ package com.magmaguy.betterstructures.config.modules;
 
 import com.magmaguy.betterstructures.MetadataHandler;
 import com.magmaguy.betterstructures.modules.GridCell;
+import com.magmaguy.betterstructures.util.distributedload.WorkloadRunnable;
 import com.magmaguy.easyminecraftgoals.NMSManager;
 import com.magmaguy.magmacore.util.Logger;
 import com.sk89q.worldedit.EditSession;
@@ -17,23 +18,20 @@ import com.sk89q.worldedit.session.ClipboardHolder;
 import com.sk89q.worldedit.util.SideEffectSet;
 import com.sk89q.worldedit.world.block.BlockState;
 import org.bukkit.Bukkit;
-import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.block.data.BlockData;
-import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.block.structure.StructureRotation;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
-public final class Module {
-    private Module() {
-        throw new UnsupportedOperationException("Utility class");
+public final class ModulePasting {
+    private ModulePasting() {
     }
 
-    public static void testPaste(Clipboard clipboard, Location location, Integer rotation) {
+    private static List<PasteMe> generatePasteMeList(Clipboard clipboard, Location location, Integer rotation) {
+        List<PasteMe> pasteMeList = new ArrayList<>();
         AffineTransform transform = new AffineTransform().rotateY(normalizeRotation(rotation));
         Clipboard transformedClipboard = null;
         try {
@@ -46,7 +44,6 @@ public final class Module {
         BlockVector3 minPoint = transformedClipboard.getMinimumPoint();
         origin = BlockVector3.at(minPoint.x(), origin.y(), minPoint.z());
 
-        List<LightEmitter> lightEmitters = new ArrayList<>();
         World world = location.getWorld();
         int baseX = location.getBlockX();
         int baseY = location.getBlockY();
@@ -57,21 +54,22 @@ public final class Module {
         transformedClipboard.getRegion().forEach(blockPos -> {
             BlockState blockState = finalTransformedClipboard.getBlock(blockPos);
             BlockData blockData = Bukkit.createBlockData(blockState.getAsString());
+            if (rotation != 0)
+                blockData.rotate(switch (rotation) {
+                    case 90 -> StructureRotation.CLOCKWISE_90;
+                    case 180 -> StructureRotation.CLOCKWISE_180;
+                    case 270 -> StructureRotation.COUNTERCLOCKWISE_90;
+                    default -> throw new IllegalStateException("Unexpected value: " + rotation);
+                });
 
             int worldX = baseX + (blockPos.x() - finalOrigin.x());
             int worldY = baseY + (blockPos.y() - finalOrigin.y());
             int worldZ = baseZ + (blockPos.z() - finalOrigin.z());
 
             Location pasteLocation = new Location(world, worldX, worldY, worldZ);
-
-            if (blockData.getLightEmission() > 0) {
-                lightEmitters.add(new LightEmitter(pasteLocation, blockData));
-            } else {
-                NMSManager.getAdapter().setBlockInNativeDataPalette(world, worldX, worldY, worldZ, blockData, true);
-            }
+            pasteMeList.add(new PasteMe(pasteLocation, blockData));
         });
-
-        scheduleLightUpdates(lightEmitters);
+        return pasteMeList;
     }
 
     public static void paste(Clipboard clipboard, Location location, Integer rotation) {
@@ -101,19 +99,37 @@ public final class Module {
     }
 
     public static void batchPaste(List<GridCell> gridCellList) {
-//        Set<Chunk> affectedChunks = new HashSet<>();
-
+        List<PasteMe> pasteMeList = new ArrayList<>();
         for (GridCell gridCell : gridCellList) {
             if (gridCell == null || gridCell.getModulesContainer() == null) continue;
-
             Clipboard clipboard = gridCell.getModulesContainer().getClipboard();
             if (clipboard == null) continue;
-
-//            affectedChunks.add(gridCell.getRealLocation().getChunk());
-            testPaste(clipboard, gridCell.getRealLocation(), gridCell.getModulesContainer().getRotation());
+            pasteMeList.addAll(generatePasteMeList(clipboard, gridCell.getRealLocation(), gridCell.getModulesContainer().getRotation()));
         }
 
-//        scheduleChunkUnload(affectedChunks);
+        List<PasteMe> lightEmitters = new ArrayList<>();
+        WorkloadRunnable pasteMeRunnable = new WorkloadRunnable(.2, () -> {
+            WorkloadRunnable lightRunnable = new WorkloadRunnable(.2, () -> {
+            });
+            for (PasteMe lightEmitter : lightEmitters)
+                lightRunnable.addWorkload(() -> lightEmitter.location.getBlock().setBlockData(lightEmitter.blockData));
+            lightRunnable.runTaskTimer(MetadataHandler.PLUGIN, 0, 1);
+        });
+        for (PasteMe pasteMe : pasteMeList) {
+            if (pasteMe.blockData.getLightEmission() > 0)
+                lightEmitters.add(pasteMe);
+            else
+                pasteMeRunnable.addWorkload(() -> {
+                    NMSManager.getAdapter().setBlockInNativeDataPalette(
+                            pasteMe.location.getWorld(),
+                            pasteMe.location.getBlockX(),
+                            pasteMe.location.getBlockY(),
+                            pasteMe.location.getBlockZ(),
+                            pasteMe.blockData,
+                            true);
+                });
+        }
+        pasteMeRunnable.runTaskTimer(MetadataHandler.PLUGIN, 0, 1);
     }
 
     private static AffineTransform createRotationTransform(int rotation) {
@@ -140,19 +156,6 @@ public final class Module {
         return (360 - rotation) % 360;
     }
 
-    private static void scheduleLightUpdates(List<LightEmitter> lightEmitters) {
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                lightEmitters.forEach(emitter -> emitter.location.getBlock().setBlockData(emitter.blockData));
-            }
-        }.runTaskLater(MetadataHandler.PLUGIN, 1);
-    }
-
-    private static void scheduleChunkUnload(Set<Chunk> chunks) {
-                chunks.forEach(chunk -> chunk.unload(true));
-    }
-
-    private record LightEmitter(Location location, BlockData blockData) {
+    private record PasteMe(Location location, BlockData blockData) {
     }
 }
