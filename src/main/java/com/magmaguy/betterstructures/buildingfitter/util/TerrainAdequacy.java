@@ -17,9 +17,9 @@ public class TerrainAdequacy {
     }
 
     public static double scan(int scanStep, Clipboard schematicClipboard, Location iteratedLocation, Vector schematicOffset, ScanType scanType) {
-        int width = schematicClipboard.getDimensions().getX();
-        int depth = schematicClipboard.getDimensions().getZ();
-        int height = schematicClipboard.getDimensions().getY();
+        int width = schematicClipboard.getDimensions().x();
+        int depth = schematicClipboard.getDimensions().z();
+        int height = schematicClipboard.getDimensions().y();
 
         int totalCount = 0;
         int negativeCount = 0;

@@ -19,7 +19,7 @@ public class WorldEditUtils {
     private static final ArrayList<String> values = new ArrayList<>();
 
     public static Vector getSchematicOffset(Clipboard clipboard) {
-        return new Vector(clipboard.getMinimumPoint().getX() - clipboard.getOrigin().getX(), clipboard.getMinimumPoint().getY() - clipboard.getOrigin().getY(), clipboard.getMinimumPoint().getZ() - clipboard.getOrigin().getZ());
+        return new Vector(clipboard.getMinimumPoint().x() - clipboard.getOrigin().x(), clipboard.getMinimumPoint().y() - clipboard.getOrigin().y(), clipboard.getMinimumPoint().z() - clipboard.getOrigin().z());
     }
 
     /**

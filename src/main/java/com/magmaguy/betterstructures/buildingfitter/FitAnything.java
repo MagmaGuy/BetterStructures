@@ -118,16 +118,16 @@ public class FitAnything {
 
         //adjusts the offset just for the prescan, not needed for worldedit as that figures it out on its own
         Location adjustedLocation = location.clone().add(schematicOffset);
-        for (int x = 0; x < schematicClipboard.getDimensions().getX(); x++)
-            for (int y = 0; y < schematicClipboard.getDimensions().getY(); y++)
-                for (int z = 0; z < schematicClipboard.getDimensions().getZ(); z++) {
+        for (int x = 0; x < schematicClipboard.getDimensions().x(); x++)
+            for (int y = 0; y < schematicClipboard.getDimensions().y(); y++)
+                for (int z = 0; z < schematicClipboard.getDimensions().z(); z++) {
                     BlockVector3 adjustedClipboardLocation = BlockVector3.at(
-                            x + schematicClipboard.getMinimumPoint().getX(),
-                            y + schematicClipboard.getMinimumPoint().getY(),
-                            z + schematicClipboard.getMinimumPoint().getZ());
+                            x + schematicClipboard.getMinimumPoint().x(),
+                            y + schematicClipboard.getMinimumPoint().y(),
+                            z + schematicClipboard.getMinimumPoint().z());
                     BlockState blockState = schematicClipboard.getBlock(adjustedClipboardLocation);
                     Material material = BukkitAdapter.adapt(blockState.getBlockType());
-                    boolean isGround =  !BukkitAdapter.adapt(schematicClipboard.getBlock(BlockVector3.at(adjustedClipboardLocation.getX(), adjustedLocation.getY(), adjustedLocation.getZ()).add(0,1,0)).getBlockType()).isSolid();
+                    boolean isGround =  !BukkitAdapter.adapt(schematicClipboard.getBlock(BlockVector3.at(adjustedClipboardLocation.x(), adjustedLocation.getY(), adjustedLocation.getZ()).add(0,1,0)).getBlockType()).isSolid();
                     Block worldBlock = adjustedLocation.clone().add(new Vector(x, y, z)).getBlock();
                     if (material == Material.BARRIER) {
                         //special behavior: do not replace
@@ -224,9 +224,9 @@ public class FitAnything {
         int maxSurfaceHeightScan = 20;
 
         //get underground pedestal blocks
-        for (int x = 0; x < schematicClipboard.getDimensions().getX(); x++)
-            for (int z = 0; z < schematicClipboard.getDimensions().getZ(); z++)
-                for (int y = 0; y < schematicClipboard.getDimensions().getY(); y++) {
+        for (int x = 0; x < schematicClipboard.getDimensions().x(); x++)
+            for (int z = 0; z < schematicClipboard.getDimensions().z(); z++)
+                for (int y = 0; y < schematicClipboard.getDimensions().y(); y++) {
                     Block groundBlock = lowestCorner.clone().add(new Vector(x, y, z)).getBlock();
                     Block aboveBlock = groundBlock.getRelative(BlockFace.UP);
 
@@ -235,9 +235,9 @@ public class FitAnything {
                 }
 
         //get above ground pedestal blocks, if any
-        for (int x = 0; x < schematicClipboard.getDimensions().getX(); x++)
-            for (int z = 0; z < schematicClipboard.getDimensions().getZ(); z++) {
-                boolean scanUp = lowestCorner.clone().add(new Vector(x, schematicClipboard.getDimensions().getY(), z)).getBlock().getType().isSolid();
+        for (int x = 0; x < schematicClipboard.getDimensions().x(); x++)
+            for (int z = 0; z < schematicClipboard.getDimensions().z(); z++) {
+                boolean scanUp = lowestCorner.clone().add(new Vector(x, schematicClipboard.getDimensions().y(), z)).getBlock().getType().isSolid();
                 for (int y = 0; y < maxSurfaceHeightScan; y++) {
                     Block groundBlock = lowestCorner.clone().add(new Vector(x, scanUp ? y : -y, z)).getBlock();
                     Block aboveBlock = groundBlock.getRelative(BlockFace.UP);
@@ -283,8 +283,8 @@ public class FitAnything {
     private void addPedestal(Location location) {
         if (this instanceof FitAirBuilding || this instanceof FitLiquidBuilding) return;
         Location lowestCorner = location.clone().add(schematicOffset);
-        for (int x = 0; x < schematicClipboard.getDimensions().getX(); x++)
-            for (int z = 0; z < schematicClipboard.getDimensions().getZ(); z++) {
+        for (int x = 0; x < schematicClipboard.getDimensions().x(); x++)
+            for (int z = 0; z < schematicClipboard.getDimensions().z(); z++) {
                 //Only add pedestals for areas with a solid floor, some schematics can have rounded air edges to better fit terrain
                 Block groundBlock = lowestCorner.clone().add(new Vector(x, 0, z)).getBlock();
                 if (groundBlock.getType().isAir()) continue;
@@ -301,13 +301,13 @@ public class FitAnything {
     }
 
     private void clearTrees(Location location) {
-        Location highestCorner = location.clone().add(schematicOffset).add(new Vector(0, schematicClipboard.getDimensions().getY(), 0));
+        Location highestCorner = location.clone().add(schematicOffset).add(new Vector(0, schematicClipboard.getDimensions().y(), 0));
         boolean detectedTreeElement = true;
         for (int y = 0; y < 31; y++) {
             if (!detectedTreeElement) return;
             detectedTreeElement = false;
-            for (int x = 0; x < schematicClipboard.getDimensions().getX(); x++)
-                for (int z = 0; z < schematicClipboard.getDimensions().getZ(); z++) {
+            for (int x = 0; x < schematicClipboard.getDimensions().x(); x++)
+                for (int z = 0; z < schematicClipboard.getDimensions().z(); z++) {
                     Block block = highestCorner.clone().add(new Vector(x, y, z)).getBlock();
                     if (SurfaceMaterials.ignorable(block.getType()) && !block.getType().isAir()) {
                         detectedTreeElement = true;
