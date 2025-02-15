@@ -24,7 +24,6 @@ import org.bukkit.Location;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.scheduler.BukkitRunnable;
 
-import javax.sound.sampled.Clip;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -34,10 +33,6 @@ public class Module {
     }
 
     public static void testPaste(Clipboard clipboard, Location location, Integer rotation) {
-        org.bukkit.World world = location.getWorld();
-
-//        rotation = 0;
-
         // Apply rotation to the clipboard
         try {
             clipboard = ClipboardTransformBaker.bakeTransform(clipboard, new AffineTransform().rotateY(normalizeRotation(rotation)));
@@ -52,29 +47,27 @@ public class Module {
         BlockVector3 clipboardDimensions = clipboard.getDimensions();
 
         List<LightEmitters> lightEmitters = new ArrayList<>();
-        HashSet<Chunk> chunks = new HashSet<>();
 
-        for (int x = 0; x < clipboardDimensions.getX(); x++) {
-            for (int y = 0; y < clipboardDimensions.getY(); y++) {
-                for (int z = 0; z < clipboardDimensions.getZ(); z++) {
+        for (int x = 0; x < clipboardDimensions.x(); x++) {
+            for (int y = 0; y < clipboardDimensions.y(); y++) {
+                for (int z = 0; z < clipboardDimensions.z(); z++) {
                     // Current block position in the clipboard
                     BlockVector3 blockPos = clipboardMin.add(x, y, z);
 
                     // Calculate world coordinates adjusted for the origin
-                    int worldX = location.getBlockX() + (blockPos.getX() - origin.getX());
-                    int worldY = location.getBlockY() + (blockPos.getY() - origin.getY());
-                    int worldZ = location.getBlockZ() + (blockPos.getZ() - origin.getZ());
+                    int worldX = location.getBlockX() + (blockPos.x() - origin.x());
+                    int worldY = location.getBlockY() + (blockPos.y() - origin.y());
+                    int worldZ = location.getBlockZ() + (blockPos.z() - origin.z());
 
                     BlockState blockState = clipboard.getBlock(blockPos);
                     BlockData blockData = Bukkit.createBlockData(blockState.getAsString());
 
-                    Location pasteLoc = new Location(world, worldX, worldY, worldZ);
-                    chunks.add(pasteLoc.getChunk());
+                    Location pasteLoc = new Location(location.getWorld(), worldX, worldY, worldZ);
 
                     if (blockData.getLightEmission() > 0)
                         lightEmitters.add(new LightEmitters(pasteLoc, blockData));
                     else
-                        NMSManager.getAdapter().setBlockInNativeDataPalette(world, worldX, worldY, worldZ, blockData, true);
+                        NMSManager.getAdapter().setBlockInNativeDataPalette(location.getWorld(), worldX, worldY, worldZ, blockData, true);
                 }
             }
         }
@@ -122,18 +115,10 @@ public class Module {
                     gridCell.getModulesContainer().getClipboard() == null) {
                 continue;
             }
-
             chunks.add(gridCell.getRealLocation().getChunk());
-
             Clipboard clipboard = gridCell.getModulesContainer().getClipboard();
             int rotation = gridCell.getModulesContainer().getRotation();
-//            Location location = gridCell.getRealLocation().add(-1, 0, -1);
-
-//            Location baseLocation = gridCell.getRealLocation().add(-1, 0, -1);
             Location baseLocation = gridCell.getRealLocation();
-            Location adjustedLocation = adjustLocationForRotation(baseLocation, rotation, clipboard);
-
-//            testPaste(clipboard, adjustedLocation, rotation);
             testPaste(clipboard, baseLocation, rotation);
         }
 
@@ -145,33 +130,6 @@ public class Module {
         }.runTask(MetadataHandler.PLUGIN);
     }
 
-//    private static void processSingleCell(GridCell gridCell, EditSession editSession) {
-//        Clipboard clipboard = gridCell.getModulesContainer().getClipboard();
-//        int rotation = gridCell.getModulesContainer().getRotation();
-//        Location baseLocation = gridCell.getRealLocation().add(-1, 0, -1);
-//        Location adjustedLocation = adjustLocationForRotation(baseLocation, rotation, clipboard);
-//
-//        ClipboardHolder holder = new ClipboardHolder(clipboard);
-//        holder.setTransform(new AffineTransform().rotateY(normalizeRotation(rotation)));
-//
-//        Operation operation = holder
-//                .createPaste(editSession)
-//                .ignoreAirBlocks(true)
-//                .to(BlockVector3.at(adjustedLocation.getX(), adjustedLocation.getY(), adjustedLocation.getZ()))
-//                .build();
-//
-//        new BukkitRunnable() {
-//            @Override
-//            public void run() {
-//                try {
-//                    Operations.complete(operation);
-//                } catch (WorldEditException e) {
-//                    throw new RuntimeException(e);
-//                }
-//            }
-//        }.runTask(MetadataHandler.PLUGIN);
-//    }
-
     /**
      * Adjusts the paste location based on rotation and clipboard dimensions.
      * Accounts for variable chunk sizes.
@@ -181,8 +139,8 @@ public class Module {
 
         // Get clipboard dimensions
         BlockVector3 dimensions = clipboard.getDimensions();
-        int width = dimensions.getX();
-        int length = dimensions.getZ();
+        int width = dimensions.x();
+        int length = dimensions.z();
 
         // Normalize rotation to match WorldEdit's coordinate system
         rotation = normalizeRotation(rotation);
