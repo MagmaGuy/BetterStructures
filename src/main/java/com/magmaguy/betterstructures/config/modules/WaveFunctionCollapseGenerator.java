@@ -455,29 +455,28 @@ public class WaveFunctionCollapseGenerator {
 
     private void instantPaste() {
         // This guarantees that the paste order is grouped by chunk, making pasting faster down the line.
-        List<GridCell> orderedPasteList = new ArrayList<>();
+        Deque<GridCell> orderedPasteDeque = new ArrayDeque<>();
         for (int x = -spatialGrid.getGridRadius(); x < spatialGrid.getGridRadius(); x++) {
             for (int z = -spatialGrid.getGridRadius(); z < spatialGrid.getGridRadius(); z++) {
                 for (int y = spatialGrid.getMinYLevel(); y <= spatialGrid.getMaxYLevel(); y++) {
                     // Remove the cell from the map and get it in one go.
                     GridCell cell = spatialGrid.getCellMap().remove(new Vector3i(x, y, z));
                     if (cell != null) {
-                        orderedPasteList.add(cell);
+                        orderedPasteDeque.add(cell);
                     }
                 }
             }
         }
 
-//        ModulePasting.batchPaste(orderedPasteList);
-        new ModulePasting(world, orderedPasteList);
-
         if (config.isDebug()) {
-            orderedPasteList.forEach(chunkData -> {
+            orderedPasteDeque.forEach(chunkData -> {
                 if (chunkData != null) {
                     chunkData.showDebugTextDisplays();
                 }
             });
         }
+
+        new ModulePasting(world, orderedPasteDeque);
 
         cleanup();
     }

@@ -3,6 +3,7 @@ package com.magmaguy.betterstructures.config.modules;
 import com.magmaguy.betterstructures.MetadataHandler;
 import com.magmaguy.betterstructures.modules.GridCell;
 import com.magmaguy.betterstructures.util.WorldEditUtils;
+import com.magmaguy.betterstructures.util.distributedload.Workload;
 import com.magmaguy.betterstructures.util.distributedload.WorkloadRunnable;
 import com.magmaguy.easyminecraftgoals.NMSManager;
 import com.magmaguy.magmacore.util.Logger;
@@ -21,20 +22,20 @@ import com.sk89q.worldedit.world.block.BaseBlock;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
-import org.bukkit.block.BlockState;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Directional;
 import org.bukkit.block.data.Rail;
 import org.bukkit.block.data.type.Sign;
 
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
 
 public final class ModulePasting {
     private final List<InterpretedSign> interpretedSigns = new ArrayList<>();
 
-    public ModulePasting(World world, List<GridCell> gridCellList) {
-        batchPaste(gridCellList, interpretedSigns);
+    public ModulePasting(World world, Deque<GridCell> gridCellDeque) {
+        batchPaste(gridCellDeque, interpretedSigns);
         createModularWorld(world);
     }
 
@@ -106,9 +107,11 @@ public final class ModulePasting {
         }
     }
 
-    public static List<InterpretedSign> batchPaste(List<GridCell> gridCellList, List<InterpretedSign> interpretedSigns) {
+    public static List<InterpretedSign> batchPaste(Deque<GridCell> gridCellDeque, List<InterpretedSign> interpretedSigns) {
         List<Pasteable> pasteableList = new ArrayList<>();
-        for (GridCell gridCell : gridCellList) {
+
+        while (!gridCellDeque.isEmpty()) {
+            GridCell gridCell = gridCellDeque.poll();
             if (gridCell == null || gridCell.getModulesContainer() == null) continue;
             Clipboard clipboard = gridCell.getModulesContainer().getClipboard();
             if (clipboard == null) continue;
@@ -116,12 +119,12 @@ public final class ModulePasting {
         }
 
         List<Pasteable> lightEmitters = new ArrayList<>();
-        WorkloadRunnable pasteMeRunnable = new WorkloadRunnable(.2, () -> {
-            WorkloadRunnable lightRunnable = new WorkloadRunnable(.2, () -> {
+        WorkloadRunnable pasteMeRunnable = new WorkloadRunnable(.1, () -> {
+            WorkloadRunnable vanillaPlacementRunnable = new WorkloadRunnable(.1, () -> {
             });
             for (Pasteable lightEmitter : lightEmitters)
-                lightRunnable.addWorkload(() -> lightEmitter.location.getBlock().setBlockData(lightEmitter.blockData));
-            lightRunnable.runTaskTimer(MetadataHandler.PLUGIN, 0, 1);
+                vanillaPlacementRunnable.addWorkload(() -> lightEmitter.location.getBlock().setBlockData(lightEmitter.blockData));
+            vanillaPlacementRunnable.runTaskTimer(MetadataHandler.PLUGIN, 0, 1);
         });
 
         List<InterpretedSign> freshlyInterpretedSigns = new ArrayList<>();
