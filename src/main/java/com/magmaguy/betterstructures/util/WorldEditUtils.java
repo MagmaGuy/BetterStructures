@@ -11,6 +11,7 @@ import org.checkerframework.checker.index.qual.Positive;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -20,6 +21,23 @@ public class WorldEditUtils {
 
     public static Vector getSchematicOffset(Clipboard clipboard) {
         return new Vector(clipboard.getMinimumPoint().x() - clipboard.getOrigin().x(), clipboard.getMinimumPoint().y() - clipboard.getOrigin().y(), clipboard.getMinimumPoint().z() - clipboard.getOrigin().z());
+    }
+
+    public static List<String> getLines(@NotNull BaseBlock baseBlock) {
+        values.clear();
+        List<String> lines = new ArrayList<>();
+        if (baseBlock.getNbtData() == null) {
+            return lines;
+        }
+
+        for (int i = 1; i < 5; i++) {
+            String line = getLine(baseBlock, i);
+            if (line == null) return new ArrayList<>();
+            if (!line.isEmpty() && !line.isBlank())
+                lines.add(line);
+        }
+
+        return lines;
     }
 
     /**
