@@ -34,11 +34,11 @@ public final class ModulePasting {
     private final List<InterpretedSign> interpretedSigns = new ArrayList<>();
 
     public ModulePasting(World world, List<GridCell> gridCellList) {
-        batchPaste(gridCellList);
+        batchPaste(gridCellList, interpretedSigns);
         createModularWorld(world);
     }
 
-    private static List<Pasteable> generatePasteMeList(Clipboard clipboard, Location worldPasteOriginLocation, Integer rotation) {
+    private static List<Pasteable> generatePasteMeList(Clipboard clipboard, Location worldPasteOriginLocation, Integer rotation, List<InterpretedSign> interpretedSigns) {
         List<Pasteable> pasteableList = new ArrayList<>();
         AffineTransform transform = new AffineTransform().rotateY(normalizeRotation(rotation));
         Clipboard transformedClipboard = null;
@@ -65,18 +65,17 @@ public final class ModulePasting {
 
             BaseBlock baseBlock = finalTransformedClipboard.getFullBlock(blockPos);
             BlockData blockData = Bukkit.createBlockData(baseBlock.toImmutableState().getAsString());
-//            BlockState bs =
-            if (blockData instanceof Sign sign) {
-                Logger.debug("ladies and gentlemen, we got him");
-            }
-            if (blockData.getMaterial().toString().toLowerCase().contains("sign"))
-                Logger.debug(WorldEditUtils.getLines(baseBlock).toString());
+
             int worldX = baseX + (blockPos.x() - finalOrigin.x());
             int worldY = baseY + (blockPos.y() - finalOrigin.y());
             int worldZ = baseZ + (blockPos.z() - finalOrigin.z());
 
             Location pasteLocation = new Location(world, worldX, worldY, worldZ);
             pasteableList.add(new Pasteable(pasteLocation, blockData));
+
+            if (blockData.getMaterial().toString().toLowerCase().contains("sign")) {
+                interpretedSigns.add(new InterpretedSign(pasteLocation, WorldEditUtils.getLines(baseBlock)));
+            }
         });
         return pasteableList;
     }
@@ -107,13 +106,13 @@ public final class ModulePasting {
         }
     }
 
-    public static List<InterpretedSign> batchPaste(List<GridCell> gridCellList) {
+    public static List<InterpretedSign> batchPaste(List<GridCell> gridCellList, List<InterpretedSign> interpretedSigns) {
         List<Pasteable> pasteableList = new ArrayList<>();
         for (GridCell gridCell : gridCellList) {
             if (gridCell == null || gridCell.getModulesContainer() == null) continue;
             Clipboard clipboard = gridCell.getModulesContainer().getClipboard();
             if (clipboard == null) continue;
-            pasteableList.addAll(generatePasteMeList(clipboard, gridCell.getRealLocation(), gridCell.getModulesContainer().getRotation()));
+            pasteableList.addAll(generatePasteMeList(clipboard, gridCell.getRealLocation(), gridCell.getModulesContainer().getRotation(), interpretedSigns));
         }
 
         List<Pasteable> lightEmitters = new ArrayList<>();
