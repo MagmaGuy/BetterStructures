@@ -147,7 +147,9 @@ public class GridCell {
 
     private Location getCenterLocation() {
 //        Vector3i centerOffset = new Vector3i(grid.getChunkSize() / 2);
-        Vector3i worldPos = grid.gridToWorld(cellLocation);
+        double y = waveFunctionCollapseGenerator.getSpatialGrid().getChunkSize()/2d;
+        if (modulesContainer.getClipboard() != null) y = modulesContainer.getClipboard().getDimensions().y()/2d;
+        Vector3i worldPos = grid.gridToWorld(cellLocation).add((int)(waveFunctionCollapseGenerator.getSpatialGrid().getChunkSize()/2d), (int)y,(int)(waveFunctionCollapseGenerator.getSpatialGrid().getChunkSize()/2d));
         return new Location(world, worldPos.x, worldPos.y, worldPos.z);
     }
 
@@ -210,7 +212,7 @@ public class GridCell {
         display.setTextOpacity((byte) 1);
         display.setSeeThrough(true);
         display.setText(text);
-        display.setViewRange(0.1f);
+        display.setViewRange(100f);
     }
 
     /**

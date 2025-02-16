@@ -420,7 +420,7 @@ public class WaveFunctionCollapseGenerator {
         for (GridCell value : spatialGrid.getCellMap().values()) {
             modularChunkHashMap.put(value.getCellLocation(), new ModularWorld.ModularChunk(value.getCellLocation(), new HashMap<>()));//todo: need to add signs here!
         }
-        modularWorld = new ModularWorld(world, modularChunkHashMap);
+//        modularWorld = new ModularWorld(world, modularChunkHashMap);
         if (!getConfig().isSlowGeneration()) teleportToSpawn(config.getPlayer());
 
 //        reportUnusedModules(); this is just for debugging
@@ -454,17 +454,22 @@ public class WaveFunctionCollapseGenerator {
     }
 
     private void instantPaste() {
-        //This guarantees that the paste order is grouped by chunk, making pasting faster down the line
+        // This guarantees that the paste order is grouped by chunk, making pasting faster down the line.
         List<GridCell> orderedPasteList = new ArrayList<>();
-        for (int x = -spatialGrid.getGridRadius(); x < spatialGrid.getGridRadius(); x++)
+        for (int x = -spatialGrid.getGridRadius(); x < spatialGrid.getGridRadius(); x++) {
             for (int z = -spatialGrid.getGridRadius(); z < spatialGrid.getGridRadius(); z++) {
                 for (int y = spatialGrid.getMinYLevel(); y <= spatialGrid.getMaxYLevel(); y++) {
-                    GridCell cell = spatialGrid.getCellMap().get(new Vector3i(x, y, z));
-                    if (cell != null) orderedPasteList.add(cell);
+                    // Remove the cell from the map and get it in one go.
+                    GridCell cell = spatialGrid.getCellMap().remove(new Vector3i(x, y, z));
+                    if (cell != null) {
+                        orderedPasteList.add(cell);
+                    }
                 }
             }
+        }
 
-        ModulePasting.batchPaste(orderedPasteList);
+//        ModulePasting.batchPaste(orderedPasteList);
+        new ModulePasting(world, orderedPasteList);
 
         if (config.isDebug()) {
             orderedPasteList.forEach(chunkData -> {

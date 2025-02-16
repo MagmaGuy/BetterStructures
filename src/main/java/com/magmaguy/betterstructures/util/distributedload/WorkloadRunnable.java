@@ -35,7 +35,6 @@ public class WorkloadRunnable extends BukkitRunnable {
                 onComplete.run();
             }
             this.cancel();
-            Logger.debug("done");
         }
     }
 }

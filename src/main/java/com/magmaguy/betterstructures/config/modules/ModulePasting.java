@@ -2,6 +2,7 @@ package com.magmaguy.betterstructures.config.modules;
 
 import com.magmaguy.betterstructures.MetadataHandler;
 import com.magmaguy.betterstructures.modules.GridCell;
+import com.magmaguy.betterstructures.util.WorldEditUtils;
 import com.magmaguy.betterstructures.util.distributedload.WorkloadRunnable;
 import com.magmaguy.easyminecraftgoals.NMSManager;
 import com.magmaguy.magmacore.util.Logger;
@@ -16,22 +17,29 @@ import com.sk89q.worldedit.math.BlockVector3;
 import com.sk89q.worldedit.math.transform.AffineTransform;
 import com.sk89q.worldedit.session.ClipboardHolder;
 import com.sk89q.worldedit.util.SideEffectSet;
-import com.sk89q.worldedit.world.block.BlockState;
+import com.sk89q.worldedit.world.block.BaseBlock;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.block.BlockState;
 import org.bukkit.block.data.BlockData;
-import org.bukkit.block.structure.StructureRotation;
+import org.bukkit.block.data.Directional;
+import org.bukkit.block.data.Rail;
+import org.bukkit.block.data.type.Sign;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public final class ModulePasting {
-    private ModulePasting() {
+    private final List<InterpretedSign> interpretedSigns = new ArrayList<>();
+
+    public ModulePasting(World world, List<GridCell> gridCellList) {
+        batchPaste(gridCellList);
+        createModularWorld(world);
     }
 
-    private static List<PasteMe> generatePasteMeList(Clipboard clipboard, Location location, Integer rotation) {
-        List<PasteMe> pasteMeList = new ArrayList<>();
+    private static List<Pasteable> generatePasteMeList(Clipboard clipboard, Location worldPasteOriginLocation, Integer rotation) {
+        List<Pasteable> pasteableList = new ArrayList<>();
         AffineTransform transform = new AffineTransform().rotateY(normalizeRotation(rotation));
         Clipboard transformedClipboard = null;
         try {
@@ -44,32 +52,33 @@ public final class ModulePasting {
         BlockVector3 minPoint = transformedClipboard.getMinimumPoint();
         origin = BlockVector3.at(minPoint.x(), origin.y(), minPoint.z());
 
-        World world = location.getWorld();
-        int baseX = location.getBlockX();
-        int baseY = location.getBlockY();
-        int baseZ = location.getBlockZ();
+        World world = worldPasteOriginLocation.getWorld();
+        int baseX = worldPasteOriginLocation.getBlockX();
+        int baseY = worldPasteOriginLocation.getBlockY();
+        int baseZ = worldPasteOriginLocation.getBlockZ();
 
         Clipboard finalTransformedClipboard = transformedClipboard;
         BlockVector3 finalOrigin = origin;
         transformedClipboard.getRegion().forEach(blockPos -> {
-            BlockState blockState = finalTransformedClipboard.getBlock(blockPos);
-            BlockData blockData = Bukkit.createBlockData(blockState.getAsString());
-            if (rotation != 0)
-                blockData.rotate(switch (rotation) {
-                    case 90 -> StructureRotation.CLOCKWISE_90;
-                    case 180 -> StructureRotation.CLOCKWISE_180;
-                    case 270 -> StructureRotation.COUNTERCLOCKWISE_90;
-                    default -> throw new IllegalStateException("Unexpected value: " + rotation);
-                });
+//            BlockState blockState = finalTransformedClipboard.getBlock(blockPos);
+//            BlockData blockData = Bukkit.createBlockData(blockState.getAsString());
 
+            BaseBlock baseBlock = finalTransformedClipboard.getFullBlock(blockPos);
+            BlockData blockData = Bukkit.createBlockData(baseBlock.toImmutableState().getAsString());
+//            BlockState bs =
+            if (blockData instanceof Sign sign) {
+                Logger.debug("ladies and gentlemen, we got him");
+            }
+            if (blockData.getMaterial().toString().toLowerCase().contains("sign"))
+                Logger.debug(WorldEditUtils.getLines(baseBlock).toString());
             int worldX = baseX + (blockPos.x() - finalOrigin.x());
             int worldY = baseY + (blockPos.y() - finalOrigin.y());
             int worldZ = baseZ + (blockPos.z() - finalOrigin.z());
 
             Location pasteLocation = new Location(world, worldX, worldY, worldZ);
-            pasteMeList.add(new PasteMe(pasteLocation, blockData));
+            pasteableList.add(new Pasteable(pasteLocation, blockData));
         });
-        return pasteMeList;
+        return pasteableList;
     }
 
     public static void paste(Clipboard clipboard, Location location, Integer rotation) {
@@ -98,38 +107,43 @@ public final class ModulePasting {
         }
     }
 
-    public static void batchPaste(List<GridCell> gridCellList) {
-        List<PasteMe> pasteMeList = new ArrayList<>();
+    public static List<InterpretedSign> batchPaste(List<GridCell> gridCellList) {
+        List<Pasteable> pasteableList = new ArrayList<>();
         for (GridCell gridCell : gridCellList) {
             if (gridCell == null || gridCell.getModulesContainer() == null) continue;
             Clipboard clipboard = gridCell.getModulesContainer().getClipboard();
             if (clipboard == null) continue;
-            pasteMeList.addAll(generatePasteMeList(clipboard, gridCell.getRealLocation(), gridCell.getModulesContainer().getRotation()));
+            pasteableList.addAll(generatePasteMeList(clipboard, gridCell.getRealLocation(), gridCell.getModulesContainer().getRotation()));
         }
 
-        List<PasteMe> lightEmitters = new ArrayList<>();
+        List<Pasteable> lightEmitters = new ArrayList<>();
         WorkloadRunnable pasteMeRunnable = new WorkloadRunnable(.2, () -> {
             WorkloadRunnable lightRunnable = new WorkloadRunnable(.2, () -> {
             });
-            for (PasteMe lightEmitter : lightEmitters)
+            for (Pasteable lightEmitter : lightEmitters)
                 lightRunnable.addWorkload(() -> lightEmitter.location.getBlock().setBlockData(lightEmitter.blockData));
             lightRunnable.runTaskTimer(MetadataHandler.PLUGIN, 0, 1);
         });
-        for (PasteMe pasteMe : pasteMeList) {
-            if (pasteMe.blockData.getLightEmission() > 0)
-                lightEmitters.add(pasteMe);
+
+        List<InterpretedSign> freshlyInterpretedSigns = new ArrayList<>();
+
+        for (Pasteable pasteable : pasteableList) {
+            //check for signs first
+            if (pasteable.blockData.getLightEmission() > 0 || pasteable.blockData instanceof Directional || pasteable.blockData instanceof Rail || pasteable.blockData instanceof Sign)
+                lightEmitters.add(pasteable);
             else
                 pasteMeRunnable.addWorkload(() -> {
                     NMSManager.getAdapter().setBlockInNativeDataPalette(
-                            pasteMe.location.getWorld(),
-                            pasteMe.location.getBlockX(),
-                            pasteMe.location.getBlockY(),
-                            pasteMe.location.getBlockZ(),
-                            pasteMe.blockData,
+                            pasteable.location.getWorld(),
+                            pasteable.location.getBlockX(),
+                            pasteable.location.getBlockY(),
+                            pasteable.location.getBlockZ(),
+                            pasteable.blockData,
                             true);
                 });
         }
         pasteMeRunnable.runTaskTimer(MetadataHandler.PLUGIN, 0, 1);
+        return freshlyInterpretedSigns;
     }
 
     private static AffineTransform createRotationTransform(int rotation) {
@@ -156,6 +170,13 @@ public final class ModulePasting {
         return (360 - rotation) % 360;
     }
 
-    private record PasteMe(Location location, BlockData blockData) {
+    private void createModularWorld(World world) {
+        new ModularWorld(world, interpretedSigns);
+    }
+
+    public record InterpretedSign(Location location, List<String> text) {
+    }
+
+    private record Pasteable(Location location, BlockData blockData) {
     }
 }
