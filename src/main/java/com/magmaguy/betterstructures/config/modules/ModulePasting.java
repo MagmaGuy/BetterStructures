@@ -3,7 +3,6 @@ package com.magmaguy.betterstructures.config.modules;
 import com.magmaguy.betterstructures.MetadataHandler;
 import com.magmaguy.betterstructures.modules.GridCell;
 import com.magmaguy.betterstructures.util.WorldEditUtils;
-import com.magmaguy.betterstructures.util.distributedload.Workload;
 import com.magmaguy.betterstructures.util.distributedload.WorkloadRunnable;
 import com.magmaguy.easyminecraftgoals.NMSManager;
 import com.magmaguy.magmacore.util.Logger;
@@ -30,11 +29,15 @@ import org.bukkit.block.data.type.Sign;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public final class ModulePasting {
     private final List<InterpretedSign> interpretedSigns = new ArrayList<>();
+    private ModularGenerationStatus modularGenerationStatus = null;
+    private ModularWorld modularWorld;
 
-    public ModulePasting(World world, Deque<GridCell> gridCellDeque) {
+    public ModulePasting(World world, Deque<GridCell> gridCellDeque, ModularGenerationStatus modularGenerationStatus) {
+        this.modularGenerationStatus = modularGenerationStatus;
         batchPaste(gridCellDeque, interpretedSigns);
         createModularWorld(world);
     }
@@ -107,47 +110,6 @@ public final class ModulePasting {
         }
     }
 
-    public static List<InterpretedSign> batchPaste(Deque<GridCell> gridCellDeque, List<InterpretedSign> interpretedSigns) {
-        List<Pasteable> pasteableList = new ArrayList<>();
-
-        while (!gridCellDeque.isEmpty()) {
-            GridCell gridCell = gridCellDeque.poll();
-            if (gridCell == null || gridCell.getModulesContainer() == null) continue;
-            Clipboard clipboard = gridCell.getModulesContainer().getClipboard();
-            if (clipboard == null) continue;
-            pasteableList.addAll(generatePasteMeList(clipboard, gridCell.getRealLocation(), gridCell.getModulesContainer().getRotation(), interpretedSigns));
-        }
-
-        List<Pasteable> lightEmitters = new ArrayList<>();
-        WorkloadRunnable pasteMeRunnable = new WorkloadRunnable(.1, () -> {
-            WorkloadRunnable vanillaPlacementRunnable = new WorkloadRunnable(.1, () -> {
-            });
-            for (Pasteable lightEmitter : lightEmitters)
-                vanillaPlacementRunnable.addWorkload(() -> lightEmitter.location.getBlock().setBlockData(lightEmitter.blockData));
-            vanillaPlacementRunnable.runTaskTimer(MetadataHandler.PLUGIN, 0, 1);
-        });
-
-        List<InterpretedSign> freshlyInterpretedSigns = new ArrayList<>();
-
-        for (Pasteable pasteable : pasteableList) {
-            //check for signs first
-            if (pasteable.blockData.getLightEmission() > 0 || pasteable.blockData instanceof Directional || pasteable.blockData instanceof Rail || pasteable.blockData instanceof Sign)
-                lightEmitters.add(pasteable);
-            else
-                pasteMeRunnable.addWorkload(() -> {
-                    NMSManager.getAdapter().setBlockInNativeDataPalette(
-                            pasteable.location.getWorld(),
-                            pasteable.location.getBlockX(),
-                            pasteable.location.getBlockY(),
-                            pasteable.location.getBlockZ(),
-                            pasteable.blockData,
-                            true);
-                });
-        }
-        pasteMeRunnable.runTaskTimer(MetadataHandler.PLUGIN, 0, 1);
-        return freshlyInterpretedSigns;
-    }
-
     private static AffineTransform createRotationTransform(int rotation) {
         return new AffineTransform().rotateY(normalizeRotation(rotation));
     }
@@ -172,8 +134,68 @@ public final class ModulePasting {
         return (360 - rotation) % 360;
     }
 
+    public List<InterpretedSign> batchPaste(Deque<GridCell> gridCellDeque, List<InterpretedSign> interpretedSigns) {
+        List<Pasteable> pasteableList = new ArrayList<>();
+
+        AtomicInteger finishedFastBlocks = new AtomicInteger();
+        AtomicInteger finishedSlowBlocks = new AtomicInteger();
+
+        while (!gridCellDeque.isEmpty()) {
+            GridCell gridCell = gridCellDeque.poll();
+            if (gridCell == null || gridCell.getModulesContainer() == null) continue;
+            Clipboard clipboard = gridCell.getModulesContainer().getClipboard();
+            if (clipboard == null) continue;
+            pasteableList.addAll(generatePasteMeList(clipboard, gridCell.getRealLocation(), gridCell.getModulesContainer().getRotation(), interpretedSigns));
+        }
+
+        List<Pasteable> lightEmitters = new ArrayList<>();
+        WorkloadRunnable pasteMeRunnable = new WorkloadRunnable(.1, () -> {
+            modularGenerationStatus.finishedPlacingFastBlocks();
+            modularGenerationStatus.startPlacingSlowBlocks();
+            WorkloadRunnable vanillaPlacementRunnable = new WorkloadRunnable(.1, () -> {
+                modularGenerationStatus.finishedPlacingSlowBlocks();
+                modularWorld.spawnOtherEntities();
+            });
+            int slowBlockCounter = lightEmitters.size();
+            for (Pasteable lightEmitter : lightEmitters)
+                vanillaPlacementRunnable.addWorkload(() -> {
+                    lightEmitter.location.getBlock().setBlockData(lightEmitter.blockData);
+                    finishedSlowBlocks.getAndIncrement();
+                    modularGenerationStatus.updateProgressPlacingSlowBlocks((double) slowBlockCounter / (double) finishedSlowBlocks.get());
+                });
+            vanillaPlacementRunnable.runTaskTimer(MetadataHandler.PLUGIN, 0, 1);
+        });
+
+        List<InterpretedSign> freshlyInterpretedSigns = new ArrayList<>();
+        int fastBlockCounter = pasteableList.size();
+
+        for (Pasteable pasteable : pasteableList) {
+            //check for signs first
+            if (pasteable.blockData.getLightEmission() > 0 || pasteable.blockData instanceof Directional || pasteable.blockData instanceof Rail || pasteable.blockData instanceof Sign)
+                lightEmitters.add(pasteable);
+            else
+                pasteMeRunnable.addWorkload(() -> {
+                    NMSManager.getAdapter().setBlockInNativeDataPalette(
+                            pasteable.location.getWorld(),
+                            pasteable.location.getBlockX(),
+                            pasteable.location.getBlockY(),
+                            pasteable.location.getBlockZ(),
+                            pasteable.blockData,
+                            true);
+                    finishedFastBlocks.getAndIncrement();
+                    modularGenerationStatus.updateProgressPlacingFastBlocks((double) fastBlockCounter / (double) finishedFastBlocks.get());
+                });
+        }
+
+        modularGenerationStatus.finishedPreparingPlacement();
+        modularGenerationStatus.startPlacingFastBlocks();
+
+        pasteMeRunnable.runTaskTimer(MetadataHandler.PLUGIN, 0, 1);
+        return freshlyInterpretedSigns;
+    }
+
     private void createModularWorld(World world) {
-        new ModularWorld(world, interpretedSigns);
+        modularWorld = new ModularWorld(world, interpretedSigns, modularGenerationStatus);
     }
 
     public record InterpretedSign(Location location, List<String> text) {

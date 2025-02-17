@@ -1,6 +1,5 @@
 package com.magmaguy.betterstructures.util.distributedload;
 
-import com.magmaguy.magmacore.util.Logger;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.ArrayDeque;

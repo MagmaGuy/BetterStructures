@@ -3,6 +3,7 @@ package com.magmaguy.betterstructures.config.modules;
 import com.magmaguy.betterstructures.MetadataHandler;
 import com.magmaguy.betterstructures.config.modulegenerators.ModuleGeneratorsConfigFields;
 import com.magmaguy.betterstructures.modules.*;
+import com.magmaguy.betterstructures.util.distributedload.WorkloadRunnable;
 import com.magmaguy.magmacore.util.Logger;
 import com.magmaguy.magmacore.util.Round;
 import lombok.Getter;
@@ -28,12 +29,12 @@ public class WaveFunctionCollapseGenerator {
     private final SpatialGrid spatialGrid;
     private final Map<GridCell, Integer> chunkRollbackCounter;
     @Getter
-    private final Messaging messaging;
+    private final ModularGenerationStatus modularGenerationStatus;
+    private final ModularWorld modularWorld = null;
     @Getter
     private World world;
     private volatile boolean isGenerating;
     private volatile boolean isCancelled;
-    private ModularWorld modularWorld = null;
 
     /**
      * Creates a new WaveFunctionCollapseGenerator with slow generation.
@@ -84,9 +85,10 @@ public class WaveFunctionCollapseGenerator {
         this.spatialGrid = new SpatialGrid(config.getRadius(), config.getChunkSize());
         this.stats = new GenerationStats(config.getRadius(), getSpatialGrid());
         this.chunkRollbackCounter = new HashMap<>();
-        this.messaging = new Messaging(config.getPlayer());
+        this.modularGenerationStatus = new ModularGenerationStatus(config.getPlayer());
+        modularGenerationStatus.startInitializing();
 
-        initialize();
+        reserveChunks();
     }
 
     public static void generateFromConfig(ModuleGeneratorsConfigFields generatorsConfigFields, Player player) {
@@ -104,7 +106,7 @@ public class WaveFunctionCollapseGenerator {
     }
 
     public static void shutdown() {
-        Messaging.shutdown();
+        ModularGenerationStatus.shutdown();
         waveFunctionCollapseGenerators.forEach(WaveFunctionCollapseGenerator::cancel);
         waveFunctionCollapseGenerators.clear();
     }
@@ -125,11 +127,36 @@ public class WaveFunctionCollapseGenerator {
         }.runTask(MetadataHandler.PLUGIN);
     }
 
-    private void initialize() {
+    private int chunksReserved;
+
+    private void reserveChunks() {
+        modularGenerationStatus.finishedInitializing();
+        modularGenerationStatus.startReservingChunks();
         this.world = WorldInitializer.generateWorld(config.getWorldName(), config.getPlayer());
         if (config.isSlowGeneration()) teleportToSpawn(config.getPlayer());
-        this.messaging.updateProgress(0, "Initializing...");
 
+        WorkloadRunnable reserveChunksTask = new WorkloadRunnable(.2, ()->{modularGenerationStatus.finishedReservingChunks(chunksReserved);});
+        int realChunkRadius = (int) Math.ceil(spatialGrid.getChunkSize() / 16d) * spatialGrid.getGridRadius();
+        int chunkCounter = 0;
+        for (int x = -realChunkRadius; x < realChunkRadius; x++) {
+            for (int z = -realChunkRadius; z < realChunkRadius; z++) {
+                int finalX = x;
+                int finalZ = z;
+                chunkCounter++;
+                int finalChunkCounter = chunkCounter;
+                reserveChunksTask.addWorkload(() -> {
+                    world.loadChunk(finalX, finalZ);
+                    chunksReserved++;
+                    modularGenerationStatus.updateProgressReservingChunks(finalChunkCounter /(double)chunksReserved);
+                });
+            }
+        }
+        reserveChunksTask.runTaskTimer(MetadataHandler.PLUGIN, 0, 1);
+        startArrangingModules();
+    }
+
+    private void startArrangingModules() {
+        modularGenerationStatus.startArrangingModules();
         new InitializeGenerationTask().runTaskAsynchronously(MetadataHandler.PLUGIN);
     }
 
@@ -140,6 +167,8 @@ public class WaveFunctionCollapseGenerator {
         isGenerating = true;
 
         try {
+            modularGenerationStatus.finishedArrangingModules();
+
             GridCell startChunk = createStartChunk(startingModule);
             if (startChunk == null) {
                 return;
@@ -192,7 +221,6 @@ public class WaveFunctionCollapseGenerator {
         String formattedProgress = Round.twoDecimalPlaces(progress) + "";
         Logger.debug("[" + formattedProgress + "%] Generated " + stats.getGeneratedChunks() +
                 " out of " + stats.totalChunks + " chunks");
-        messaging.updateProgress(progress / 100.0, "Assembling modules - " + formattedProgress + "% done...");
     }
 
     private void paste(Vector3i chunkLocation, ModulesContainer modulesContainer) {
@@ -401,31 +429,23 @@ public class WaveFunctionCollapseGenerator {
     }
 
     private void done() {
+        modularGenerationStatus.startPreparingPlacement();
         isGenerating = false;
 
         if (!config.isSlowGeneration()) {
-            messaging.timeMessage("Module assembly ", config.getPlayer());
             Logger.warn("Starting mass paste");
             spatialGrid.clearGridGenerationData();
             instantPaste();
         } else {
-            messaging.timeMessage("Generation", config.getPlayer());
-            messaging.clearBar();
             cleanup();
         }
     }
 
     private void cleanup() {
-        HashMap<Vector3i, ModularWorld.ModularChunk> modularChunkHashMap = new HashMap<>();
-        for (GridCell value : spatialGrid.getCellMap().values()) {
-            modularChunkHashMap.put(value.getCellLocation(), new ModularWorld.ModularChunk(value.getCellLocation(), new HashMap<>()));//todo: need to add signs here!
-        }
-//        modularWorld = new ModularWorld(world, modularChunkHashMap);
-        if (!getConfig().isSlowGeneration()) teleportToSpawn(config.getPlayer());
+//        if (!getConfig().isSlowGeneration()) teleportToSpawn(config.getPlayer());
 
 //        reportUnusedModules(); this is just for debugging
         spatialGrid.clearAllData();
-        messaging.clearBar();
         waveFunctionCollapseGenerators.remove(this);
     }
 
@@ -476,7 +496,7 @@ public class WaveFunctionCollapseGenerator {
             });
         }
 
-        new ModulePasting(world, orderedPasteDeque);
+        new ModulePasting(world, orderedPasteDeque, modularGenerationStatus);
 
         cleanup();
     }
@@ -546,6 +566,7 @@ public class WaveFunctionCollapseGenerator {
 
             GridCell nextCell = spatialGrid.getNextGridCell();
             if (nextCell == null) {
+                modularGenerationStatus.finishedArrangingModules();
                 done();
                 this.cancel();
                 return;
