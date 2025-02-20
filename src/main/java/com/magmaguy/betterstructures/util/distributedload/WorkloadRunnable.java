@@ -4,6 +4,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.List;
 
 public class WorkloadRunnable extends BukkitRunnable {
     private final Deque<Workload> workloadDeque = new ArrayDeque<>();
