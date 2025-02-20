@@ -9,6 +9,8 @@ import com.magmaguy.betterstructures.config.modulegenerators.ModuleGeneratorsCon
 import com.magmaguy.betterstructures.config.modules.ModulesConfig;
 import com.magmaguy.betterstructures.config.modules.WaveFunctionCollapseGenerator;
 import com.magmaguy.betterstructures.config.schematics.SchematicConfig;
+import com.magmaguy.betterstructures.config.spawnpools.SpawnPoolsConfig;
+import com.magmaguy.betterstructures.config.spawnpools.SpawnPoolsConfigFields;
 import com.magmaguy.betterstructures.config.treasures.TreasureConfig;
 import com.magmaguy.betterstructures.content.BSPackage;
 import com.magmaguy.betterstructures.listeners.FirstTimeSetupWarner;
@@ -60,6 +62,7 @@ public final class BetterStructures extends JavaPlugin {
         new TreasureConfig();
         new GeneratorConfig();
         new ModuleGeneratorsConfig();
+        new SpawnPoolsConfig();
         new SchematicConfig();
         new ModulesConfig();
         new ContentPackageConfig();

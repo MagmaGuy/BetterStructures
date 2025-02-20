@@ -24,7 +24,7 @@ repositories {
 
 dependencies {
     annotationProcessor 'org.projectlombok:lombok:1.18.22'
-    implementation group: 'com.magmaguy', name: 'MagmaCore', version: '1.10'
+    implementation group: 'com.magmaguy', name: 'MagmaCore', version: '1.11'
     implementation group: 'org.bstats', name: 'bstats-bukkit', version: '2.2.1'
     implementation 'org.apache.commons:commons-lang3:3.9'
     implementation group: 'org.reflections', name: 'reflections', version: '0.9.12'
