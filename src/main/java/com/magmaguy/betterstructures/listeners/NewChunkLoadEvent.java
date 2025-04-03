@@ -24,7 +24,6 @@ import java.util.concurrent.ThreadLocalRandom;
 public class NewChunkLoadEvent implements Listener {
 
     private static HashSet<Chunk> loadingChunks = new HashSet<>();
-    private static Random random = null;
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onChunkLoad(ChunkLoadEvent event) {
@@ -39,52 +38,99 @@ public class NewChunkLoadEvent implements Listener {
             }
         }.runTaskLater(MetadataHandler.PLUGIN, 20L);
         if (!ValidWorldsConfig.isValidWorld(event.getWorld())) return;
-        if (random == null) {
-            random = new Random();
-        }
+
         surfaceScanner(event.getChunk());
         shallowUndergroundScanner(event.getChunk());
         deepUndergroundScanner(event.getChunk());
         skyScanner(event.getChunk());
         liquidSurfaceScanner(event.getChunk());
+    }
 
+    /**
+     * Determines if the given chunk is a valid structure position based on
+     * a diamond grid pattern with seeded random offsets.
+     *
+     * @param chunk The chunk to check
+     * @param structureType The type of structure
+     * @param gridDistance The distance between grid points
+     * @param maxOffset The maximum random offset from grid points
+     * @return True if this chunk should have a structure
+     */
+    private boolean isValidStructurePosition(Chunk chunk, GeneratorConfigFields.StructureType structureType,
+                                             int gridDistance, int maxOffset) {
+        int x = chunk.getX();
+        int z = chunk.getZ();
+        long worldSeed = chunk.getWorld().getSeed();
+
+        // Create a unique seed for each structure type
+        long typeSeed = worldSeed + structureType.name().hashCode() * 7919; // Use a prime number for better distribution
+
+        // Check all nearby grid cells that could have a structure landing on this chunk
+        for (int gridX = (x - maxOffset) / gridDistance - 1; gridX <= (x + maxOffset) / gridDistance + 1; gridX++) {
+            for (int gridZ = (z - maxOffset) / gridDistance - 1; gridZ <= (z + maxOffset) / gridDistance + 1; gridZ++) {
+                // Base position of this grid cell
+                int baseX = gridX * gridDistance;
+                int baseZ = gridZ * gridDistance;
+
+                // Apply diamond pattern offset (shift every other row by gridDistance/2)
+                if (gridZ % 2 != 0) {
+                    baseX += gridDistance / 2;
+                }
+
+                // Create a seeded random for this specific grid cell
+                Random cellRandom = new Random(typeSeed ^ (((long)baseX << 32) | (baseZ & 0xFFFFFFFFL)));
+
+                // Generate the random offset for structure in this grid cell
+                int offsetX = maxOffset > 0 ? cellRandom.nextInt(maxOffset * 2 + 1) - maxOffset : 0;
+                int offsetZ = maxOffset > 0 ? cellRandom.nextInt(maxOffset * 2 + 1) - maxOffset : 0;
+
+                // Final structure position for this grid cell
+                int structureX = baseX + offsetX;
+                int structureZ = baseZ + offsetZ;
+
+                // If this chunk matches the structure position
+                if (x == structureX && z == structureZ) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     private void surfaceScanner(Chunk chunk) {
         if (SchematicContainer.getSchematics().get(GeneratorConfigFields.StructureType.SURFACE).isEmpty()) return;
-        if (ThreadLocalRandom.current().nextDouble() > DefaultConfig.getLandStructuresPerThousandChunks() / 1000D)
-            return;
+        // Get config values directly instead of using static finals
+        if (!isValidStructurePosition(chunk, GeneratorConfigFields.StructureType.SURFACE,
+                DefaultConfig.getDistanceSurface(), DefaultConfig.getMaxOffsetSurface())) return;
         new FitSurfaceBuilding(chunk);
     }
 
     private void shallowUndergroundScanner(Chunk chunk) {
-        if (SchematicContainer.getSchematics().get(GeneratorConfigFields.StructureType.UNDERGROUND_SHALLOW).isEmpty())
-            return;
-        if (ThreadLocalRandom.current().nextDouble() > DefaultConfig.getShallowUndergroundStructuresPerThousandChunks() / 1000D)
-            return;
+        if (SchematicContainer.getSchematics().get(GeneratorConfigFields.StructureType.UNDERGROUND_SHALLOW).isEmpty()) return;
+        if (!isValidStructurePosition(chunk, GeneratorConfigFields.StructureType.UNDERGROUND_SHALLOW,
+                DefaultConfig.getDistanceShallow(), DefaultConfig.getMaxOffsetShallow())) return;
         FitUndergroundShallowBuilding.fit(chunk);
     }
 
     private void deepUndergroundScanner(Chunk chunk) {
-        if (SchematicContainer.getSchematics().get(GeneratorConfigFields.StructureType.UNDERGROUND_DEEP).isEmpty())
-            return;
-        if (ThreadLocalRandom.current().nextDouble() > DefaultConfig.getDeepUndergroundStructuresPerThousandChunks() / 1000D)
-            return;
+        if (SchematicContainer.getSchematics().get(GeneratorConfigFields.StructureType.UNDERGROUND_DEEP).isEmpty()) return;
+        if (!isValidStructurePosition(chunk, GeneratorConfigFields.StructureType.UNDERGROUND_DEEP,
+                DefaultConfig.getDistanceDeep(), DefaultConfig.getMaxOffsetDeep())) return;
         FitUndergroundDeepBuilding.fit(chunk);
     }
 
     private void skyScanner(Chunk chunk) {
         if (SchematicContainer.getSchematics().get(GeneratorConfigFields.StructureType.SKY).isEmpty()) return;
-        if (ThreadLocalRandom.current().nextDouble() > DefaultConfig.getAirStructuresPerThousandChunks() / 1000D)
-            return;
+        if (!isValidStructurePosition(chunk, GeneratorConfigFields.StructureType.SKY,
+                DefaultConfig.getDistanceSky(), DefaultConfig.getMaxOffsetSky())) return;
         new FitAirBuilding(chunk);
     }
 
     private void liquidSurfaceScanner(Chunk chunk) {
-        if (SchematicContainer.getSchematics().get(GeneratorConfigFields.StructureType.LIQUID_SURFACE).isEmpty())
-            return;
-        if (ThreadLocalRandom.current().nextDouble() > DefaultConfig.getOceanStructuresPerThousandChunks() / 1000D)
-            return;
+        if (SchematicContainer.getSchematics().get(GeneratorConfigFields.StructureType.LIQUID_SURFACE).isEmpty()) return;
+        if (!isValidStructurePosition(chunk, GeneratorConfigFields.StructureType.LIQUID_SURFACE,
+                DefaultConfig.getDistanceLiquid(), DefaultConfig.getMaxOffsetLiquid())) return;
         new FitLiquidBuilding(chunk);
     }
 }

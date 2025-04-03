@@ -1,6 +1,8 @@
 package com.magmaguy.betterstructures.config.modules;
 
 import com.magmaguy.betterstructures.MetadataHandler;
+import com.magmaguy.betterstructures.api.WorldGenerationFinishEvent;
+import com.magmaguy.betterstructures.config.modulegenerators.ModuleGeneratorsConfig;
 import com.magmaguy.betterstructures.config.modulegenerators.ModuleGeneratorsConfigFields;
 import com.magmaguy.betterstructures.modules.*;
 import com.magmaguy.betterstructures.util.distributedload.WorkloadRunnable;
@@ -11,11 +13,15 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.HandlerList;
+import org.bukkit.event.Listener;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.joml.Vector3i;
 
 import java.io.File;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -35,6 +41,8 @@ public class WaveFunctionCollapseGenerator {
     private World world;
     private volatile boolean isGenerating;
     private volatile boolean isCancelled;
+    private int chunksReserved;
+    private File worldFolder;
 
     /**
      * Creates a new WaveFunctionCollapseGenerator with slow generation.
@@ -67,14 +75,20 @@ public class WaveFunctionCollapseGenerator {
                 .build());
     }
 
-    public WaveFunctionCollapseGenerator(ModuleGeneratorsConfigFields generatorsConfigFields, Player player, String worldName) {
+    public WaveFunctionCollapseGenerator(
+            ModuleGeneratorsConfigFields generatorsConfigFields,
+            Player player,
+            String worldName,
+            File worldFolder) {
         // Use the unique world name
         this(new GenerationConfig.Builder(worldName, generatorsConfigFields.getRadius())
                 .edgeModules(generatorsConfigFields.isEdges())
                 .debug(generatorsConfigFields.isDebug())
                 .player(player)
                 .startingModules(generatorsConfigFields.getStartModules())
+                .spawnPoolSuffix(generatorsConfigFields.getSpawnPoolSuffix())
                 .build());
+        this.worldFolder = worldFolder;
     }
 
     /**
@@ -91,6 +105,35 @@ public class WaveFunctionCollapseGenerator {
         reserveChunks();
     }
 
+    public static CompletableFuture<ModularWorld> generateFromConfigAsync(ModuleGeneratorsConfigFields configFields, Player player) {
+        CompletableFuture<ModularWorld> future = new CompletableFuture<>();
+
+        // Register an event listener for when the world generation is finished.
+        Bukkit.getPluginManager().registerEvents(new Listener() {
+            @EventHandler
+            public void onWorldGenerationFinish(WorldGenerationFinishEvent event) {
+                // Optionally, check that this event corresponds to the world you generated
+                ModularWorld world = event.getModularWorld();
+                if (world != null) {
+                    future.complete(world);
+                    // Optionally unregister this listener
+                    HandlerList.unregisterAll(this);
+                }
+            }
+        }, MetadataHandler.PLUGIN);
+
+        // Start generation. This call will eventually lead to a WorldGenerationFinishEvent.
+        WaveFunctionCollapseGenerator.generateFromConfig(configFields, player);
+
+        return future;
+    }
+
+    public static CompletableFuture<ModularWorld> generateFromConfigAsync(String configFieldsString, Player player) {
+        ModuleGeneratorsConfigFields moduleGeneratorsConfigFields = ModuleGeneratorsConfig.getConfigFields(configFieldsString);
+        if (moduleGeneratorsConfigFields == null) return null;
+        return generateFromConfigAsync(moduleGeneratorsConfigFields, player);
+    }
+
     public static void generateFromConfig(ModuleGeneratorsConfigFields generatorsConfigFields, Player player) {
         String baseWorldName = generatorsConfigFields.getFilename().replace(".yml", "");
         File worldContainer = Bukkit.getWorldContainer();
@@ -98,11 +141,15 @@ public class WaveFunctionCollapseGenerator {
 
         // Increment until a unique world name is found
         String worldName;
-        do {
+        worldName = baseWorldName + "_" + i;
+        File worldFolder = new File(worldContainer, worldName);
+        while (worldFolder.exists()) {
             worldName = baseWorldName + "_" + i;
             i++;
-        } while (new File(worldContainer, worldName).exists());
-        new WaveFunctionCollapseGenerator(generatorsConfigFields, player, worldName);
+            worldFolder = new File(worldContainer, worldName);
+        }
+
+        new WaveFunctionCollapseGenerator(generatorsConfigFields, player, worldName, worldFolder);
     }
 
     public static void shutdown() {
@@ -111,43 +158,25 @@ public class WaveFunctionCollapseGenerator {
         waveFunctionCollapseGenerators.clear();
     }
 
-    private void teleportToSpawn(Player player) {
-        //Pass to sync
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                if (modularWorld == null || modularWorld.getSpawnLocations().isEmpty())
-                    player.teleport(new Location(world, config.getChunkSize() / 2f, 100, config.getChunkSize() / 2f));
-                else {
-                    Vector3i spawnCoords = modularWorld.getSpawnLocations().get(ThreadLocalRandom.current().nextInt(0, modularWorld.getSpawnLocations().size()));
-                    Location spawnLocation = new Location(modularWorld.getWorld(), spawnCoords.x, spawnCoords.y, spawnCoords.z);
-                    player.teleport(spawnLocation);
-                }
-            }
-        }.runTask(MetadataHandler.PLUGIN);
-    }
-
-    private int chunksReserved;
-
     private void reserveChunks() {
         modularGenerationStatus.finishedInitializing();
         modularGenerationStatus.startReservingChunks();
         this.world = WorldInitializer.generateWorld(config.getWorldName(), config.getPlayer());
-        if (config.isSlowGeneration()) teleportToSpawn(config.getPlayer());
+        if (config.isSlowGeneration()) config.getPlayer().teleport(world.getSpawnLocation());
 
-        WorkloadRunnable reserveChunksTask = new WorkloadRunnable(.2, ()->{modularGenerationStatus.finishedReservingChunks(chunksReserved);});
+        WorkloadRunnable reserveChunksTask = new WorkloadRunnable(.2, () -> {
+            modularGenerationStatus.finishedReservingChunks(chunksReserved);
+        });
         int realChunkRadius = (int) Math.ceil(spatialGrid.getChunkSize() / 16d) * spatialGrid.getGridRadius();
-        int chunkCounter = 0;
+        int chunkCounter = realChunkRadius * realChunkRadius;
         for (int x = -realChunkRadius; x < realChunkRadius; x++) {
             for (int z = -realChunkRadius; z < realChunkRadius; z++) {
                 int finalX = x;
                 int finalZ = z;
-                chunkCounter++;
-                int finalChunkCounter = chunkCounter;
                 reserveChunksTask.addWorkload(() -> {
                     world.loadChunk(finalX, finalZ);
                     chunksReserved++;
-                    modularGenerationStatus.updateProgressReservingChunks(finalChunkCounter /(double)chunksReserved);
+                    modularGenerationStatus.updateProgressReservingChunks( chunksReserved / (double) chunkCounter);
                 });
             }
         }
@@ -219,8 +248,8 @@ public class WaveFunctionCollapseGenerator {
     private void updateProgress() {
         double progress = stats.getProgress() * 100;
         String formattedProgress = Round.twoDecimalPlaces(progress) + "";
-        Logger.debug("[" + formattedProgress + "%] Generated " + stats.getGeneratedChunks() +
-                " out of " + stats.totalChunks + " chunks");
+//        Logger.debug("[" + formattedProgress + "%] Generated " + stats.getGeneratedChunks() +
+//                " out of " + stats.totalChunks + " chunks");
     }
 
     private void paste(Vector3i chunkLocation, ModulesContainer modulesContainer) {
@@ -279,7 +308,7 @@ public class WaveFunctionCollapseGenerator {
 
         HashSet<ModulesContainer> validOptions = gridCell.getValidOptions();
         if (validOptions == null || validOptions.isEmpty()) {
-            Logger.debug("No valid options for cell at " + gridCell.getCellLocation() + " CANCELLING");
+//            Logger.debug("No valid options for cell at " + gridCell.getCellLocation() + " CANCELLING");
             cancel();
             rollbackChunk(gridCell);
             return;
@@ -287,12 +316,12 @@ public class WaveFunctionCollapseGenerator {
 
         ModulesContainer modulesContainer = ModulesContainer.pickRandomModule(validOptions, gridCell);
         if (modulesContainer == null) {
-            Logger.debug("Failed to pick a module for cell at " + gridCell.getCellLocation());
+//            Logger.debug("Failed to pick a module for cell at " + gridCell.getCellLocation());
             rollbackChunk(gridCell);
             return;
         }
 
-        Logger.debug("picked module " + modulesContainer.getClipboardFilename() + " for coords " + gridCell.getCellLocation());
+//        Logger.debug("picked module " + modulesContainer.getClipboardFilename() + " for coords " + gridCell.getCellLocation());
 
         if (!modulesContainer.isNothing())
             spatialGrid.initializeCellNeighbors(gridCell, this);
@@ -302,7 +331,7 @@ public class WaveFunctionCollapseGenerator {
 
     private void rollbackChunk(GridCell gridCell) {
         int rollbacks = stats.rollbackCounter.incrementAndGet();
-        Logger.debug("Rolling back " + gridCell.getCellLocation());
+//        Logger.debug("Rolling back " + gridCell.getCellLocation());
         if (rollbacks % 1000 == 0) {
             logRollbackStatus(gridCell, rollbacks);
         }
@@ -496,7 +525,7 @@ public class WaveFunctionCollapseGenerator {
             });
         }
 
-        new ModulePasting(world, orderedPasteDeque, modularGenerationStatus);
+        new ModulePasting(world, worldFolder, orderedPasteDeque, modularGenerationStatus, config.getSpawnPoolSuffix());
 
         cleanup();
     }

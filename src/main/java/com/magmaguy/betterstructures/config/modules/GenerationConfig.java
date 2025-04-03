@@ -22,6 +22,7 @@ public class GenerationConfig {
     @Getter private final Player player;
     @Getter private final int massPasteSize;
     @Getter private final boolean edgeModules;
+    @Getter private final String spawnPoolSuffix;
 
     private GenerationConfig(Builder builder) {
         this.worldName = builder.worldName;
@@ -34,6 +35,7 @@ public class GenerationConfig {
         this.player = builder.player;
         this.massPasteSize = builder.massPasteSize;
         this.edgeModules = builder.edgeModules;
+        this.spawnPoolSuffix = builder.spawnPoolSuffix;
     }
 
     /**
@@ -52,6 +54,7 @@ public class GenerationConfig {
         private Player player;
         private int massPasteSize = DefaultConfig.getModularChunkPastingSpeed();
         private boolean edgeModules = false;
+        private String spawnPoolSuffix = null;
 
         public Builder(String worldName, int radius) {
             this.worldName = worldName;
@@ -85,7 +88,7 @@ public class GenerationConfig {
 
         public Builder startingModules(List<String> startingModules) {
             this.startingModule = startingModules.get(ThreadLocalRandom.current().nextInt(startingModules.size()))+ "_rotation_0";
-            Logger.debug("Using starting module " + startingModule);
+//            Logger.debug("Using starting module " + startingModule);
             return this;
         }
 
@@ -104,10 +107,16 @@ public class GenerationConfig {
             return this;
         }
 
+        public Builder spawnPoolSuffix(String spawnPoolSuffix){
+            this.spawnPoolSuffix = spawnPoolSuffix;
+            return this;
+        }
+
         public GenerationConfig build() {
             validate();
             return new GenerationConfig(this);
         }
+
 
         private void validate() {
             if (worldName == null || worldName.isEmpty()) {

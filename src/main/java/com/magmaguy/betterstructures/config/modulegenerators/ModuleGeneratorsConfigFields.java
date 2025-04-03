@@ -26,6 +26,10 @@ public class ModuleGeneratorsConfigFields extends CustomConfigFields {
     protected int delayBetweenPastes;
     @Getter
     protected int pasteBatchSize;
+    @Getter
+    protected boolean useGradientLevels;
+    @Getter
+    protected String spawnPoolSuffix;
 
     /**
      * Used by plugin-generated files (defaults)
@@ -53,5 +57,7 @@ public class ModuleGeneratorsConfigFields extends CustomConfigFields {
         this.generateInstantly = processBoolean("generateInstantly", generateInstantly, true, true);
         this.delayBetweenPastes = processInt("delayBetweenPastes", delayBetweenPastes, 20, true);
         this.pasteBatchSize = processInt("pasteBatchSize", pasteBatchSize, 1, true);
+        this.useGradientLevels = processBoolean("useGradientLevels", useGradientLevels, useGradientLevels, false);
+        this.spawnPoolSuffix = processString("spawnPoolSuffix", spawnPoolSuffix, spawnPoolSuffix, false);
     }
 }
