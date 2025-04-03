@@ -13,15 +13,13 @@ import com.magmaguy.betterstructures.thirdparty.MythicMobs;
 import com.magmaguy.betterstructures.thirdparty.WorldGuard;
 import com.magmaguy.betterstructures.util.SurfaceMaterials;
 import com.magmaguy.betterstructures.util.VersionChecker;
-import com.magmaguy.betterstructures.util.WeighedProbability;
 import com.magmaguy.betterstructures.worldedit.Schematic;
 import com.magmaguy.magmacore.util.Logger;
 import com.magmaguy.magmacore.util.SpigotMessage;
-import com.sk89q.worldedit.WorldEditException;
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
 import com.sk89q.worldedit.math.BlockVector3;
-import com.sk89q.worldedit.world.block.BlockState;
+import com.sk89q.worldedit.world.block.BaseBlock;
 import lombok.Getter;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
@@ -32,6 +30,7 @@ import org.bukkit.block.BlockFace;
 import org.bukkit.block.Container;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.*;
+import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 
 import java.util.*;
@@ -41,6 +40,8 @@ public class FitAnything {
     public static boolean worldGuardWarn = false;
     protected final int searchRadius = 1;
     protected final int scanStep = 3;
+    private final HashMap<Material, Integer> undergroundPedestalMaterials = new HashMap<>();
+    private final HashMap<Material, Integer> surfacePedestalMaterials = new HashMap<>();
     @Getter
     protected SchematicContainer schematicContainer;
     protected double startingScore = 100;
@@ -48,14 +49,24 @@ public class FitAnything {
     protected Clipboard schematicClipboard = null;
     @Getter
     protected Vector schematicOffset;
+    protected int verticalOffset = 0;
     //At 10% it is assumed a fit is so bad it's better just to skip
     protected double highestScore = 10;
     @Getter
     protected Location location = null;
     protected GeneratorConfigFields.StructureType structureType;
-    Material pedestalMaterial = null;
-    private final HashMap<Material, Integer> undergroundPedestalMaterials = new HashMap<>();
-    private final HashMap<Material, Integer> surfacePedestalMaterials = new HashMap<>();
+    private Material pedestalMaterial = null;
+    private Chunk chunk;
+
+    public FitAnything(Chunk chunk, SchematicContainer schematicContainer) {
+        this.schematicContainer = schematicContainer;
+        this.chunk = chunk;
+        this.verticalOffset = schematicContainer.getClipboard().getMinimumPoint().y() - schematicContainer.getClipboard().getOrigin().y();
+    }
+
+    public FitAnything(Chunk chunk) {
+        this.chunk = chunk;
+    }
 
     public static void commandBasedCreation(Chunk chunk, GeneratorConfigFields.StructureType structureType, SchematicContainer container) {
         switch (structureType) {
@@ -78,11 +89,13 @@ public class FitAnything {
         }
     }
 
-    protected void setSchematicFilename(Location location, GeneratorConfigFields.StructureType structureType) {
+    protected void randomizeSchematicContainer(Location location, GeneratorConfigFields.StructureType structureType) {
         if (schematicClipboard != null) return;
         schematicContainer = SchematicPicker.pick(location, structureType);
-        if (schematicContainer != null)
+        if (schematicContainer != null) {
             schematicClipboard = schematicContainer.getClipboard();
+            verticalOffset = schematicContainer.getClipboard().getMinimumPoint().y() - schematicContainer.getClipboard().getOrigin().y();
+        }
     }
 
     protected void paste(Location location) {
@@ -115,6 +128,7 @@ public class FitAnything {
         BlockData barrierBlock = null;
         BlockData bedrockBlock = null;
 
+        List<PasteBlock> pasteBlocks = new ArrayList<>();
 
         //adjusts the offset just for the prescan, not needed for worldedit as that figures it out on its own
         Location adjustedLocation = location.clone().add(schematicOffset);
@@ -125,95 +139,76 @@ public class FitAnything {
                             x + schematicClipboard.getMinimumPoint().x(),
                             y + schematicClipboard.getMinimumPoint().y(),
                             z + schematicClipboard.getMinimumPoint().z());
-                    BlockState blockState = schematicClipboard.getBlock(adjustedClipboardLocation);
-                    Material material = BukkitAdapter.adapt(blockState.getBlockType());
-                    boolean isGround =  !BukkitAdapter.adapt(schematicClipboard.getBlock(BlockVector3.at(adjustedClipboardLocation.x(), adjustedLocation.getY(), adjustedLocation.getZ()).add(0,1,0)).getBlockType()).isSolid();
+                    BaseBlock baseBlock = schematicClipboard.getFullBlock(adjustedClipboardLocation);
+                    BlockData blockData = Bukkit.createBlockData(baseBlock.toImmutableState().getAsString());
+                    Material material = BukkitAdapter.adapt(baseBlock.getBlockType());
                     Block worldBlock = adjustedLocation.clone().add(new Vector(x, y, z)).getBlock();
+                    boolean isGround = !BukkitAdapter.adapt(schematicClipboard.getBlock(BlockVector3.at(adjustedClipboardLocation.x(), adjustedLocation.getY(), adjustedLocation.getZ()).add(0, 1, 0)).getBlockType()).isSolid();
                     if (material == Material.BARRIER) {
-                        //special behavior: do not replace
-                        try {
-                            if (barrierBlock == null)
-                                barrierBlock = BukkitAdapter.adapt(schematicClipboard.getBlock(adjustedClipboardLocation));
-                            schematicClipboard.setBlock(adjustedClipboardLocation, BukkitAdapter.adapt(worldBlock.getBlockData()));
-                            barrierBlocks.add(adjustedClipboardLocation);
-                        } catch (WorldEditException e) {
-                            throw new RuntimeException(e);
-                        }
+                        //special behavior: do not replace, so do nothing
+//                        pasteBlocks.add(new PasteBlock(adjustedClipboardLocation, null)); todo remove this
                     } else if (material == Material.BEDROCK) {
-                        //special behavior: replace if air
-                        try {
-                            if (bedrockBlock == null)
-                                bedrockBlock = BukkitAdapter.adapt(schematicClipboard.getBlock(adjustedClipboardLocation));
-
-                            worldBlock = adjustedLocation.clone().add(new Vector(x, y, z)).getBlock();
-                            if (worldBlock.getType().isAir() || worldBlock.isLiquid()) {
-                                //Case for air - replace with filler block
-                                worldBlock.setType(getPedestalMaterial(isGround));
-                            }
-                            //Case for any solid block - do not replace world block
-                            schematicClipboard.setBlock(adjustedClipboardLocation, BukkitAdapter.adapt(worldBlock.getBlockData()));
-                            bedrockBlocks.add(adjustedClipboardLocation);
-                        } catch (WorldEditException e) {
-                            throw new RuntimeException(e);
+                        //special behavior: if it's not solid, replace with solid filler block
+                        if (!worldBlock.getType().isSolid()) {
+                            worldBlock.setType(getPedestalMaterial(isGround));
+                            pasteBlocks.add(new PasteBlock(worldBlock, getPedestalMaterial(isGround).createBlockData()));
+                        } else {
+                            //If it's solid, do nothing
+//                            pasteBlocks.add(new PasteBlock(adjustedClipboardLocation, null)); todo remove this
                         }
+                    } else if (material.toString().toUpperCase(Locale.ROOT).endsWith("SIGN")){
+                        //special behavior: signs are not placed in the world, so do nothing
+                    } else {
+                        pasteBlocks.add(new PasteBlock(worldBlock, blockData));
                     }
                 }
 
-        Schematic.paste(schematicClipboard, location);
-        if (DefaultConfig.isNewBuildingWarn()) {
-            String structureTypeString = fitAnything.structureType.toString().toLowerCase(Locale.ROOT).replace("_", " ");
-            for (Player player : Bukkit.getOnlinePlayers())
-                if (player.hasPermission("betterstructures.warn"))
-                    player.spigot().sendMessage(
-                            SpigotMessage.commandHoverMessage("[BetterStructures] New " + structureTypeString + " building generated! Click to teleport. Do \"/betterstructures silent\" to stop getting warnings!",
-                                    "Click to teleport to " + location.getWorld().getName() + ", " + location.getBlockX() + ", " + location.getBlockY() + ", " + location.getBlockZ() + "\n Schem name: " + schematicContainer.getConfigFilename(),
-                                    "/betterstructures teleport " + location.getWorld().getName() + " " + location.getBlockX() + " " + location.getBlockY() + " " + location.getBlockZ())
-                    );
-        }
+        Schematic.pasteDistributed(pasteBlocks, location, onPasteComplete(fitAnything, location, barrierBlocks, bedrockBlocks, barrierBlock, bedrockBlock));
+    }
 
-        for (BlockVector3 blockVector3 : barrierBlocks) {
-            try {
-                schematicClipboard.setBlock(blockVector3, BukkitAdapter.adapt(barrierBlock));
-            } catch (WorldEditException e) {
-                throw new RuntimeException(e);
-            }
-        }
+    private BukkitRunnable onPasteComplete(FitAnything fitAnything, Location location, Set<BlockVector3> barrierBlocks, Set<BlockVector3> bedrockBlocks, BlockData barrierBlock, BlockData bedrockBlock) {
+        return new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (DefaultConfig.isNewBuildingWarn()) {
+                    String structureTypeString = fitAnything.structureType.toString().toLowerCase(Locale.ROOT).replace("_", " ");
+                    for (Player player : Bukkit.getOnlinePlayers())
+                        if (player.hasPermission("betterstructures.warn"))
+                            player.spigot().sendMessage(
+                                    SpigotMessage.commandHoverMessage("[BetterStructures] New " + structureTypeString + " building generated! Click to teleport. Do \"/betterstructures silent\" to stop getting warnings!",
+                                            "Click to teleport to " + location.getWorld().getName() + ", " + location.getBlockX() + ", " + location.getBlockY() + ", " + location.getBlockZ() + "\n Schem name: " + schematicContainer.getConfigFilename(),
+                                            "/betterstructures teleport " + location.getWorld().getName() + " " + location.getBlockX() + " " + location.getBlockY() + " " + location.getBlockZ())
+                            );
+                }
 
-        for (BlockVector3 blockVector3 : bedrockBlocks) {
-            try {
-                schematicClipboard.setBlock(blockVector3, BukkitAdapter.adapt(bedrockBlock));
-            } catch (WorldEditException e) {
-                throw new RuntimeException(e);
+                if (!(fitAnything instanceof FitAirBuilding)) {
+                    try {
+                        addPedestal(location);
+                    } catch (Exception exception) {
+                        Logger.warn("Failed to correctly assign pedestal material!");
+                        exception.printStackTrace();
+                    }
+                    try {
+                        clearTrees(location);
+                    } catch (Exception exception) {
+                        Logger.warn("Failed to correctly clear trees!");
+                        exception.printStackTrace();
+                    }
+                }
+                try {
+                    fillChests();
+                } catch (Exception exception) {
+                    Logger.warn("Failed to correctly fill chests!");
+                    exception.printStackTrace();
+                }
+                try {
+                    spawnEntities();
+                } catch (Exception exception) {
+                    Logger.warn("Failed to correctly spawn entities!");
+                    exception.printStackTrace();
+                }
             }
-        }
-
-        if (!(fitAnything instanceof FitAirBuilding)) {
-            try {
-                addPedestal(location);
-            } catch (Exception exception) {
-                Logger.warn("Failed to correctly assign pedestal material!");
-                exception.printStackTrace();
-            }
-            try {
-                clearTrees(location);
-            } catch (Exception exception) {
-                Logger.warn("Failed to correctly clear trees!");
-                exception.printStackTrace();
-            }
-        }
-        try {
-            fillChests();
-        } catch (Exception exception) {
-            Logger.warn("Failed to correctly fill chests!");
-            exception.printStackTrace();
-        }
-        try {
-            spawnEntities();
-        } catch (Exception exception) {
-            Logger.warn("Failed to correctly spawn entities!");
-            //exception.printStackTrace();
-        }
-
+        };
     }
 
     private void assignPedestalMaterial(Location location) {
@@ -251,7 +246,7 @@ public class FitAnything {
     }
 
     private Material getPedestalMaterial(boolean isPedestalSurface) {
-        if (isPedestalSurface){
+        if (isPedestalSurface) {
             if (surfacePedestalMaterials.isEmpty()) return pedestalMaterial;
             return getRandomMaterialBasedOnWeight(surfacePedestalMaterials);
         } else {
@@ -388,6 +383,8 @@ public class FitAnything {
             if (!MythicMobs.Spawn(mobLocation, entry.getValue())) return;
         }
         // carm end - Support for MythicMobs
+    }
 
+    public record PasteBlock(Block block, BlockData blockData) {
     }
 }

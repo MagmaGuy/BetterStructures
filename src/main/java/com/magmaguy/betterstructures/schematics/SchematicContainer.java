@@ -158,10 +158,85 @@ public class SchematicContainer {
                 generatorConfigFields.getValidWorldEnvironments().contains(environment);
     }
 
-    public boolean isValidBiome(Biome biome) {
-        return generatorConfigFields.getValidBiomes() == null ||
-                generatorConfigFields.getValidBiomes().isEmpty() ||
-                generatorConfigFields.getValidBiomes().contains(biome);
+    /**
+     * Validates if a biome is in the list of valid biomes, handling both newer interface-based
+     * biomes and older class-based biomes.
+     *
+     * @param biome The biome to validate
+     * @return True if the biome is valid, false otherwise
+     */
+    public boolean isValidBiome(Object biomeObj) {
+        if (generatorConfigFields.getValidBiomesNamespaces() == null) return true;
+        if (generatorConfigFields.getValidBiomesNamespaces().isEmpty()) return true;
+
+        // Extract biome identifier based on version
+        String biomeString = getBiomeIdentifier(biomeObj);
+
+        for (String validBiome : generatorConfigFields.getValidBiomesNamespaces()) {
+            if (biomeString.equals(validBiome)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Gets a string identifier for a biome that works across different Minecraft versions.
+     * Handles both interface (newer) and class (older) implementation of Biome.
+     *
+     * @param biomeObj The biome to get an identifier for (passed as Object to avoid class casting issues)
+     * @return A string identifier for the biome
+     */
+    private String getBiomeIdentifier(Object biomeObj) {
+        // First, try to use reflection to safely handle both class and interface versions
+        try {
+            // Try to get the getKey method (newer versions)
+            java.lang.reflect.Method getKeyMethod = biomeObj.getClass().getMethod("getKey");
+            Object key = getKeyMethod.invoke(biomeObj);
+
+            // Get namespace and key from the NamespacedKey
+            java.lang.reflect.Method getNamespaceMethod = key.getClass().getMethod("getNamespace");
+            java.lang.reflect.Method getKeyNameMethod = key.getClass().getMethod("getKey");
+
+            String namespace = (String) getNamespaceMethod.invoke(key);
+            String keyName = (String) getKeyNameMethod.invoke(key);
+
+            return namespace + ":" + keyName;
+        } catch (Exception e) {
+            // Older versions may use different methods or be enums
+            try {
+                // If it's an enum, try to get the name
+                if (biomeObj.getClass().isEnum()) {
+                    String enumName = ((Enum<?>) biomeObj).name().toLowerCase();
+                    return "minecraft:" + enumName;
+                }
+
+                // Try name() method which might exist in some implementations
+                java.lang.reflect.Method nameMethod = biomeObj.getClass().getMethod("name");
+                String name = (String) nameMethod.invoke(biomeObj);
+                return "minecraft:" + name.toLowerCase();
+            } catch (Exception e2) {
+                // Last resort - use toString and clean it up
+                String fallback = biomeObj.toString();
+
+                // Try to extract the name from common toString() formats
+                if (fallback.contains("{") && fallback.contains("}")) {
+                    // Handle patterns like "Biome{name=DESERT}"
+                    int startIndex = fallback.indexOf("=") + 1;
+                    int endIndex = fallback.indexOf("}", startIndex);
+                    if (startIndex > 0 && endIndex > startIndex) {
+                        fallback = fallback.substring(startIndex, endIndex);
+                    }
+                } else if (fallback.contains(".")) {
+                    // Handle patterns like "ENUM.DESERT"
+                    fallback = fallback.substring(fallback.lastIndexOf(".") + 1);
+                }
+
+                // Clean up and return with default namespace
+                return "minecraft:" + fallback.toLowerCase().trim();
+            }
+        }
     }
 
     public boolean isValidYLevel(int yLevel) {

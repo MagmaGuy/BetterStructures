@@ -178,8 +178,8 @@ public class ModulesConfigFields extends CustomConfigFields {
         if (clonedConfig == null) {
             Logger.warn("Configuration " + filename + " is supposed to clone " + clonedConfig + " but that is not a valid configuration file! The cloning setting will be ignored.");
             return;
-        } else
-            Logger.info("Cloned " + filename + " into " + clonedConfig.getFilename());
+        }
+//        else            Logger.info("Cloned " + filename + " into " + clonedConfig.getFilename());
         fileConfiguration.set("treasureFile", null);
         fileConfiguration.set("borders", null);
         fileConfiguration.set("minY", null);

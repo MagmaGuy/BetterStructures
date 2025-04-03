@@ -51,25 +51,6 @@ public class SpatialGrid {
         this.gridCellQueue = new PriorityQueue<>(cellComparator);
     }
 
-    public void generateWorldBorder(World world, WaveFunctionCollapseGenerator waveFunctionCollapseGenerator){
-        int worldBorderDistance = gridRadius + 1;
-//        Logger.debug("running 2");
-        for (int i = -gridRadius; i <= gridRadius; i++) {
-            for (int y = getMinYLevel(); y < getMaxYLevel(); y++){
-                Vector3i chunkPosX = new Vector3i(i,y,worldBorderDistance);
-                GridCell gridCellX  =  new GridCell(chunkPosX,world, this, cellMap,waveFunctionCollapseGenerator);
-                gridCellX.setModulesContainer(ModulesContainer.getModulesContainers().get("world_border"));
-                Logger.debug("Generating edge at " + gridCellX.getCellLocation());
-                cellMap.put(chunkPosX,gridCellX);
-                Vector3i chunkPosY = new Vector3i(worldBorderDistance,y,i);
-                GridCell gridCellY  =  new GridCell(chunkPosY,world, this, cellMap,waveFunctionCollapseGenerator);
-                gridCellY.setModulesContainer(ModulesContainer.getModulesContainers().get("world_border"));
-                Logger.debug("Generating edge at " + gridCellY.getCellLocation());
-                cellMap.put(chunkPosY, gridCellY);
-            }
-        }
-    }
-
     private void validateConstructorParameters(int gridRadius, int chunkSize, int minYLevel, int maxYLevel) {
         if (gridRadius <= 0) {
             throw new IllegalArgumentException("Grid radius must be positive");
@@ -93,12 +74,12 @@ public class SpatialGrid {
     }
 
     public void enqueueCell(GridCell gridCell) {
-        if (gridCell.getCellLocation().x ==0 && gridCell.getCellLocation().y ==0 && gridCell.getCellLocation().z == 0) Logger.debug("ABOUT TO ENQUEUE ZERO");
+//        if (gridCell.getCellLocation().x ==0 && gridCell.getCellLocation().y ==0 && gridCell.getCellLocation().z == 0) Logger.debug("ABOUT TO ENQUEUE ZERO");
         if (gridCell == null || isNothing(gridCell) || isWorldBorder(gridCell)) {
             return;
         }
-        Logger.debug("enqueuing " + gridCell.getCellLocation());
-        if (gridCell.getCellLocation().x ==0 && gridCell.getCellLocation().y ==0 && gridCell.getCellLocation().z == 0) Logger.debug("ENQUEUED ZERO");
+//        Logger.debug("enqueuing " + gridCell.getCellLocation());
+//        if (gridCell.getCellLocation().x ==0 && gridCell.getCellLocation().y ==0 && gridCell.getCellLocation().z == 0) Logger.debug("ENQUEUED ZERO");
         gridCell.updateValidOptions();
         gridCellQueue.add(gridCell);
     }
@@ -139,7 +120,7 @@ public class SpatialGrid {
      */
     public void initializeCellNeighbors(GridCell gridCell, WaveFunctionCollapseGenerator waveFunctionCollapseGenerator) {
         if (gridCell == null || isNothing(gridCell)) {
-            Logger.debug("skipping because it's nothing");
+//            Logger.debug("skipping because it's nothing");
             return;
         }
 
@@ -179,9 +160,7 @@ public class SpatialGrid {
         return location.x == -gridRadius
                 || location.x == gridRadius
                 || location.z == -gridRadius
-                || location.z == gridRadius
-                || location.y == minYLevel
-                || location.y == maxYLevel;
+                || location.z == gridRadius;
     }
 
 

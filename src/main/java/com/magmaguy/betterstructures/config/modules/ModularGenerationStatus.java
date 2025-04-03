@@ -259,8 +259,7 @@ public class ModularGenerationStatus {
     // Ensure progress is between 0 and 1.
     private double clampProgress(double progress) {
         if (progress < 0.0) return 0.0;
-        if (progress > 1.0) return 1.0;
-        return progress;
+        return Math.min(progress, 1.0);
     }
 
     // --- Phase Finished Methods ---

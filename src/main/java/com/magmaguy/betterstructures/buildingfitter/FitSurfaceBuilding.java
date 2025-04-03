@@ -14,6 +14,7 @@ public class FitSurfaceBuilding extends FitAnything {
 
     //For commands
     public FitSurfaceBuilding(Chunk chunk, SchematicContainer schematicContainer) {
+        super(chunk, schematicContainer);
         super.structureType = GeneratorConfigFields.StructureType.SURFACE;
         this.schematicContainer = schematicContainer;
         this.schematicClipboard = schematicContainer.getClipboard();
@@ -21,6 +22,7 @@ public class FitSurfaceBuilding extends FitAnything {
     }
 
     public FitSurfaceBuilding(Chunk chunk) {
+        super(chunk);
         super.structureType = GeneratorConfigFields.StructureType.SURFACE;
         scan(chunk);
     }
@@ -30,7 +32,7 @@ public class FitSurfaceBuilding extends FitAnything {
         //The 8 offset on x and y is to center the anchor on the chunk
         Location originalLocation = new Location(chunk.getWorld(), chunk.getX() * 16D, 0, chunk.getZ() * 16D).add(new Vector(8, 0, 8));
         originalLocation.setY(originalLocation.getWorld().getHighestBlockYAt(originalLocation));
-        setSchematicFilename(originalLocation, GeneratorConfigFields.StructureType.SURFACE);
+        randomizeSchematicContainer(originalLocation, GeneratorConfigFields.StructureType.SURFACE);
         if (schematicClipboard == null) {
             //Bukkit.getLogger().info("Did not spawn structure in biome " + originalLocation.getBlock().getBiome() + " because no valid schematics exist for it.");
             return;

@@ -39,6 +39,7 @@ public class ContentPackageConfigFields extends CustomConfigFields {
         this.isEnabled = processBoolean("isEnabled", isEnabled, true, true);
         this.name = processString("name", name, null, true);
         this.description = processStringList("description", description, null, true);
+        this.downloadLink = processString("downloadLink" , downloadLink, downloadLink, false);
         this.version = processInt("version", version, 0, true);
         this.folderName = processString("folderName", folderName, null, true);
     }

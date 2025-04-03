@@ -15,6 +15,7 @@ import java.util.concurrent.ThreadLocalRandom;
 public class FitAirBuilding extends FitAnything {
 
     public FitAirBuilding(Chunk chunk, SchematicContainer schematicContainer) {
+        super(chunk, schematicContainer);
         super.structureType = GeneratorConfigFields.StructureType.SKY;
         this.schematicContainer = schematicContainer;
         this.schematicClipboard = schematicContainer.getClipboard();
@@ -22,6 +23,7 @@ public class FitAirBuilding extends FitAnything {
     }
 
     public FitAirBuilding(Chunk chunk) {
+        super(chunk);
         super.structureType = GeneratorConfigFields.StructureType.SKY;
         scan(chunk);
     }
@@ -100,7 +102,7 @@ public class FitAirBuilding extends FitAnything {
                 break;
         }
 
-        setSchematicFilename(originalLocation, GeneratorConfigFields.StructureType.SKY);
+        randomizeSchematicContainer(originalLocation, GeneratorConfigFields.StructureType.SKY);
         if (schematicClipboard == null) {
             //Bukkit.getLogger().info("Did not spawn structure in biome " + originalLocation.getBlock().getBiome() + " because no valid schematics exist for it.");
             return;
@@ -123,7 +125,6 @@ public class FitAirBuilding extends FitAnything {
         }
 
         paste(location);
-
     }
 
     private void chunkScan(Location originalLocation, int chunkX, int chunkZ) {

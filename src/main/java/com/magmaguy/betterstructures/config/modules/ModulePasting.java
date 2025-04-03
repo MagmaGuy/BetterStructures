@@ -26,6 +26,7 @@ import org.bukkit.block.data.Directional;
 import org.bukkit.block.data.Rail;
 import org.bukkit.block.data.type.Sign;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
@@ -35,14 +36,16 @@ public final class ModulePasting {
     private final List<InterpretedSign> interpretedSigns = new ArrayList<>();
     private ModularGenerationStatus modularGenerationStatus = null;
     private ModularWorld modularWorld;
+    private String spawnPoolSuffix;
 
-    public ModulePasting(World world, Deque<GridCell> gridCellDeque, ModularGenerationStatus modularGenerationStatus) {
+    public ModulePasting(World world, File worldFolder, Deque<GridCell> gridCellDeque, ModularGenerationStatus modularGenerationStatus, String spawnPoolSuffix) {
         this.modularGenerationStatus = modularGenerationStatus;
+        this.spawnPoolSuffix = spawnPoolSuffix;
         batchPaste(gridCellDeque, interpretedSigns);
-        createModularWorld(world);
+        createModularWorld(world, worldFolder);
     }
 
-    private static List<Pasteable> generatePasteMeList(Clipboard clipboard, Location worldPasteOriginLocation, Integer rotation, List<InterpretedSign> interpretedSigns) {
+    private List<Pasteable> generatePasteMeList(Clipboard clipboard, Location worldPasteOriginLocation, Integer rotation, List<InterpretedSign> interpretedSigns) {
         List<Pasteable> pasteableList = new ArrayList<>();
         AffineTransform transform = new AffineTransform().rotateY(normalizeRotation(rotation));
         Clipboard transformedClipboard = null;
@@ -69,6 +72,7 @@ public final class ModulePasting {
 
             BaseBlock baseBlock = finalTransformedClipboard.getFullBlock(blockPos);
             BlockData blockData = Bukkit.createBlockData(baseBlock.toImmutableState().getAsString());
+            if (blockData.getMaterial().isAir()) return;
 
             int worldX = baseX + (blockPos.x() - finalOrigin.x());
             int worldY = baseY + (blockPos.y() - finalOrigin.y());
@@ -78,15 +82,25 @@ public final class ModulePasting {
             pasteableList.add(new Pasteable(pasteLocation, blockData));
 
             if (blockData.getMaterial().toString().toLowerCase().contains("sign")) {
-                interpretedSigns.add(new InterpretedSign(pasteLocation, WorldEditUtils.getLines(baseBlock)));
+                interpretedSigns.add(new InterpretedSign(pasteLocation, getLines(baseBlock)));
             }
         });
         return pasteableList;
     }
 
+    private List<String> getLines(BaseBlock baseBlock){
+        List<String> strings = new ArrayList<>();
+        for (String line : WorldEditUtils.getLines(baseBlock)) {
+            if (line != null && !line.isBlank() && line.contains("[pool:"))
+                strings.add(line.replace("]",spawnPoolSuffix+"]"));
+            else strings.add(line);
+        }
+        return strings;
+    }
+
     public static void paste(Clipboard clipboard, Location location, Integer rotation) {
         if (rotation == null) {
-            Logger.debug("Rotation was null during paste operation");
+//            Logger.debug("Rotation was null during paste operation");
             return;
         }
 
@@ -148,7 +162,7 @@ public final class ModulePasting {
             pasteableList.addAll(generatePasteMeList(clipboard, gridCell.getRealLocation(), gridCell.getModulesContainer().getRotation(), interpretedSigns));
         }
 
-        List<Pasteable> lightEmitters = new ArrayList<>();
+        List<Pasteable> slowBlocks = new ArrayList<>();
         WorkloadRunnable pasteMeRunnable = new WorkloadRunnable(.1, () -> {
             modularGenerationStatus.finishedPlacingFastBlocks();
             modularGenerationStatus.startPlacingSlowBlocks();
@@ -156,12 +170,12 @@ public final class ModulePasting {
                 modularGenerationStatus.finishedPlacingSlowBlocks();
                 modularWorld.spawnOtherEntities();
             });
-            int slowBlockCounter = lightEmitters.size();
-            for (Pasteable lightEmitter : lightEmitters)
+            int slowBlockCounter = slowBlocks.size();
+            for (Pasteable slowBlock : slowBlocks)
                 vanillaPlacementRunnable.addWorkload(() -> {
-                    lightEmitter.location.getBlock().setBlockData(lightEmitter.blockData);
+                    slowBlock.location.getBlock().setBlockData(slowBlock.blockData, false);
                     finishedSlowBlocks.getAndIncrement();
-                    modularGenerationStatus.updateProgressPlacingSlowBlocks((double) slowBlockCounter / (double) finishedSlowBlocks.get());
+                    modularGenerationStatus.updateProgressPlacingSlowBlocks((double) finishedSlowBlocks.get() / (double) slowBlockCounter);
                 });
             vanillaPlacementRunnable.runTaskTimer(MetadataHandler.PLUGIN, 0, 1);
         });
@@ -172,7 +186,7 @@ public final class ModulePasting {
         for (Pasteable pasteable : pasteableList) {
             //check for signs first
             if (pasteable.blockData.getLightEmission() > 0 || pasteable.blockData instanceof Directional || pasteable.blockData instanceof Rail || pasteable.blockData instanceof Sign)
-                lightEmitters.add(pasteable);
+                slowBlocks.add(pasteable);
             else
                 pasteMeRunnable.addWorkload(() -> {
                     NMSManager.getAdapter().setBlockInNativeDataPalette(
@@ -183,7 +197,7 @@ public final class ModulePasting {
                             pasteable.blockData,
                             true);
                     finishedFastBlocks.getAndIncrement();
-                    modularGenerationStatus.updateProgressPlacingFastBlocks((double) fastBlockCounter / (double) finishedFastBlocks.get());
+                    modularGenerationStatus.updateProgressPlacingFastBlocks((double) finishedFastBlocks.get() / (double) fastBlockCounter);
                 });
         }
 
@@ -194,8 +208,8 @@ public final class ModulePasting {
         return freshlyInterpretedSigns;
     }
 
-    private void createModularWorld(World world) {
-        modularWorld = new ModularWorld(world, interpretedSigns, modularGenerationStatus);
+    private void createModularWorld(World world, File worldFolder) {
+        modularWorld = new ModularWorld(world, worldFolder, interpretedSigns, modularGenerationStatus);
     }
 
     public record InterpretedSign(Location location, List<String> text) {

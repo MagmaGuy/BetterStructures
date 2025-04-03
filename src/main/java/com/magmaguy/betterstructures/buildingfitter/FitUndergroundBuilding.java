@@ -20,6 +20,7 @@ public class FitUndergroundBuilding extends FitAnything {
 
     //For commands
     public FitUndergroundBuilding(Chunk chunk, SchematicContainer schematicContainer, int lowestY, int highestY, GeneratorConfigFields.StructureType structureType) {
+        super(chunk, schematicContainer);
         super.structureType = structureType;
         this.lowestY = lowestY;
         this.highestY = highestY;
@@ -29,10 +30,10 @@ public class FitUndergroundBuilding extends FitAnything {
     }
 
     public FitUndergroundBuilding(Chunk chunk, int lowestY, int highestY, GeneratorConfigFields.StructureType structureType) {
+        super(chunk);
         super.structureType = structureType;
         this.lowestY = lowestY;
         this.highestY = highestY;
-        this.structureType = structureType;
         scan(chunk);
     }
 
@@ -188,7 +189,7 @@ public class FitUndergroundBuilding extends FitAnything {
                 break;
         }
 
-        setSchematicFilename(originalLocation, structureType);
+        randomizeSchematicContainer(originalLocation, structureType);
         if (schematicClipboard == null) {
             //Bukkit.getLogger().info("Did not spawn structure in biome " + originalLocation.getBlock().getBiome() + " because no valid schematics exist for it.");
             return;

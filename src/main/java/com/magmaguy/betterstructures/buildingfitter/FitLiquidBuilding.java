@@ -13,6 +13,7 @@ public class FitLiquidBuilding extends FitAnything {
 
     //For commands
     public FitLiquidBuilding(Chunk chunk, SchematicContainer schematicContainer) {
+        super(chunk, schematicContainer);
         super.structureType = GeneratorConfigFields.StructureType.LIQUID_SURFACE;
         this.schematicContainer = schematicContainer;
         this.schematicClipboard = schematicContainer.getClipboard();
@@ -20,6 +21,7 @@ public class FitLiquidBuilding extends FitAnything {
     }
 
     public FitLiquidBuilding(Chunk chunk) {
+        super(chunk);
         super.structureType = GeneratorConfigFields.StructureType.LIQUID_SURFACE;
         scan(chunk);
     }
@@ -48,7 +50,7 @@ public class FitLiquidBuilding extends FitAnything {
                     }
         }
 
-        setSchematicFilename(originalLocation, GeneratorConfigFields.StructureType.LIQUID_SURFACE);
+        randomizeSchematicContainer(originalLocation, GeneratorConfigFields.StructureType.LIQUID_SURFACE);
         if (schematicClipboard == null) {
             //Bukkit.getLogger().info("Did not spawn structure in biome " + originalLocation.getBlock().getBiome() + " because no valid schematics exist for it.");
             return;

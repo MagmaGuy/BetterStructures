@@ -3,6 +3,7 @@ package com.magmaguy.betterstructures;
 import com.magmaguy.betterstructures.commands.*;
 import com.magmaguy.betterstructures.config.DefaultConfig;
 import com.magmaguy.betterstructures.config.ValidWorldsConfig;
+import com.magmaguy.betterstructures.config.components.ComponentsConfigFolder;
 import com.magmaguy.betterstructures.config.contentpackages.ContentPackageConfig;
 import com.magmaguy.betterstructures.config.generators.GeneratorConfig;
 import com.magmaguy.betterstructures.config.modulegenerators.ModuleGeneratorsConfig;
@@ -66,6 +67,7 @@ public final class BetterStructures extends JavaPlugin {
         new SchematicConfig();
         new ModulesConfig();
         new ContentPackageConfig();
+        ComponentsConfigFolder.initialize();
         CommandManager commandManager = new CommandManager(this, "betterstructures");
         commandManager.registerCommand(new LootifyCommand());
         commandManager.registerCommand(new PlaceCommand());
