@@ -6,7 +6,7 @@ plugins {
 }
 
 group = 'com.magmaguy'
-version = '1.8.0'
+version = '1.8.1'
 
 repositories {
     mavenCentral()
@@ -31,7 +31,7 @@ dependencies {
     implementation 'org.apache.commons:commons-lang3:3.9'
     implementation group: 'org.reflections', name: 'reflections', version: '0.9.12'
     implementation group: 'org.joml', name: 'joml', version: '1.10.8'
-    implementation(group: 'com.magmaguy', name: 'EasyMinecraftGoals-dist', version: '1.19.0-SNAPSHOT') {
+    implementation(group: 'com.magmaguy', name: 'EasyMinecraftGoals-dist', version: '1.19.2-SNAPSHOT') {
         changing = true
     }
     compileOnly group: 'com.magmaguy', name: 'EliteMobs', version: '9.3.3-SNAPSHOT'

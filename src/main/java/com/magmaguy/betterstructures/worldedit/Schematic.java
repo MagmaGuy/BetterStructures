@@ -3,6 +3,7 @@ package com.magmaguy.betterstructures.worldedit;
 import com.magmaguy.betterstructures.MetadataHandler;
 import com.magmaguy.betterstructures.buildingfitter.FitAnything;
 import com.magmaguy.betterstructures.config.DefaultConfig;
+import com.magmaguy.betterstructures.util.WorldEditUtils;
 import com.magmaguy.betterstructures.util.distributedload.WorkloadRunnable;
 import com.magmaguy.magmacore.util.Logger;
 import com.sk89q.worldedit.EditSession;
@@ -19,24 +20,31 @@ import com.sk89q.worldedit.math.BlockVector3;
 import com.sk89q.worldedit.session.ClipboardHolder;
 import com.sk89q.worldedit.world.World;
 import com.sk89q.worldedit.world.block.BaseBlock;
+import com.sk89q.worldedit.world.block.BlockState;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.block.Block;
 import org.bukkit.block.data.BlockData;
+import org.bukkit.util.Vector;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.function.Function;
 
 public class Schematic {
     // Queue to hold pending paste operations
     private static final Queue<PasteBlockOperation> pasteQueue = new ConcurrentLinkedQueue<>();
-    private static final Object lock = new Object();
     private static boolean erroredOnce = false;
     private static boolean isDistributedPasting = false;
+
     private Schematic() {
     }
 
@@ -91,118 +99,195 @@ public class Schematic {
     }
 
     /**
+     * Creates a list of paste blocks from a schematic
+     *
+     * @param schematicClipboard The clipboard containing the schematic
+     * @param location The location to paste at
+     * @param schematicOffset The offset of the schematic
+     * @param pedestalMaterialProvider Function that provides pedestal material based on whether it's a surface block
+     * @return List of paste blocks
+     */
+    private static List<PasteBlock> createPasteBlocks(
+            Clipboard schematicClipboard,
+            Location location,
+            Vector schematicOffset,
+            Function<Boolean, Material> pedestalMaterialProvider) {
+
+        List<PasteBlock> pasteBlocks = new ArrayList<>();
+
+        // Iterate through the schematic and create PasteBlock objects
+        Location adjustedLocation = location.clone().add(schematicOffset);
+        for (int x = 0; x < schematicClipboard.getDimensions().x(); x++)
+            for (int y = 0; y < schematicClipboard.getDimensions().y(); y++)
+                for (int z = 0; z < schematicClipboard.getDimensions().z(); z++) {
+                    BlockVector3 adjustedClipboardLocation = BlockVector3.at(
+                            x + schematicClipboard.getMinimumPoint().x(),
+                            y + schematicClipboard.getMinimumPoint().y(),
+                            z + schematicClipboard.getMinimumPoint().z());
+                    BaseBlock baseBlock = schematicClipboard.getFullBlock(adjustedClipboardLocation);
+                    BlockState blockState = baseBlock.toImmutableState();
+                    BlockData blockData = Bukkit.createBlockData(baseBlock.toImmutableState().getAsString());
+                    Material material = BukkitAdapter.adapt(baseBlock.getBlockType());
+                    Block worldBlock = adjustedLocation.clone().add(new Vector(x, y, z)).getBlock();
+                    String materialString = material.toString().toUpperCase(Locale.ROOT);
+                    boolean isGround = !BukkitAdapter.adapt(schematicClipboard.getBlock(
+                            BlockVector3.at(adjustedClipboardLocation.x(),
+                                    adjustedClipboardLocation.y() + 1,
+                                    adjustedClipboardLocation.z())).getBlockType()).isSolid();
+
+                    if (material == Material.BARRIER) {
+                        // special behavior: do not replace barriers, so do nothing
+                    } else if (materialString.endsWith("SIGN") ||
+                            materialString.endsWith("STAIRS") ||
+                            materialString.endsWith("BOX") ||
+                            materialString.endsWith("CHEST_BOAT") ||
+                            materialString.equals("BEACON") ||
+                            materialString.endsWith("FURNACE") ||
+                            materialString.equals("CALIBRATED_SCULK_SENSOR") ||
+                            materialString.equals("CAMPFIRE") ||
+                            materialString.equals("CARTOGRAPHY_TABLE") ||
+                            materialString.equals("CAULDRON") ||
+                            materialString.contains("COMMAND_BLOCK") ||
+                            materialString.endsWith("ANVIL") ||
+                            materialString.equals("CRAFTER") ||
+                            materialString.equals("ITEM_FRAME") ||
+                            materialString.equals("DISPENSER") ||
+                            materialString.equals("DROPPER") ||
+                            materialString.equals("ENCHANTING_TABLE") ||
+                            materialString.equals("BARREL") ||
+                            materialString.equals("CHEST") ||
+                            materialString.equals("ENDER_CHEST") ||
+                            materialString.equals("TRAPPED_CHEST") ||
+                            materialString.equals("FLETCHING_TABLE") ||
+                            materialString.equals("FURNACE_MINECART") ||
+                            materialString.equals("GRINDSTONE") ||
+                            materialString.equals("HOPPER") ||
+                            materialString.equals("HOPPER_MINECART") ||
+                            materialString.equals("JUKEBOX") ||
+                            materialString.equals("LEVER") ||
+                            materialString.equals("LOOM") ||
+                            materialString.equals("LODESTONE") ||
+                            materialString.startsWith("POTTED") ||
+                            materialString.startsWith("SCULK") ||
+                            materialString.equals("POWERED_RAIL") ||
+                            materialString.equals("SMOKER") ||
+                            materialString.equals("STONECUTTER") ||
+                            materialString.equals("SOUL_CAMPFIRE") ||
+                            materialString.contains("SPAWNER")) {
+                        // tricky metadata has to be done via worldedit
+                        pasteBlocks.add(new PasteBlock(worldBlock, null,
+                                WorldEditUtils.createSingleBlockClipboard(adjustedLocation, baseBlock, blockState)));
+                    } else if (material == Material.BEDROCK) {
+                        // special behavior: if it's not solid, replace with solid filler block
+                        if (!worldBlock.getType().isSolid()) {
+                            Material pedestalMaterial = pedestalMaterialProvider.apply(isGround);
+                            worldBlock.setType(pedestalMaterial);
+                            pasteBlocks.add(new PasteBlock(worldBlock, pedestalMaterial.createBlockData(), null));
+                        }
+                    } else {
+                        pasteBlocks.add(new PasteBlock(worldBlock, blockData, null));
+                    }
+                }
+
+        return pasteBlocks;
+    }
+
+    /**
+     * Pastes a schematic using the provided pedestal material provider
+     *
+     * @param schematicClipboard The clipboard containing the schematic
+     * @param location The location to paste at
+     * @param schematicOffset The offset of the schematic
+     * @param pedestalMaterialProvider Function that provides pedestal material based on whether it's a surface block
+     * @param onComplete Callback to run when paste is complete
+     */
+    public static void pasteSchematic(
+            Clipboard schematicClipboard,
+            Location location,
+            Vector schematicOffset,
+            Function<Boolean, Material> pedestalMaterialProvider,
+            Runnable onComplete) {
+
+        List<PasteBlock> pasteBlocks = createPasteBlocks(
+                schematicClipboard,
+                location,
+                schematicOffset,
+                pedestalMaterialProvider);
+
+        pasteDistributed(pasteBlocks, location, onComplete);
+    }
+
+    /**
      * Pastes a schematic using a distributed workload over multiple ticks.
      * If another paste operation is already in progress, this operation
      * will be queued and executed when the current operation completes.
      *
-     * @param pasteBlocks  The WorldEdit clipboard containing the schematic
-     * @param location   The location to paste at
-     * @param onComplete Optional callback to run when paste is complete
+     * @param pasteBlocks List of blocks to paste
+     * @param location    The location to paste at
+     * @param onComplete  Optional callback to run when paste is complete
      */
-    public static void pasteDistributed(List<FitAnything.PasteBlock> pasteBlocks, Location location, Runnable onComplete) {
+    public static void pasteDistributed(List<PasteBlock> pasteBlocks, Location location, Runnable onComplete) {
         // Add this paste operation to the queue
         pasteQueue.add(new PasteBlockOperation(pasteBlocks, location, onComplete));
 
         // If we're not currently pasting, start processing the queue
-            if (!isDistributedPasting) {
-                processNextPaste();
-            }
+        if (!isDistributedPasting) {
+            processNextPaste();
+        }
     }
-
-//    public static void pasteDistributed(Clipboard clipboard, Location location, Runnable onComplete) {
-//        // Add this paste operation to the queue
-//        pasteQueue.add(new PasteClipboardOperation(clipboard, location, onComplete));
-//
-//        // If we're not currently pasting, start processing the queue
-//        if (!isDistributedPasting) {
-//            processNextPaste();
-//        }
-//    }
-
-//    /**
-//     * Overloaded method without completion callback
-//     */
-//    public static void pasteDistributed(Clipboard clipboard, Location location) {
-//        pasteDistributed(clipboard, location, null);
-//    }
 
     /**
      * Processes the next paste operation in the queue
      */
     private static void processNextPaste() {
-            if (pasteQueue.isEmpty()) {
-                isDistributedPasting = false;
-                return;
+        if (pasteQueue.isEmpty()) {
+            isDistributedPasting = false;
+            return;
+        }
+
+        isDistributedPasting = true;
+        PasteBlockOperation operation = pasteQueue.poll();
+
+        // Create a workload for this paste operation
+        WorkloadRunnable workload = new WorkloadRunnable(DefaultConfig.getPercentageOfTickUsedForPasting(), () -> {
+            // Run the completion callback if provided
+            if (operation.onComplete != null) {
+                operation.onComplete.run();
             }
+            // Process the next paste in the queue
+            processNextPaste();
+        });
 
-            isDistributedPasting = true;
-            PasteBlockOperation operation = pasteQueue.poll();
-
-            // Create a workload for this paste operation
-            WorkloadRunnable workload = new WorkloadRunnable(DefaultConfig.getPercentageOfTickUsedForPasting(), () -> {
-                // Run the completion callback if provided
-                if (operation.onComplete != null) {
-                    operation.onComplete.run();
-                }
-                // Process the next paste in the queue
-                processNextPaste();
-            });
-
-//            // Process clipboard blocks
-//            Clipboard clipboard = operation.clipboard;
-//            Location location = operation.location;
-//            org.bukkit.World world = location.getWorld();
-//
-//            BlockVector3 origin = clipboard.getOrigin();
-//            BlockVector3 minPoint = clipboard.getMinimumPoint();
-//            // Adjust origin to start from minimum point for consistent placement
-//            origin = BlockVector3.at(minPoint.x(), origin.y(), minPoint.z());
-//
-//            int baseX = location.getBlockX();
-//            int baseY = location.getBlockY();
-//            int baseZ = location.getBlockZ();
-//
-//            BlockVector3 finalOrigin = origin;
-
-        for (FitAnything.PasteBlock pasteBlock : operation.blocks) {
+        for (PasteBlock pasteBlock : operation.blocks) {
             workload.addWorkload(() -> {
-                // Use setBlockData for the slow paste method
-                pasteBlock.block().setBlockData(pasteBlock.blockData());
+                if (pasteBlock.blockData() != null) {
+                    pasteBlock.block().setBlockData(pasteBlock.blockData());
+                } else if (pasteBlock.clipboard() != null) {
+                    try (EditSession editSession = WorldEdit.getInstance().newEditSession(BukkitAdapter.adapt(pasteBlock.block().getLocation().getWorld()))) {
+                        Operation worldeditPaste = new ClipboardHolder(pasteBlock.clipboard())
+                                .createPaste(editSession)
+                                .to(BlockVector3.at(pasteBlock.block().getX(), pasteBlock.block().getY(), pasteBlock.block().getZ()))
+                                // configure here
+                                .build();
+                        Operations.complete(worldeditPaste);
+//                        Logger.debug("WorldEdit pasted block " + pasteBlock.block().getType() + " at " + pasteBlock.block().getLocation());
+                    } catch (WorldEditException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
             });
         }
-//
-//            // Add each block in the clipboard as a separate workload task
-//            clipboard.getRegion().forEach(blockPos -> {
-//                BaseBlock baseBlock = clipboard.getFullBlock(blockPos);
-//                BlockData blockData = Bukkit.createBlockData(baseBlock.toImmutableState().getAsString());
-//
-//                // Remove this line to allow air blocks to be pasted
-//                // if (blockData.getMaterial().isAir()) return;
-//
-//                int worldX = baseX + (blockPos.x() - finalOrigin.x());
-//                int worldY = baseY + (blockPos.y() - finalOrigin.y());
-//                int worldZ = baseZ + (blockPos.z() - finalOrigin.z());
-//
-//                Location pasteLocation = new Location(world, worldX, worldY, worldZ);
-//
-//
-//            });
 
-            // Start the workload
-            workload.runTaskTimer(MetadataHandler.PLUGIN, 0, 1);
+        // Start the workload
+        workload.runTaskTimer(MetadataHandler.PLUGIN, 0, 1);
     }
-
-    /**
-     * Processes the next paste operation in the queue
-     */
 
     /**
      * Represents a single paste operation
      */
-    private record PasteClipboardOperation(Clipboard clipboard, Location location, Runnable onComplete) {
+    private record PasteBlockOperation(List<PasteBlock> blocks, Location location, Runnable onComplete) {
     }
 
-    private record PasteBlockOperation(List<FitAnything.PasteBlock> blocks, Location location, Runnable onComplete) {
+    public record PasteBlock(Block block, BlockData blockData, Clipboard clipboard) {
     }
-
 }

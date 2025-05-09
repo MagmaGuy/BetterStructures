@@ -13,6 +13,7 @@ import com.magmaguy.betterstructures.thirdparty.MythicMobs;
 import com.magmaguy.betterstructures.thirdparty.WorldGuard;
 import com.magmaguy.betterstructures.util.SurfaceMaterials;
 import com.magmaguy.betterstructures.util.VersionChecker;
+import com.magmaguy.betterstructures.util.WorldEditUtils;
 import com.magmaguy.betterstructures.worldedit.Schematic;
 import com.magmaguy.magmacore.util.Logger;
 import com.magmaguy.magmacore.util.SpigotMessage;
@@ -20,6 +21,7 @@ import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
 import com.sk89q.worldedit.math.BlockVector3;
 import com.sk89q.worldedit.world.block.BaseBlock;
+import com.sk89q.worldedit.world.block.BlockState;
 import lombok.Getter;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
@@ -35,6 +37,7 @@ import org.bukkit.util.Vector;
 
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.Function;
 
 public class FitAnything {
     public static boolean worldGuardWarn = false;
@@ -42,6 +45,7 @@ public class FitAnything {
     protected final int scanStep = 3;
     private final HashMap<Material, Integer> undergroundPedestalMaterials = new HashMap<>();
     private final HashMap<Material, Integer> surfacePedestalMaterials = new HashMap<>();
+    private final Chunk chunk;
     @Getter
     protected SchematicContainer schematicContainer;
     protected double startingScore = 100;
@@ -56,7 +60,6 @@ public class FitAnything {
     protected Location location = null;
     protected GeneratorConfigFields.StructureType structureType;
     private Material pedestalMaterial = null;
-    private Chunk chunk;
 
     public FitAnything(Chunk chunk, SchematicContainer schematicContainer) {
         this.schematicContainer = schematicContainer;
@@ -104,14 +107,11 @@ public class FitAnything {
         if (buildPlaceEvent.isCancelled()) return;
 
         FitAnything fitAnything = this;
-        //Set pedestal material before the paste so bedrock blocks get replaced correctly
+
+        // Set pedestal material before the paste so bedrock blocks get replaced correctly
         assignPedestalMaterial(location);
         if (pedestalMaterial == null)
             switch (location.getWorld().getEnvironment()) {
-                case NORMAL:
-                case CUSTOM:
-                    pedestalMaterial = Material.STONE;
-                    break;
                 case NETHER:
                     pedestalMaterial = Material.NETHERRACK;
                     break;
@@ -122,51 +122,20 @@ public class FitAnything {
                     pedestalMaterial = Material.STONE;
             }
 
-        //These blocks are dynamic and get replaced with world contents, need to be replaced back after the paste to preserve the mechanic
-        Set<BlockVector3> barrierBlocks = new HashSet<>();
-        Set<BlockVector3> bedrockBlocks = new HashSet<>();
-        BlockData barrierBlock = null;
-        BlockData bedrockBlock = null;
+        // Create a function to provide pedestal material
+        Function<Boolean, Material> pedestalMaterialProvider = this::getPedestalMaterial;
 
-        List<PasteBlock> pasteBlocks = new ArrayList<>();
-
-        //adjusts the offset just for the prescan, not needed for worldedit as that figures it out on its own
-        Location adjustedLocation = location.clone().add(schematicOffset);
-        for (int x = 0; x < schematicClipboard.getDimensions().x(); x++)
-            for (int y = 0; y < schematicClipboard.getDimensions().y(); y++)
-                for (int z = 0; z < schematicClipboard.getDimensions().z(); z++) {
-                    BlockVector3 adjustedClipboardLocation = BlockVector3.at(
-                            x + schematicClipboard.getMinimumPoint().x(),
-                            y + schematicClipboard.getMinimumPoint().y(),
-                            z + schematicClipboard.getMinimumPoint().z());
-                    BaseBlock baseBlock = schematicClipboard.getFullBlock(adjustedClipboardLocation);
-                    BlockData blockData = Bukkit.createBlockData(baseBlock.toImmutableState().getAsString());
-                    Material material = BukkitAdapter.adapt(baseBlock.getBlockType());
-                    Block worldBlock = adjustedLocation.clone().add(new Vector(x, y, z)).getBlock();
-                    boolean isGround = !BukkitAdapter.adapt(schematicClipboard.getBlock(BlockVector3.at(adjustedClipboardLocation.x(), adjustedLocation.getY(), adjustedLocation.getZ()).add(0, 1, 0)).getBlockType()).isSolid();
-                    if (material == Material.BARRIER) {
-                        //special behavior: do not replace, so do nothing
-//                        pasteBlocks.add(new PasteBlock(adjustedClipboardLocation, null)); todo remove this
-                    } else if (material == Material.BEDROCK) {
-                        //special behavior: if it's not solid, replace with solid filler block
-                        if (!worldBlock.getType().isSolid()) {
-                            worldBlock.setType(getPedestalMaterial(isGround));
-                            pasteBlocks.add(new PasteBlock(worldBlock, getPedestalMaterial(isGround).createBlockData()));
-                        } else {
-                            //If it's solid, do nothing
-//                            pasteBlocks.add(new PasteBlock(adjustedClipboardLocation, null)); todo remove this
-                        }
-                    } else if (material.toString().toUpperCase(Locale.ROOT).endsWith("SIGN")){
-                        //special behavior: signs are not placed in the world, so do nothing
-                    } else {
-                        pasteBlocks.add(new PasteBlock(worldBlock, blockData));
-                    }
-                }
-
-        Schematic.pasteDistributed(pasteBlocks, location, onPasteComplete(fitAnything, location, barrierBlocks, bedrockBlocks, barrierBlock, bedrockBlock));
+        // Paste the schematic with the moved logic
+        Schematic.pasteSchematic(
+                schematicClipboard,
+                location,
+                schematicOffset,
+                pedestalMaterialProvider,
+                onPasteComplete(fitAnything, location)
+        );
     }
 
-    private BukkitRunnable onPasteComplete(FitAnything fitAnything, Location location, Set<BlockVector3> barrierBlocks, Set<BlockVector3> bedrockBlocks, BlockData barrierBlock, BlockData bedrockBlock) {
+    private BukkitRunnable onPasteComplete(FitAnything fitAnything, Location location) {
         return new BukkitRunnable() {
             @Override
             public void run() {
@@ -189,7 +158,8 @@ public class FitAnything {
                         exception.printStackTrace();
                     }
                     try {
-                        clearTrees(location);
+                        if (fitAnything instanceof FitSurfaceBuilding)
+                            clearTrees(location);
                     } catch (Exception exception) {
                         Logger.warn("Failed to correctly clear trees!");
                         exception.printStackTrace();
@@ -296,20 +266,20 @@ public class FitAnything {
     }
 
     private void clearTrees(Location location) {
-        Location highestCorner = location.clone().add(schematicOffset).add(new Vector(0, schematicClipboard.getDimensions().y(), 0));
+        Location highestCorner = location.clone().add(schematicOffset).add(new Vector(0, schematicClipboard.getDimensions().y() + 1, 0));
         boolean detectedTreeElement = true;
-        for (int y = 0; y < 31; y++) {
-            if (!detectedTreeElement) return;
-            detectedTreeElement = false;
-            for (int x = 0; x < schematicClipboard.getDimensions().x(); x++)
-                for (int z = 0; z < schematicClipboard.getDimensions().z(); z++) {
+        for (int x = 0; x < schematicClipboard.getDimensions().x(); x++)
+            for (int z = 0; z < schematicClipboard.getDimensions().z(); z++) {
+                for (int y = 0; y < 31; y++) {
+                    if (!detectedTreeElement) break;
+                    detectedTreeElement = false;
                     Block block = highestCorner.clone().add(new Vector(x, y, z)).getBlock();
                     if (SurfaceMaterials.ignorable(block.getType()) && !block.getType().isAir()) {
                         detectedTreeElement = true;
                         block.setType(Material.AIR);
                     }
                 }
-        }
+            }
     }
 
     private void fillChests() {
@@ -383,8 +353,5 @@ public class FitAnything {
             if (!MythicMobs.Spawn(mobLocation, entry.getValue())) return;
         }
         // carm end - Support for MythicMobs
-    }
-
-    public record PasteBlock(Block block, BlockData blockData) {
     }
 }
