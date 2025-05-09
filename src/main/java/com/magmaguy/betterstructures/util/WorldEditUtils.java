@@ -3,15 +3,32 @@ package com.magmaguy.betterstructures.util;
 import com.sk89q.jnbt.CompoundTag;
 import com.sk89q.jnbt.ListTag;
 import com.sk89q.jnbt.StringTag;
+import com.sk89q.worldedit.WorldEditException;
+import com.sk89q.worldedit.entity.BaseEntity;
+import com.sk89q.worldedit.entity.Entity;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
+import com.sk89q.worldedit.function.operation.Operation;
+import com.sk89q.worldedit.math.BlockVector2;
+import com.sk89q.worldedit.math.BlockVector3;
+import com.sk89q.worldedit.math.Vector3;
+import com.sk89q.worldedit.regions.CuboidRegion;
+import com.sk89q.worldedit.regions.Region;
+import com.sk89q.worldedit.regions.RegionOperationException;
+import com.sk89q.worldedit.world.World;
 import com.sk89q.worldedit.world.block.BaseBlock;
+import com.sk89q.worldedit.world.block.BlockState;
+import com.sk89q.worldedit.world.block.BlockStateHolder;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.util.Vector;
 import org.checkerframework.checker.index.qual.Positive;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -110,5 +127,76 @@ public class WorldEditUtils {
             Bukkit.getLogger().warning("Unexpected sign format in new read!\n" + data);
         }
         return null;
+    }
+
+    public static Clipboard createSingleBlockClipboard(Location location, BaseBlock baseBlock, BlockState blockState) {
+        return new Clipboard() {
+            @Override
+            public <T extends BlockStateHolder<T>> boolean setBlock(BlockVector3 position, T block) throws WorldEditException {
+                return false;
+            }
+
+            @Nullable
+            @Override
+            public Operation commit() {
+                return null;
+            }
+
+            @Override
+            public BlockState getBlock(BlockVector3 position) {
+                return blockState;
+            }
+
+            @Override
+            public BaseBlock getFullBlock(BlockVector3 position) {
+                return baseBlock;
+            }
+
+            @Override
+            public BlockVector3 getMinimumPoint() {
+                return new BlockVector3(0,0,0);
+            }
+
+            @Override
+            public BlockVector3 getMaximumPoint() {
+                return new BlockVector3(0,0,0);
+            }
+
+            @Override
+            public List<? extends Entity> getEntities(Region region) {
+                return new ArrayList<>();
+            }
+
+            @Override
+            public List<? extends Entity> getEntities() {
+                return new ArrayList<>();
+            }
+
+            @Nullable
+            @Override
+            public Entity createEntity(com.sk89q.worldedit.util.Location location, BaseEntity entity) {
+                return null;
+            }
+
+            @Override
+            public Region getRegion() {
+                return new CuboidRegion(new BlockVector3(0,0,0), new BlockVector3(0,0,0));
+            }
+
+            @Override
+            public BlockVector3 getDimensions() {
+                return new BlockVector3(1,1,1);
+            }
+
+            @Override
+            public BlockVector3 getOrigin() {
+                return new BlockVector3(0,0,0);
+            }
+
+            @Override
+            public void setOrigin(BlockVector3 origin) {
+
+            }
+        };
     }
 }
