@@ -20,6 +20,7 @@ import com.sk89q.worldedit.world.block.BlockState;
 import com.sk89q.worldedit.world.block.BlockStateHolder;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.util.BlockVector;
 import org.bukkit.util.Vector;
 import org.checkerframework.checker.index.qual.Positive;
 import org.jetbrains.annotations.NotNull;
@@ -154,12 +155,12 @@ public class WorldEditUtils {
 
             @Override
             public BlockVector3 getMinimumPoint() {
-                return new BlockVector3(0,0,0);
+                return BlockVector3.at(0,0,0);
             }
 
             @Override
             public BlockVector3 getMaximumPoint() {
-                return new BlockVector3(0,0,0);
+                return BlockVector3.at(0,0,0);
             }
 
             @Override
@@ -180,17 +181,17 @@ public class WorldEditUtils {
 
             @Override
             public Region getRegion() {
-                return new CuboidRegion(new BlockVector3(0,0,0), new BlockVector3(0,0,0));
+                return new CuboidRegion(BlockVector3.at(0,0,0), BlockVector3.at(0,0,0));
             }
 
             @Override
             public BlockVector3 getDimensions() {
-                return new BlockVector3(1,1,1);
+                return BlockVector3.at(1,1,1);
             }
 
             @Override
             public BlockVector3 getOrigin() {
-                return new BlockVector3(0,0,0);
+                return BlockVector3.at(0,0,0);
             }
 
             @Override

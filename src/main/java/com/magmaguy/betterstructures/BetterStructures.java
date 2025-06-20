@@ -80,6 +80,7 @@ public final class BetterStructures extends JavaPlugin {
         commandManager.registerCommand(new GenerateModulesInstantlyCommand());
         commandManager.registerCommand(new GenerateModulesSlowlyCommand());
         commandManager.registerCommand(new GenerateModulesCommand());
+        commandManager.registerCommand(new BetterStructuresCommand());
 
         VersionChecker.checkPluginVersion();
         if (Bukkit.getPluginManager().getPlugin("WorldGuard") != null &&
