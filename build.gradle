@@ -6,7 +6,7 @@ plugins {
 }
 
 group = 'com.magmaguy'
-version = '1.8.1'
+version = '1.8.2'
 
 repositories {
     mavenCentral()
@@ -24,14 +24,14 @@ repositories {
 
 dependencies {
     annotationProcessor 'org.projectlombok:lombok:1.18.22'
-    implementation (group: 'com.magmaguy', name: 'MagmaCore', version: '1.13-SNAPSHOT'){
+    implementation (group: 'com.magmaguy', name: 'MagmaCore', version: '1.15-SNAPSHOT'){
         changing = true
     }
     implementation group: 'org.bstats', name: 'bstats-bukkit', version: '2.2.1'
     implementation 'org.apache.commons:commons-lang3:3.9'
     implementation group: 'org.reflections', name: 'reflections', version: '0.9.12'
     implementation group: 'org.joml', name: 'joml', version: '1.10.8'
-    implementation(group: 'com.magmaguy', name: 'EasyMinecraftGoals-dist', version: '1.19.2-SNAPSHOT') {
+    implementation(group: 'com.magmaguy', name: 'EasyMinecraftGoals-dist', version: '1.19.6-SNAPSHOT') {
         changing = true
     }
     compileOnly group: 'com.magmaguy', name: 'EliteMobs', version: '9.3.3-SNAPSHOT'
