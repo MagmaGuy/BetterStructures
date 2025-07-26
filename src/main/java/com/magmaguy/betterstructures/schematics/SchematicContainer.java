@@ -17,7 +17,6 @@ import lombok.Getter;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.World;
-import org.bukkit.block.Biome;
 import org.bukkit.entity.EntityType;
 import org.bukkit.util.Vector;
 

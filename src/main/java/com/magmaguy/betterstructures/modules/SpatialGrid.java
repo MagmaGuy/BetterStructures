@@ -1,9 +1,7 @@
 package com.magmaguy.betterstructures.modules;
 
 import com.magmaguy.betterstructures.config.modules.WaveFunctionCollapseGenerator;
-import com.magmaguy.magmacore.util.Logger;
 import lombok.Getter;
-import org.bukkit.World;
 import org.joml.Vector3i;
 
 import java.util.*;

@@ -1,7 +1,6 @@
 package com.magmaguy.betterstructures.config.modules;
 
 import com.magmaguy.betterstructures.config.DefaultConfig;
-import com.magmaguy.magmacore.util.Logger;
 import lombok.Getter;
 import org.bukkit.entity.Player;
 

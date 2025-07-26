@@ -1,7 +1,6 @@
 package com.magmaguy.betterstructures.worldedit;
 
 import com.magmaguy.betterstructures.MetadataHandler;
-import com.magmaguy.betterstructures.buildingfitter.FitAnything;
 import com.magmaguy.betterstructures.config.DefaultConfig;
 import com.magmaguy.betterstructures.util.WorldEditUtils;
 import com.magmaguy.betterstructures.util.distributedload.WorkloadRunnable;
@@ -31,11 +30,7 @@ import org.bukkit.util.Vector;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.NoSuchElementException;
-import java.util.Queue;
+import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Function;
 

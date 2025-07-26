@@ -10,7 +10,6 @@ import com.magmaguy.magmacore.command.arguments.ListStringCommandArgument;
 import com.magmaguy.magmacore.command.arguments.WorldCommandArgument;
 import com.magmaguy.magmacore.util.Logger;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class GenerateModulesSlowlyCommand extends AdvancedCommand {

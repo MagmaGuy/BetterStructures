@@ -6,10 +6,11 @@ plugins {
 }
 
 group = 'com.magmaguy'
-version = '1.8.2'
+version = '1.8.3'
 
 repositories {
     mavenCentral()
+    mavenLocal()
     maven {
         name = 'spigotmc-repo'
         url = 'https://hub.spigotmc.org/nexus/content/repositories/snapshots/'
@@ -23,15 +24,17 @@ repositories {
 }
 
 dependencies {
-    annotationProcessor 'org.projectlombok:lombok:1.18.22'
-    implementation (group: 'com.magmaguy', name: 'MagmaCore', version: '1.15-SNAPSHOT'){
+    annotationProcessor 'org.projectlombok:lombok:1.18.30'
+    compileOnly 'org.projectlombok:lombok:1.18.30'
+
+    implementation (group: 'com.magmaguy', name: 'MagmaCore', version: '1.18-SNAPSHOT'){
         changing = true
     }
     implementation group: 'org.bstats', name: 'bstats-bukkit', version: '2.2.1'
     implementation 'org.apache.commons:commons-lang3:3.9'
-    implementation group: 'org.reflections', name: 'reflections', version: '0.9.12'
+    implementation group: 'org.reflections', name: 'reflections', version: '0.10.2'
     implementation group: 'org.joml', name: 'joml', version: '1.10.8'
-    implementation(group: 'com.magmaguy', name: 'EasyMinecraftGoals-dist', version: '1.19.6-SNAPSHOT') {
+    implementation (group: 'com.magmaguy', name: 'EasyMinecraftGoals-dist', version: '1.19.10') {
         changing = true
     }
     compileOnly group: 'com.magmaguy', name: 'EliteMobs', version: '9.3.3-SNAPSHOT'
@@ -40,7 +43,6 @@ dependencies {
     compileOnly group: 'net.Indyuce', name: 'MMOItems-API', version: '6.9.2-SNAPSHOT'
     compileOnly group: 'com.sk89q.worldguard', name: 'worldguard-bukkit', version: '7.0.7'
     compileOnly group: 'com.sk89q.worldedit', name: 'worldedit-bukkit', version: '7.3.0'
-    compileOnly 'org.projectlombok:lombok:1.18.22'
     compileOnly 'org.spigotmc:spigot-api:1.21.3-R0.1-SNAPSHOT'
 }
 
@@ -63,7 +65,6 @@ String packagePath = 'com.magmaguy.shaded'
 shadowJar {
     dependencies {
         relocate('org.bstats', packagePath + '.bstats')
-//        relocate('com.magmaguy.magmacore', 'com.magmaguy.betterstructures.magmacore')
         relocate('com.magmaguy.easyminecraftgoals', 'com.magmaguy.betterstructures.easyminecraftgoals')
     }
     archiveClassifier.set(null)
@@ -79,6 +80,12 @@ ext {
     resourceTokens = [
             'Version': version
     ]
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17) // or your target version
+    }
 }
 
 processResources {

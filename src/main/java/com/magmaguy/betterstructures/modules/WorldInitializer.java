@@ -1,7 +1,6 @@
 package com.magmaguy.betterstructures.modules;
 
 import org.bukkit.GameMode;
-import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.WorldCreator;
 import org.bukkit.entity.Player;

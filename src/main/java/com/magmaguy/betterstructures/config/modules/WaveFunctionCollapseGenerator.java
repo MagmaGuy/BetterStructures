@@ -10,7 +10,6 @@ import com.magmaguy.magmacore.util.Logger;
 import com.magmaguy.magmacore.util.Round;
 import lombok.Getter;
 import org.bukkit.Bukkit;
-import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -22,7 +21,6 @@ import org.joml.Vector3i;
 import java.io.File;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class WaveFunctionCollapseGenerator {

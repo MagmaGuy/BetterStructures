@@ -27,16 +27,6 @@ public class DefaultConfig extends ConfigurationFile {
     private static int endAirBuildMinAltitude;
     @Getter
     private static int endAirBuildMaxAltitude;
-//    @Getter
-//    private static double airStructuresPerThousandChunks;
-//    @Getter
-//    private static double oceanStructuresPerThousandChunks;
-//    @Getter
-//    private static double landStructuresPerThousandChunks;
-//    @Getter
-//    private static double shallowUndergroundStructuresPerThousandChunks;
-//    @Getter
-//    private static double deepUndergroundStructuresPerThousandChunks;
     @Getter
     private static boolean newBuildingWarn;
     @Getter
@@ -108,11 +98,6 @@ public class DefaultConfig extends ConfigurationFile {
         normalCustomAirBuildingMaxAltitude = ConfigurationEngine.setInt(fileConfiguration, "normalCustomAirBuildingMaxAltitude", 120);
         endAirBuildMinAltitude = ConfigurationEngine.setInt(fileConfiguration, "endAirBuildMinAltitude", 80);
         endAirBuildMaxAltitude = ConfigurationEngine.setInt(fileConfiguration, "endAirBuildMaxAltitude", 120);
-//        airStructuresPerThousandChunks = ConfigurationEngine.setDouble(fileConfiguration, "airStructuresPerThousandChunks", 0.5);
-//        oceanStructuresPerThousandChunks = ConfigurationEngine.setDouble(fileConfiguration, "oceanStructuresPerThousandChunks", 0.5);
-//        landStructuresPerThousandChunks = ConfigurationEngine.setDouble(fileConfiguration, "landStructuresPerThousandChunks", 2.0);
-//        shallowUndergroundStructuresPerThousandChunks = ConfigurationEngine.setDouble(fileConfiguration, "shallowUndergroundStructuresPerThousandChunks", 2.0);
-//        deepUndergroundStructuresPerThousandChunks = ConfigurationEngine.setDouble(fileConfiguration, "deepUndergroundStructuresPerThousandChunks", 2.0);
         newBuildingWarn = ConfigurationEngine.setBoolean(fileConfiguration, "warnAdminsAboutNewBuildings", true);
         regionProtectedMessage = ConfigurationEngine.setString(fileConfiguration, "regionProtectedMessage", "&8[BetterStructures] &cDefeat the zone's bosses to edit blocks!");
         protectEliteMobsRegions = ConfigurationEngine.setBoolean(fileConfiguration, "protectEliteMobsRegions", true);
@@ -121,18 +106,57 @@ public class DefaultConfig extends ConfigurationFile {
         percentageOfTickUsedForPasting = ConfigurationEngine.setDouble(List.of("Sets the maximum percentage of a tick that BetterStructures will use to paste builds, however many it maybe trying to generate.", "Ranges from 0.01 to 1, where 0.01 is 1% and 1 is 100%.", "Slower speeds will lower performance impact, but can lead to other problems such as builds suddenly popping in."),fileConfiguration, "percentageOfTickUsedForPasting", 0.2);
 
         // Initialize the distances from configuration
-        distanceSurface = ConfigurationEngine.setInt(fileConfiguration, "distanceSurface", 31);
-        distanceShallow = ConfigurationEngine.setInt(fileConfiguration, "distanceShallow", 22);
-        distanceDeep = ConfigurationEngine.setInt(fileConfiguration, "distanceDeep", 22);
-        distanceSky = ConfigurationEngine.setInt(fileConfiguration, "distanceSky", 95);
-        distanceLiquid = ConfigurationEngine.setInt(fileConfiguration, "distanceLiquid", 65);
+        distanceSurface = ConfigurationEngine.setInt(
+                List.of(
+                        "Sets the distance between structures in the surface of a world.",
+                        "Shorter distances between structures will result in more structures overall."),
+                fileConfiguration, "distanceSurface", 31);
+        distanceShallow = ConfigurationEngine.setInt(
+                List.of(
+                        "Sets the distance between structures in shallow underground structure generation.",
+                        "Shorter distances between structures will result in more structures overall."),fileConfiguration, "distanceShallow", 22);
+        distanceDeep = ConfigurationEngine.setInt(
+                List.of(
+                        "Sets the distance between structures in deep underground structure generation.",
+                        "Shorter distances between structures will result in more structures overall."),
+                fileConfiguration, "distanceDeep", 22);
+        distanceSky = ConfigurationEngine.setInt(
+                List.of(
+                        "Sets the distance between structures in placed in the air.",
+                        "Shorter distances between structures will result in more structures overall."),
+                fileConfiguration, "distanceSky", 95);
+        distanceLiquid = ConfigurationEngine.setInt(
+                List.of(
+                        "Sets the distance between structures liquid surfaces such as oceans.",
+                        "Shorter distances between structures will result in more structures overall."),
+                fileConfiguration, "distanceLiquid", 65);
 
         // Initialize the maximum offsets from configuration
-        maxOffsetSurface = ConfigurationEngine.setInt(fileConfiguration, "maxOffsetSurface", 5);
-        maxOffsetShallow = ConfigurationEngine.setInt(fileConfiguration, "maxOffsetShallow", 5);
-        maxOffsetDeep = ConfigurationEngine.setInt(fileConfiguration, "maxOffsetDeep", 5);
-        maxOffsetSky = ConfigurationEngine.setInt(fileConfiguration, "maxOffsetSky", 5);
-        maxOffsetLiquid = ConfigurationEngine.setInt(fileConfiguration, "maxOffsetLiquid", 5);
+        maxOffsetSurface = ConfigurationEngine.setInt(
+                List.of(
+                        "Used to tweak the randomization of the distance between structures in the surface of a world.",
+                        "Smaller values will result in structures being more on a grid, and larger values will result in them being less predictably placed."),
+                fileConfiguration, "maxOffsetSurface", 5);
+        maxOffsetShallow = ConfigurationEngine.setInt(
+                List.of(
+                        "Used to tweak the randomization of the distance between structures in the shallow underworld of a world.",
+                        "Smaller values will result in structures being more on a grid, and larger values will result in them being less predictably placed."),
+                fileConfiguration, "maxOffsetShallow", 5);
+        maxOffsetDeep = ConfigurationEngine.setInt(
+                List.of(
+                        "Used to tweak the randomization of the distance between structures in the deep underground of a world.",
+                        "Smaller values will result in structures being more on a grid, and larger values will result in them being less predictably placed."),
+                fileConfiguration, "maxOffsetDeep", 5);
+        maxOffsetSky = ConfigurationEngine.setInt(
+                List.of(
+                        "Used to tweak the randomization of the distance between structures in the sky.",
+                        "Smaller values will result in structures being more on a grid, and larger values will result in them being less predictably placed."),
+                fileConfiguration, "maxOffsetSky", 5);
+        maxOffsetLiquid = ConfigurationEngine.setInt(
+                List.of(
+                        "Used to tweak the randomization of the distance between structures on oceans.",
+                        "Smaller values will result in structures being more on a grid, and larger values will result in them being less predictably placed."),
+                fileConfiguration, "maxOffsetLiquid", 5);
 
         ConfigurationEngine.fileSaverOnlyDefaults(fileConfiguration, file);
     }
