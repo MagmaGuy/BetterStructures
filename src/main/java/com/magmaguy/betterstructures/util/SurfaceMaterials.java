@@ -1,5 +1,6 @@
 package com.magmaguy.betterstructures.util;
 
+import com.magmaguy.magmacore.util.VersionChecker;
 import org.bukkit.Material;
 
 public class SurfaceMaterials {

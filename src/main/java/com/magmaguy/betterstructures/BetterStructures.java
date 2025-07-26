@@ -11,7 +11,6 @@ import com.magmaguy.betterstructures.config.modules.ModulesConfig;
 import com.magmaguy.betterstructures.config.modules.WaveFunctionCollapseGenerator;
 import com.magmaguy.betterstructures.config.schematics.SchematicConfig;
 import com.magmaguy.betterstructures.config.spawnpools.SpawnPoolsConfig;
-import com.magmaguy.betterstructures.config.spawnpools.SpawnPoolsConfigFields;
 import com.magmaguy.betterstructures.config.treasures.TreasureConfig;
 import com.magmaguy.betterstructures.content.BSPackage;
 import com.magmaguy.betterstructures.listeners.FirstTimeSetupWarner;
@@ -19,7 +18,7 @@ import com.magmaguy.betterstructures.listeners.NewChunkLoadEvent;
 import com.magmaguy.betterstructures.modules.ModulesContainer;
 import com.magmaguy.betterstructures.schematics.SchematicContainer;
 import com.magmaguy.betterstructures.thirdparty.WorldGuard;
-import com.magmaguy.betterstructures.util.VersionChecker;
+import com.magmaguy.easyminecraftgoals.NMSManager;
 import com.magmaguy.magmacore.MagmaCore;
 import com.magmaguy.magmacore.command.CommandManager;
 import com.magmaguy.magmacore.util.Logger;
@@ -29,7 +28,6 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.IOException;
-import com.magmaguy.easyminecraftgoals.NMSManager;
 
 public final class BetterStructures extends JavaPlugin {
 
@@ -46,7 +44,6 @@ public final class BetterStructures extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(new NewChunkLoadEvent(), this);
         Bukkit.getPluginManager().registerEvents(new FirstTimeSetupWarner(), this);
         Bukkit.getPluginManager().registerEvents(new ValidWorldsConfig.ValidWorldsConfigEvents(), this);
-        Bukkit.getPluginManager().registerEvents(new VersionChecker.VersionCheckerEvents(), this);
         try {
             this.getConfig().save("config.yml");
         } catch (IOException e) {
@@ -82,7 +79,8 @@ public final class BetterStructures extends JavaPlugin {
         commandManager.registerCommand(new GenerateModulesCommand());
         commandManager.registerCommand(new BetterStructuresCommand());
 
-        VersionChecker.checkPluginVersion();
+        MagmaCore.checkVersionUpdate("103241", "https://www.spigotmc.org/resources/betterstructures.103241");
+
         if (Bukkit.getPluginManager().getPlugin("WorldGuard") != null &&
                 Bukkit.getPluginManager().getPlugin("EliteMobs") != null)
             Bukkit.getPluginManager().registerEvents(new WorldGuard(), this);

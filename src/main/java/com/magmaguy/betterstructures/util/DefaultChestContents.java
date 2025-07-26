@@ -1,5 +1,6 @@
 package com.magmaguy.betterstructures.util;
 
+import com.magmaguy.magmacore.util.VersionChecker;
 import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.ItemStack;

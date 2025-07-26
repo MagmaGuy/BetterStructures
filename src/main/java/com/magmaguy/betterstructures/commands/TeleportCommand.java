@@ -9,9 +9,7 @@ import com.magmaguy.magmacore.util.Logger;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
-import org.bukkit.entity.Player;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class TeleportCommand extends AdvancedCommand {

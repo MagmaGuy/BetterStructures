@@ -1,8 +1,8 @@
 package com.magmaguy.betterstructures.config.modules;
 
+import com.magmaguy.betterstructures.MetadataHandler;
 import com.magmaguy.betterstructures.modules.ModulesContainer;
 import com.magmaguy.betterstructures.worldedit.Schematic;
-import com.magmaguy.betterstructures.MetadataHandler;
 import com.magmaguy.magmacore.config.CustomConfig;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
 import lombok.Getter;

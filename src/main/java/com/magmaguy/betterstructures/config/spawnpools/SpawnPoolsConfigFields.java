@@ -1,8 +1,6 @@
 package com.magmaguy.betterstructures.config.spawnpools;
 
-import com.magmaguy.magmacore.config.ConfigurationEngine;
 import com.magmaguy.magmacore.config.CustomConfigFields;
-import com.magmaguy.magmacore.util.Logger;
 import lombok.Getter;
 
 import java.util.ArrayList;

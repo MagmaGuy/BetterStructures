@@ -1,8 +1,8 @@
 package com.magmaguy.betterstructures.config.generators;
 
+import com.magmaguy.betterstructures.chests.ChestContents;
 import com.magmaguy.betterstructures.config.treasures.TreasureConfig;
 import com.magmaguy.betterstructures.config.treasures.TreasureConfigFields;
-import com.magmaguy.betterstructures.chests.ChestContents;
 import com.magmaguy.magmacore.config.CustomConfigFields;
 import com.magmaguy.magmacore.thirdparty.CustomBiomeCompatibility;
 import com.magmaguy.magmacore.util.Logger;
@@ -11,11 +11,7 @@ import lombok.Setter;
 import org.bukkit.World;
 import org.bukkit.block.Biome;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Set;
+import java.util.*;
 
 public class GeneratorConfigFields extends CustomConfigFields {
 

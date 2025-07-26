@@ -1,7 +1,7 @@
 package com.magmaguy.betterstructures.menus;
 
-import com.magmaguy.betterstructures.config.schematics.SchematicConfig;
 import com.magmaguy.betterstructures.config.DefaultConfig;
+import com.magmaguy.betterstructures.config.schematics.SchematicConfig;
 import com.magmaguy.magmacore.menus.MenuButton;
 import com.magmaguy.magmacore.util.ItemStackGenerator;
 import com.magmaguy.magmacore.util.Logger;

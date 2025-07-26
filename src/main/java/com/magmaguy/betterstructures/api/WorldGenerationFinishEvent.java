@@ -2,13 +2,9 @@ package com.magmaguy.betterstructures.api;
 
 import com.magmaguy.betterstructures.config.modules.ModularWorld;
 import lombok.Getter;
-import org.bukkit.Location;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
 import org.jetbrains.annotations.NotNull;
-import org.joml.Vector3i;
-
-import java.util.concurrent.ThreadLocalRandom;
 
 public class WorldGenerationFinishEvent extends Event {
 

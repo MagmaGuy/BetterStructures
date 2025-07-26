@@ -1,7 +1,7 @@
 package com.magmaguy.betterstructures.config.schematics;
 
-import com.magmaguy.betterstructures.schematics.SchematicContainer;
 import com.magmaguy.betterstructures.MetadataHandler;
+import com.magmaguy.betterstructures.schematics.SchematicContainer;
 import com.magmaguy.betterstructures.worldedit.Schematic;
 import com.magmaguy.magmacore.config.CustomConfig;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;

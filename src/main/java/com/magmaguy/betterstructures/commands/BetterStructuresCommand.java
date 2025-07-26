@@ -1,13 +1,11 @@
 package com.magmaguy.betterstructures.commands;
 
-import com.magmaguy.betterstructures.menus.BetterStructuresFirstTimeSetupMenu;
 import com.magmaguy.magmacore.command.AdvancedCommand;
 import com.magmaguy.magmacore.command.CommandData;
 import com.magmaguy.magmacore.command.SenderType;
 import com.magmaguy.magmacore.util.Logger;
 
 import java.util.ArrayList;
-import java.util.List;
 
 public class BetterStructuresCommand extends AdvancedCommand {
     public BetterStructuresCommand() {
