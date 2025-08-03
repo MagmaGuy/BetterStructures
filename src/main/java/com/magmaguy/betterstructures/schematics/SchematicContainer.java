@@ -21,6 +21,7 @@ import org.bukkit.entity.EntityType;
 import org.bukkit.util.Vector;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -53,6 +54,10 @@ public class SchematicContainer {
     @Getter
     private boolean valid = true;
 
+    private List<Material> signs = Arrays.stream(Material.values()).parallel()
+            .filter(it -> it.name().endsWith("SIGN"))
+            .toList();
+
     public SchematicContainer(Clipboard clipboard, String clipboardFilename, SchematicConfigField schematicConfigField, String configFilename) {
         this.clipboard = clipboard;
         this.clipboardFilename = clipboardFilename;
@@ -76,22 +81,8 @@ public class SchematicContainer {
                             minecraftMaterial.equals(Material.SHULKER_BOX)) {
                         chestLocations.add(new Vector(x, y, z));
                     }
-                    if (minecraftMaterial.equals(Material.ACACIA_SIGN) ||
-                            minecraftMaterial.equals(Material.ACACIA_WALL_SIGN) ||
-                            minecraftMaterial.equals(Material.SPRUCE_SIGN) ||
-                            minecraftMaterial.equals(Material.SPRUCE_WALL_SIGN) ||
-                            minecraftMaterial.equals(Material.BIRCH_SIGN) ||
-                            minecraftMaterial.equals(Material.BIRCH_WALL_SIGN) ||
-                            minecraftMaterial.equals(Material.CRIMSON_SIGN) ||
-                            minecraftMaterial.equals(Material.CRIMSON_WALL_SIGN) ||
-                            minecraftMaterial.equals(Material.DARK_OAK_SIGN) ||
-                            minecraftMaterial.equals(Material.DARK_OAK_WALL_SIGN) ||
-                            minecraftMaterial.equals(Material.JUNGLE_SIGN) ||
-                            minecraftMaterial.equals(Material.JUNGLE_WALL_SIGN) ||
-                            minecraftMaterial.equals(Material.OAK_SIGN) ||
-                            minecraftMaterial.equals(Material.OAK_WALL_SIGN) ||
-                            minecraftMaterial.equals(Material.WARPED_SIGN) ||
-                            minecraftMaterial.equals(Material.WARPED_WALL_SIGN)) {
+
+                    if (signs.contains(minecraftMaterial)) {
                         BaseBlock baseBlock = clipboard.getFullBlock(translatedLocation);
                         //For future reference, I don't know how to get the data in any other way than parsing the string. Sorry!
                         String line1 = WorldEditUtils.getLine(baseBlock, 1);
