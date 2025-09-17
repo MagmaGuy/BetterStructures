@@ -1,19 +1,18 @@
 package com.magmaguy.betterstructures.modules;
 
 import com.magmaguy.betterstructures.config.modules.WaveFunctionCollapseGenerator;
+import com.magmaguy.magmacore.util.Logger;
 import lombok.Getter;
 import org.joml.Vector3i;
 
 import java.util.*;
 
 public class SpatialGrid {
-    public static final int DEFAULT_MIN_Y_LEVEL = -4;
-    public static final int DEFAULT_MAX_Y_LEVEL = 20;
-
     private static final Map<Direction, Vector3i> DIRECTION_OFFSETS = new EnumMap<>(Direction.class);
 
     @Getter private final int gridRadius;
-    @Getter private final int chunkSize;
+    @Getter private final int chunkSizeXZ;
+    @Getter private final int chunkSizeY;
     @Getter private final int minYLevel;
     @Getter private final int maxYLevel;
     @Getter private final Map<Vector3i, GridCell> cellMap;
@@ -32,15 +31,10 @@ public class SpatialGrid {
         DIRECTION_OFFSETS.put(Direction.DOWN, new Vector3i(0, -1, 0));
     }
 
-    public SpatialGrid(int gridRadius, int chunkSize) {
-        this(gridRadius, chunkSize, DEFAULT_MIN_Y_LEVEL, DEFAULT_MAX_Y_LEVEL);
-    }
-
-    public SpatialGrid(int gridRadius, int chunkSize, int minYLevel, int maxYLevel) {
-        validateConstructorParameters(gridRadius, chunkSize, minYLevel, maxYLevel);
-
+    public SpatialGrid(int gridRadius, int chunkSizeXZ, int chunkSizeY, int minYLevel, int maxYLevel) {
         this.gridRadius = gridRadius;
-        this.chunkSize = chunkSize;
+        this.chunkSizeXZ = chunkSizeXZ;
+        this.chunkSizeY = chunkSizeY;
         this.minYLevel = minYLevel;
         this.maxYLevel = maxYLevel;
         this.cellMap = new HashMap<>();
@@ -49,19 +43,11 @@ public class SpatialGrid {
         this.gridCellQueue = new PriorityQueue<>(cellComparator);
     }
 
-    private void validateConstructorParameters(int gridRadius, int chunkSize, int minYLevel, int maxYLevel) {
-        if (gridRadius <= 0) {
-            throw new IllegalArgumentException("Grid radius must be positive");
-        }
-        if (chunkSize <= 0) {
-            throw new IllegalArgumentException("Chunk size must be positive");
-        }
-        if (minYLevel >= maxYLevel) {
-            throw new IllegalArgumentException("Minimum Y-level must be less than maximum Y-level");
-        }
-    }
-
     private Comparator<GridCell> createCellComparator() {
+        //This way of comparing things is faster for small gens which are the ones we're currently using, but much slower at a scale due to the way things roll back
+//        return Comparator
+//                .comparingInt(GridCell::getValidOptionCount)
+//                .thenComparingInt(GridCell::getMagnitudeSquared);
         return Comparator
                 .comparingInt(GridCell::getMagnitudeSquared)
                 .thenComparingInt(GridCell::getValidOptionCount);
@@ -89,6 +75,23 @@ public class SpatialGrid {
         gridCellQueue.remove(gridCell);
         gridCell.updateValidOptions();
         gridCellQueue.add(gridCell);
+    }
+
+    public void rollbackCell(GridCell gridCell){
+        if (gridCell.isStartModule()) {
+            Logger.warn("Tried to rollback start module! This shouldn't happen.");
+            return;
+        }
+
+        gridCellQueue.remove(gridCell);
+
+        for (GridCell value : gridCell.getOrientedNeighbors().values()) {
+            if (value == null) continue;
+            value.resetData();
+            updateCellPriority(value);
+        }
+
+        gridCell.resetData();
     }
 
     private boolean isNothing(GridCell cell) {
@@ -135,15 +138,11 @@ public class SpatialGrid {
             GridCell existingNeighbor = cellMap.get(neighborLocation);
             if (existingNeighbor == null) {
                 // Create new neighbor only if the current cell isn't "nothing"
-                GridCell neighborCell = createNeighborCell(neighborLocation, gridCell, waveFunctionCollapseGenerator);
+                GridCell neighborCell = new GridCell(neighborLocation, gridCell.getWorld(), this, cellMap, waveFunctionCollapseGenerator);
                 cellMap.put(neighborLocation, neighborCell);
                 enqueueCell(neighborCell);
             }
         }
-    }
-
-    private GridCell createNeighborCell(Vector3i location, GridCell referenceCell, WaveFunctionCollapseGenerator waveFunctionCollapseGenerator) {
-        return new GridCell(location, referenceCell.getWorld(), this, cellMap, waveFunctionCollapseGenerator);
     }
 
     public boolean isWithinBounds(Vector3i location) {
@@ -168,22 +167,34 @@ public class SpatialGrid {
         while (next != null && isNothing(next)) {
             next = gridCellQueue.poll();
         }
+
+        //Skip if it has no generated neighbors, it's some random island in the sky that got detached
+        boolean hasGeneratedNeighbors = false;
+        for (GridCell value : next.getOrientedNeighbors().values()) {
+            if (value !=null && value.isGenerated()) {
+                hasGeneratedNeighbors = true;
+                break;
+            }
+        }
+        if (!hasGeneratedNeighbors)
+            next = gridCellQueue.poll();
+
         return next;
     }
 
     public Vector3i worldToGrid(Vector3i worldCoord) {
         return new Vector3i(
-                Math.floorDiv(worldCoord.x, chunkSize),
-                Math.floorDiv(worldCoord.y, chunkSize),
-                Math.floorDiv(worldCoord.z, chunkSize)
+                Math.floorDiv(worldCoord.x, chunkSizeXZ),
+                Math.floorDiv(worldCoord.y, chunkSizeY),
+                Math.floorDiv(worldCoord.z, chunkSizeXZ)
         );
     }
 
     public Vector3i gridToWorld(Vector3i gridCoord) {
         return new Vector3i(
-                gridCoord.x * chunkSize + (chunkSize / 2),
-                gridCoord.y * chunkSize + (chunkSize / 2),
-                gridCoord.z * chunkSize + (chunkSize / 2)
+                gridCoord.x * chunkSizeXZ + (-chunkSizeXZ / 2),
+                gridCoord.y * chunkSizeY + (chunkSizeY / 2),
+                gridCoord.z * chunkSizeXZ + (-chunkSizeXZ / 2)
         );
     }
 }

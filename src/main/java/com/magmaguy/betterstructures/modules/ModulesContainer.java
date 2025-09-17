@@ -13,8 +13,6 @@ public class ModulesContainer {
 
     @Getter
     private static final HashMap<String, ModulesContainer> modulesContainers = new HashMap<>();
-    @Getter
-//    private static final HashMap<String, Integer> tagOccurrences = new HashMap<>();
     private static final List<Integer> validRotations = Arrays.asList(0, 90, 180, 270);
     @Getter
     private final Clipboard clipboard;
@@ -33,6 +31,7 @@ public class ModulesContainer {
     @Getter
     private boolean horizontalEdge = false;
     private static final String WORLD_BORDER = "world_border";
+    private static ModulesContainer nothingContainer;
 
     public ModulesContainer(Clipboard clipboard, String clipboardFilename, ModulesConfigFields modulesConfigField, String configFilename, int rotation) {
         this.clipboard = clipboard;
@@ -62,28 +61,24 @@ public class ModulesContainer {
                 for (ModulesContainer neighborContainer : modulesContainers.values()) {
                     List<NeighborTag> neighborTags = neighborContainer.borderTags.neighborMap.get(direction.getOpposite());
                     for (NeighborTag borderTag : borderTags) {
-//                        boolean valid = false; todo: investigate why I wrote this and if it's really necessary
                         for (NeighborTag neighborTag : neighborTags) {
                             //"nothing" is a special module, borders that share "nothing" should not be joined and instead they should only join with empty space
                             if (borderTag.getTag().equalsIgnoreCase("nothing")) {
                                 modulesContainer.validBorders.computeIfAbsent(direction, k -> new HashSet<>()).add(modulesContainers.get("nothing"));
+                                nothingContainer.validBorders.computeIfAbsent(direction.getOpposite(), k -> new HashSet<>()).add(modulesContainer);
                                 continue;
                             }
                             //"world_border" is a special module, borders that share "world_border" should not be joined and the only thing they should join with is spaces beyond the radius of the grid
                             if (borderTag.getTag().equalsIgnoreCase(WORLD_BORDER)) {
-//                                modulesContainer.validBorders.computeIfAbsent(direction, k -> new HashSet<>()).add(modulesContainers.get("world_border"));
                                 modulesContainer.validBorders.computeIfAbsent(direction, k -> new HashSet<>()).add(neighborContainer);
-//                                Logger.debug("hit world border for build " + modulesContainer.clipboardFilename);
                                 modulesContainer.horizontalEdge = true;
                                 continue;
                             }
                             if (borderTag.getTag().equals(neighborTag.getTag()) && (borderTag.isCanMirror() || neighborTag.isCanMirror())) {
                                 modulesContainer.validBorders.computeIfAbsent(direction, k -> new HashSet<>()).add(neighborContainer);
-//                                valid = true;
                                 break;
                             }
                         }
-//                        if (valid) break;
                     }
                 }
             }
@@ -98,8 +93,8 @@ public class ModulesContainer {
 
     public static void initializeSpecialModules() {
         //Initialize "nothing", a reserved name with special behavior
-        ModulesContainer nothing = new ModulesContainer(null, "nothing", new ModulesConfigFields("nothing", true), null, 0);
-        nothing.borderTags = new BorderTags(Map.of(
+        nothingContainer = new ModulesContainer(null, "nothing", new ModulesConfigFields("nothing", true), null, 0);
+        nothingContainer.borderTags = new BorderTags(Map.of(
                 Direction.NORTH, Collections.singletonList(new NeighborTag("nothing")),
                 Direction.SOUTH, Collections.singletonList(new NeighborTag("nothing")),
                 Direction.EAST, Collections.singletonList(new NeighborTag("nothing")),
@@ -115,8 +110,6 @@ public class ModulesContainer {
     public static HashSet<ModulesContainer> getValidModulesFromSurroundings(GridCell gridCell) {
         HashSet<ModulesContainer> validModules = null;
         boolean isGridBorder = gridCell.getWaveFunctionCollapseGenerator().getSpatialGrid().isBorder(gridCell.getCellLocation());
-//        if (isGridBorder) Logger.debug("successfully determined a module was a border");
-//        Logger.debug("Getting valid modules from surroundings for " + gridCell.getCellLocation());
 
         for (Map.Entry<Direction, GridCell> buildBorderChunkDataEntry : gridCell.getOrientedNeighbors().entrySet()) {
             Direction direction = buildBorderChunkDataEntry.getKey();
@@ -126,12 +119,13 @@ public class ModulesContainer {
 
             HashSet<ModulesContainer> validBorderSpecificModules = new HashSet<>();
 
-            //This is necessary for the edge case where there's borders and they can have a scenario where only 'nothing' can be up against them
-            boolean canOnlyBeNothingOrBorder = true;
-
 //            if (buildBorderChunkDataEntry.getValue().getModulesContainer().validBorders.get(direction.getOpposite()) == null)
 //                Logger.debug("no valid direction " + direction.getOpposite() + " for " + buildBorderChunkDataEntry.getValue().getModulesContainer().getClipboardFilename() + " as it was " + buildBorderChunkDataEntry.getValue().getModulesContainer().validBorders);
 
+//            if (buildBorderChunkDataEntry.getValue().getModulesContainer().isNothing()){
+//            }
+
+//            validModules.add(modulesContainers.get("nothing"));
 
             for (ModulesContainer modulesContainer : buildBorderChunkDataEntry.getValue().getModulesContainer().validBorders.get(direction.getOpposite())) {
                 if (modulesContainer == null) {
@@ -147,10 +141,6 @@ public class ModulesContainer {
 //                        Logger.debug("Prevented placement of border in non-border zone");
                         continue;
                     }
-
-                if (!isGridBorder) canOnlyBeNothingOrBorder = false;
-                else if (!modulesContainer.nothing && !modulesContainer.isHorizontalEdge())
-                    canOnlyBeNothingOrBorder = false;
 
                 boolean repeatStop = false;
                 for (GridCell neighbourData : gridCell.getOrientedNeighbors().values()) {
@@ -219,10 +209,6 @@ public class ModulesContainer {
                 if (!validBorderSpecificModules.isEmpty())
                     validModules.retainAll(validBorderSpecificModules);
             }
-
-            if (validModules.isEmpty() && canOnlyBeNothingOrBorder) {
-                validModules.add(modulesContainers.get("nothing"));
-            }
         }
 
         if (validModules == null || validModules.isEmpty()) {
@@ -230,14 +216,6 @@ public class ModulesContainer {
             return new HashSet<>();
         }
         return validModules;
-    }
-
-    private static String debugGridCellList(HashSet<ModulesContainer> validBorderSpecificModules) {
-        String string = "";
-        for (ModulesContainer validBorderSpecificModule : validBorderSpecificModules) {
-            string += validBorderSpecificModule.clipboardFilename + ", ";
-        }
-        return string;
     }
 
     private static boolean checkVerticalRotationValidity(Direction direction, ModulesContainer module, ModulesContainer neighbour) {
@@ -257,32 +235,6 @@ public class ModulesContainer {
         else
             return module.rotation == neighbour.rotation;
     }
-
-    public static ModulesContainer pickRandomModule(HashSet<ModulesContainer> modulesContainerList, GridCell gridCell) {
-//        Logger.debug("About to pick module");
-        if (modulesContainerList == null || modulesContainerList.isEmpty()) return null;
-//        Logger.debug("Picking module from " + modulesContainerList.size() + " modules");
-        return pickWeightedRandomModule(modulesContainerList, gridCell);
-    }
-
-//    public static ModulesContainer pickWeightedRandomModule(List<ModulesContainer> modules,
-//                                                            GridCell gridCell) {
-//        Map<Integer, Double> weightMap = new HashMap<>();
-//        Map<Integer, ModulesContainer> moduleMap = new HashMap<>();
-//        for (int i = 0; i < modules.size(); i++) {
-//            ModulesContainer modulesContainer = modules.get(i);
-//            double weight = modulesContainer.getWeight();
-//            if (!modulesContainer.nothing && modulesContainer.getModulesConfigField().getRepetitionPenalty() != 0) {
-//                for (GridCell value : gridCell.getOrientedNeighbors().values()) {
-//                    if (value != null && value.getModulesContainer() != null && modules.get(i).getClipboardFilename().equals(value.getModulesContainer().getClipboardFilename()))
-//                        weight += modules.get(i).getModulesConfigField().getRepetitionPenalty();
-//                }
-//            }
-//            weightMap.put(i, weight);
-//            moduleMap.put(i, modules.get(i));
-//        }
-//        return moduleMap.get(WeighedProbability.pickWeightedProbability(weightMap));
-//    }
 
     public static ModulesContainer pickWeightedRandomModule(HashSet<ModulesContainer> modules, GridCell gridCell) {
         Map<Integer, Double> weightMap = new HashMap<>();
@@ -369,7 +321,6 @@ public class ModulesContainer {
             }
             if (tag.equalsIgnoreCase(WORLD_BORDER)) {
                 isWorldBorder = true;
-//                Logger.debug("detected world border tag!");
             }
         }
     }

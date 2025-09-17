@@ -1,6 +1,7 @@
 package com.magmaguy.betterstructures.modules;
 
 import com.magmaguy.betterstructures.MetadataHandler;
+import com.magmaguy.betterstructures.config.modules.ModulePasting;
 import com.magmaguy.betterstructures.config.modules.WaveFunctionCollapseGenerator;
 import com.magmaguy.magmacore.util.Logger;
 import lombok.Getter;
@@ -31,16 +32,23 @@ public class GridCell {
     @Getter
     private final int magnitudeSquared;
     @Getter
-    @Setter
-    private ModulesContainer modulesContainer;
+    private final WaveFunctionCollapseGenerator waveFunctionCollapseGenerator;
     @Getter
-    @Setter
-    private int generatedNeighborCount = 0;
+    private ModulesContainer modulesContainer;
     @Getter
     private HashSet<ModulesContainer> validOptions = null;
     private List<TextDisplay> textDisplays;
-    @Getter
-    private WaveFunctionCollapseGenerator waveFunctionCollapseGenerator;
+
+    public void setModulesContainer(ModulesContainer modulesContainer){
+        this.modulesContainer = modulesContainer;
+        if (waveFunctionCollapseGenerator.getModuleGeneratorsConfigFields().isDebug()) {
+            if (modulesContainer == null) debugPaste(Material.GRAY_STAINED_GLASS);
+            else if (modulesContainer.isNothing()) debugPaste(Material.BLUE_STAINED_GLASS);
+            else debugPaste(Material.GREEN_STAINED_GLASS);
+        }
+        if (modulesContainer == null || modulesContainer.isNothing()) return;
+        waveFunctionCollapseGenerator.getSpatialGrid().initializeCellNeighbors(this, waveFunctionCollapseGenerator);
+    }
 
     /**
      * Creates a new GridCell.
@@ -57,6 +65,7 @@ public class GridCell {
         this.cellMap = cellMap;
         this.magnitudeSquared = (int) cellLocation.lengthSquared();
         this.waveFunctionCollapseGenerator = waveFunctionCollapseGenerator;
+        if (waveFunctionCollapseGenerator.getModuleGeneratorsConfigFields().isDebug()) debugPaste(Material.RED_STAINED_GLASS);
     }
 
     public boolean isHorizontalEdge() {
@@ -117,8 +126,12 @@ public class GridCell {
      *
      * @return Location object representing the cell's origin in the world
      */
-    public Location getRealLocation() {
-        Vector3i worldCoord = grid.gridToWorld(cellLocation);
+    public Location getRealLocation(Location startLocation) {
+        Vector3i worldCoord;
+        if (startLocation != null)
+            worldCoord = grid.gridToWorld(cellLocation).add(startLocation.getBlockX(), startLocation.getBlockY(), startLocation.getBlockZ());
+        else
+            worldCoord = grid.gridToWorld(cellLocation);
         return new Location(world, worldCoord.x, worldCoord.y, worldCoord.z);
     }
 
@@ -134,7 +147,7 @@ public class GridCell {
         textDisplays = new ArrayList<>();
 
         Color color = generateRandomColor();
-        Location centerLocation = getCenterLocation();
+        Location centerLocation = getRealCenterLocation();
 
         displayMainInfo(centerLocation, color);
         displayBorderInfo(centerLocation, color);
@@ -145,12 +158,15 @@ public class GridCell {
         return Color.fromRGB(random.nextInt(256), random.nextInt(256), random.nextInt(256));
     }
 
-    private Location getCenterLocation() {
-//        Vector3i centerOffset = new Vector3i(grid.getChunkSize() / 2);
-        double y = waveFunctionCollapseGenerator.getSpatialGrid().getChunkSize()/2d;
-        if (modulesContainer.getClipboard() != null) y = modulesContainer.getClipboard().getDimensions().y()/2d;
-        Vector3i worldPos = grid.gridToWorld(cellLocation).add((int)(waveFunctionCollapseGenerator.getSpatialGrid().getChunkSize()/2d), (int)y,(int)(waveFunctionCollapseGenerator.getSpatialGrid().getChunkSize()/2d));
+    private Location getLocalCenterLocation() {
+        double y = waveFunctionCollapseGenerator.getSpatialGrid().getChunkSizeY() / 2d;
+        if (modulesContainer != null && modulesContainer.getClipboard() != null) y = modulesContainer.getClipboard().getDimensions().y() / 2d;
+        Vector3i worldPos = grid.gridToWorld(cellLocation).add((int) (waveFunctionCollapseGenerator.getSpatialGrid().getChunkSizeXZ() / 2d), (int) y, (int) (waveFunctionCollapseGenerator.getSpatialGrid().getChunkSizeXZ() / 2d));
         return new Location(world, worldPos.x, worldPos.y, worldPos.z);
+    }
+
+    public Location getRealCenterLocation(){
+        return getLocalCenterLocation().add(waveFunctionCollapseGenerator.getStartLocation());
     }
 
     private void displayMainInfo(Location centerLocation, Color color) {
@@ -209,10 +225,10 @@ public class GridCell {
                 new AxisAngle4f()
         ));
         display.setBackgroundColor(color);
-        display.setTextOpacity((byte) 1);
+//        display.setTextOpacity((byte) 1);
         display.setSeeThrough(true);
         display.setText(text);
-        display.setViewRange(100f);
+        display.setViewRange(32);
     }
 
     /**
@@ -221,21 +237,12 @@ public class GridCell {
      * @param modulesContainer The module container to paste
      */
     public void processPaste(ModulesContainer modulesContainer) {
-        this.modulesContainer = modulesContainer;
+        setModulesContainer(modulesContainer);
 
         // Update neighbor options after paste
         getOrientedNeighbors().values().stream()
                 .filter(Objects::nonNull)
                 .forEach(GridCell::updateValidOptions);
-    }
-
-    /**
-     * Updates the count of generated neighbors.
-     */
-    public void updateNeighborCount() {
-        generatedNeighborCount = (int) getOrientedNeighbors().values().stream()
-                .filter(Objects::nonNull)
-                .count();
     }
 
     /**
@@ -250,80 +257,20 @@ public class GridCell {
     /**
      * Resets this cell's data.
      *
-     * @param showGenerationForShowcase Whether to clear blocks for showcase mode
      */
-    public void resetData(boolean showGenerationForShowcase) {
+    public void resetData() {
         if (isStartModule()) return;
-        if (showGenerationForShowcase) {
-            clearBlocks();
-        }
-        this.modulesContainer = null;
+
+        setModulesContainer(null);
         this.validOptions = null;
-    }
-
-    private void clearBlocks() {
-        int size = grid.getChunkSize();
-        Vector3i worldPos = grid.gridToWorld(cellLocation);
-
-        for (int x = 0; x < size; x++) {
-            for (int y = 0; y < size; y++) {
-                for (int z = 0; z < size; z++) {
-                    Location blockLocation = new Location(world,
-                            worldPos.x + x,
-                            worldPos.y + y,
-                            worldPos.z + z);
-                    blockLocation.getBlock().setType(Material.AIR);
-                }
-            }
+        if (waveFunctionCollapseGenerator.getModuleGeneratorsConfigFields().isDebug()) {
+            debugPaste(Material.GRAY_STAINED_GLASS);
         }
     }
 
-    /**
-     * Performs a hard reset of this cell and its neighbors.
-     *
-     * @param spatialGrid               The spatial grid reference
-     * @param slowGenerationForShowcase Whether to show generation progress
-     * @param radius                    The radius of cells to reset
-     * @return Number of cells reset
-     */
-    public int hardReset(SpatialGrid spatialGrid, boolean slowGenerationForShowcase, int radius) {
-        Set<GridCell> visited = new HashSet<>();
-        Set<GridCell> resetCells = new HashSet<>();
 
-        int resetCount = hardResetRecursive(slowGenerationForShowcase, radius, visited, resetCells);
-
-        resetCells.forEach(spatialGrid::updateCellPriority);
-        resetCells.forEach(GridCell::updateNeighborCount);
-        return resetCount;
-    }
-
-    private boolean isStartModule() {
+    public boolean isStartModule() {
         return new Vector3i().equals(cellLocation);
-    }
-
-    private int hardResetRecursive(boolean showGenerationForShowcase, int radius,
-                                   Set<GridCell> visited, Set<GridCell> resetCells) {
-
-        if (isStartModule() || radius < 0 || !visited.add(this)) {
-            return 0;
-        }
-
-        boolean wasGenerated = this.isGenerated(); // Check if the cell was generated before reset
-        resetData(showGenerationForShowcase);
-//        updateNeighborCount();
-
-        resetCells.add(this);
-
-        int resetGeneratedCells = wasGenerated ? 1 : 0;
-
-        if (radius > 0) {
-            for (GridCell neighbor : getOrientedNeighbors().values()) {
-                if (neighbor != null) {
-                    resetGeneratedCells += neighbor.hardResetRecursive(showGenerationForShowcase, radius - 1, visited, resetCells);
-                }
-            }
-        }
-        return resetGeneratedCells;
     }
 
     /**
@@ -338,6 +285,61 @@ public class GridCell {
         if (textDisplays != null) {
             textDisplays.forEach(Entity::remove);
             textDisplays.clear();
+        }
+    }
+
+    private void placeMaterial(Location startLocation, Material material) {
+        int sizeXZ = waveFunctionCollapseGenerator.getModuleGeneratorsConfigFields().getModuleSizeXZ();
+        int sizeY = waveFunctionCollapseGenerator.getModuleGeneratorsConfigFields().getModuleSizeY();
+
+        for (int x = 0; x < sizeXZ; x++) {
+            for (int y = 0; y < sizeY; y++) {
+                for (int z = 0; z < sizeXZ; z++) {
+                    Location blockLocation = startLocation.clone().add(x, y, z);
+
+                    // Check if block is on an edge (intersection of at least 2 faces)
+                    boolean isOnXEdge = (x == 0 || x == sizeXZ - 1);
+                    boolean isOnYEdge = (y == 0 || y == sizeY - 1);
+                    boolean isOnZEdge = (z == 0 || z == sizeXZ - 1);
+
+                    // Count how many edges this block touches
+                    int edgeCount = 0;
+                    if (isOnXEdge) edgeCount++;
+                    if (isOnYEdge) edgeCount++;
+                    if (isOnZEdge) edgeCount++;
+
+                    // Place material only if block is on at least 2 edges (true edge/corner)
+                    if (edgeCount >= 2) {
+                        blockLocation.getBlock().setType(material);
+                    } else {
+                        blockLocation.getBlock().setType(Material.AIR);
+                    }
+                }
+            }
+        }
+    }
+
+    public void debugPaste(Material material) {
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                Location startLocation = getRealLocation(waveFunctionCollapseGenerator.getStartLocation());
+
+                if (modulesContainer == null || modulesContainer.isNothing()) {
+                    placeMaterial(startLocation, material);
+                    return;
+                }
+
+                ModulePasting.paste(modulesContainer.getClipboard(), startLocation, modulesContainer.getRotation());
+
+                showDebugTextDisplays();
+                Logger.debug("Pasted " + modulesContainer.getClipboardFilename() + " at " + startLocation + " with rotation " + modulesContainer.getRotation());
+            }
+        }.runTask(MetadataHandler.PLUGIN);
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
         }
     }
 }

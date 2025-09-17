@@ -17,7 +17,9 @@ public class ModuleGeneratorsConfigFields extends CustomConfigFields {
     @Getter
     protected int maxChunkY;
     @Getter
-    protected int chunkSize;
+    protected int moduleSizeXZ;
+    @Getter
+    protected int moduleSizeY;
     @Getter
     protected boolean debug;
     @Getter
@@ -30,6 +32,8 @@ public class ModuleGeneratorsConfigFields extends CustomConfigFields {
     protected boolean useGradientLevels;
     @Getter
     protected String spawnPoolSuffix;
+    @Getter
+    protected boolean isWorldGeneration;
 
     /**
      * Used by plugin-generated files (defaults)
@@ -52,12 +56,14 @@ public class ModuleGeneratorsConfigFields extends CustomConfigFields {
         this.startModules = processStringList("startModule", startModules, null, true);
         this.minChunkY = processInt("minChunkY", minChunkY, 0, true);
         this.maxChunkY = processInt("maxChunkY", maxChunkY, 0, true);
-        this.chunkSize = processInt("chunkSize", chunkSize, 16, true);
+        this.moduleSizeXZ = processInt("moduleSizeXZ", moduleSizeXZ, 16, true);
+        this.moduleSizeY = processInt("moduleSizeY", moduleSizeY, 16, true);
         this.debug = processBoolean("debug", debug, false, true);
         this.generateInstantly = processBoolean("generateInstantly", generateInstantly, true, true);
         this.delayBetweenPastes = processInt("delayBetweenPastes", delayBetweenPastes, 20, true);
         this.pasteBatchSize = processInt("pasteBatchSize", pasteBatchSize, 1, true);
-        this.useGradientLevels = processBoolean("useGradientLevels", useGradientLevels, useGradientLevels, false);
-        this.spawnPoolSuffix = processString("spawnPoolSuffix", spawnPoolSuffix, spawnPoolSuffix, false);
+        this.useGradientLevels = processBoolean("useGradientLevels", useGradientLevels, useGradientLevels, true);
+        this.spawnPoolSuffix = processString("spawnPoolSuffix", spawnPoolSuffix, spawnPoolSuffix, true);
+        this.isWorldGeneration = processBoolean("isWorldGeneration", isWorldGeneration, isWorldGeneration, true);
     }
 }

@@ -1,8 +1,6 @@
 package com.magmaguy.betterstructures.config.modules;
 
 import com.magmaguy.betterstructures.MetadataHandler;
-import com.magmaguy.betterstructures.api.WorldGenerationFinishEvent;
-import com.magmaguy.betterstructures.config.modulegenerators.ModuleGeneratorsConfig;
 import com.magmaguy.betterstructures.config.modulegenerators.ModuleGeneratorsConfigFields;
 import com.magmaguy.betterstructures.modules.*;
 import com.magmaguy.betterstructures.util.distributedload.WorkloadRunnable;
@@ -10,23 +8,23 @@ import com.magmaguy.magmacore.util.Logger;
 import com.magmaguy.magmacore.util.Round;
 import lombok.Getter;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.HandlerList;
-import org.bukkit.event.Listener;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.joml.Vector3i;
 
 import java.io.File;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static com.magmaguy.betterstructures.modules.ModulesContainer.pickWeightedRandomModule;
 
 public class WaveFunctionCollapseGenerator {
     public static HashSet<WaveFunctionCollapseGenerator> waveFunctionCollapseGenerators = new HashSet<>();
     @Getter
-    private final GenerationConfig config;
+    private final ModuleGeneratorsConfigFields moduleGeneratorsConfigFields;
     @Getter
     private final GenerationStats stats;
     @Getter
@@ -37,117 +35,74 @@ public class WaveFunctionCollapseGenerator {
     private final ModularWorld modularWorld = null;
     @Getter
     private World world;
+    @Getter
+    private Location startLocation = null;
     private volatile boolean isGenerating;
     private volatile boolean isCancelled;
     private int chunksReserved;
     private File worldFolder;
+    private final Player player;
+    private final String startingModule;
+    private String worldName;
+    private  HashMap consecutiveFailureCounter = new HashMap<>();
 
-    /**
-     * Creates a new WaveFunctionCollapseGenerator with slow generation.
-     */
-    public WaveFunctionCollapseGenerator(String worldName, int radius, boolean debug, int interval, Player player, String startingModule) {
-        this(new GenerationConfig.Builder(worldName, radius)
-                .debug(debug)
-                .interval(interval)
-                .slowGeneration(true)
-                .player(player)
-                .startingModule(startingModule)
-                .build());
-        waveFunctionCollapseGenerators.add(this);
-    }
-
-    /**
-     * Creates a new WaveFunctionCollapseGenerator with fast generation.
-     */
-    public WaveFunctionCollapseGenerator(String worldName,
-                                         int radius,
-                                         boolean edgeModules,
-                                         boolean debug,
-                                         Player player,
-                                         String startingModule) {
-        this(new GenerationConfig.Builder(worldName, radius)
-                .edgeModules(edgeModules)
-                .debug(debug)
-                .player(player)
-                .startingModule(startingModule)
-                .build());
-    }
-
-    public WaveFunctionCollapseGenerator(
-            ModuleGeneratorsConfigFields generatorsConfigFields,
-            Player player,
-            String worldName,
-            File worldFolder) {
-        // Use the unique world name
-        this(new GenerationConfig.Builder(worldName, generatorsConfigFields.getRadius())
-                .edgeModules(generatorsConfigFields.isEdges())
-                .debug(generatorsConfigFields.isDebug())
-                .player(player)
-                .startingModules(generatorsConfigFields.getStartModules())
-                .spawnPoolSuffix(generatorsConfigFields.getSpawnPoolSuffix())
-                .build());
-        this.worldFolder = worldFolder;
-    }
-
-    /**
-     * Main constructor using GenerationConfig.
-     */
-    public WaveFunctionCollapseGenerator(GenerationConfig config) {
-        this.config = config;
-        this.spatialGrid = new SpatialGrid(config.getRadius(), config.getChunkSize());
-        this.stats = new GenerationStats(config.getRadius(), getSpatialGrid());
+    //todo: later make this take a player and a location and handle it statically
+    public WaveFunctionCollapseGenerator(ModuleGeneratorsConfigFields moduleGeneratorsConfigFields, Player player) {
+        this.moduleGeneratorsConfigFields = moduleGeneratorsConfigFields;
+        this.player = player;
+        this.startLocation = player.getLocation();
+        this.spatialGrid = new SpatialGrid(moduleGeneratorsConfigFields.getRadius(), moduleGeneratorsConfigFields.getModuleSizeXZ(), moduleGeneratorsConfigFields.getModuleSizeY(), moduleGeneratorsConfigFields.getMinChunkY(), moduleGeneratorsConfigFields.getMaxChunkY());
+        this.stats = new GenerationStats(moduleGeneratorsConfigFields.getRadius(), getSpatialGrid());
         this.chunkRollbackCounter = new HashMap<>();
-        this.modularGenerationStatus = new ModularGenerationStatus(config.getPlayer());
+        this.modularGenerationStatus = new ModularGenerationStatus(player);
+        waveFunctionCollapseGenerators.add(this);
         modularGenerationStatus.startInitializing();
+
+        this.startingModule = moduleGeneratorsConfigFields.getStartModules().get(ThreadLocalRandom.current().nextInt(moduleGeneratorsConfigFields.getStartModules().size())) + "_rotation_0";
+
+        if (moduleGeneratorsConfigFields.isWorldGeneration()) {
+            String baseWorldName = moduleGeneratorsConfigFields.getFilename().replace(".yml", "");
+            File worldContainer = Bukkit.getWorldContainer();
+            int i = 0;
+
+            // Increment until a unique world name is found
+            String worldName;
+            worldName = baseWorldName + "_" + i;
+            File worldFolder = new File(worldContainer, worldName);
+            while (worldFolder.exists()) {
+                worldName = baseWorldName + "_" + i;
+                i++;
+                worldFolder = new File(worldContainer, worldName);
+            }
+        }
 
         reserveChunks();
     }
 
-    public static CompletableFuture<ModularWorld> generateFromConfigAsync(ModuleGeneratorsConfigFields configFields, Player player) {
-        CompletableFuture<ModularWorld> future = new CompletableFuture<>();
+    public static void generateFromConfig(ModuleGeneratorsConfigFields generatorsConfigFields, Player player) {
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (generatorsConfigFields.isWorldGeneration()) {
+                    String baseWorldName = generatorsConfigFields.getFilename().replace(".yml", "");
+                    File worldContainer = Bukkit.getWorldContainer();
+                    int i = 0;
 
-        // Register an event listener for when the world generation is finished.
-        Bukkit.getPluginManager().registerEvents(new Listener() {
-            @EventHandler
-            public void onWorldGenerationFinish(WorldGenerationFinishEvent event) {
-                // Optionally, check that this event corresponds to the world you generated
-                ModularWorld world = event.getModularWorld();
-                if (world != null) {
-                    future.complete(world);
-                    // Optionally unregister this listener
-                    HandlerList.unregisterAll(this);
+                    // Increment until a unique world name is found
+                    String worldName;
+                    worldName = baseWorldName + "_" + i;
+                    File worldFolder = new File(worldContainer, worldName);
+                    while (worldFolder.exists()) {
+                        worldName = baseWorldName + "_" + i;
+                        i++;
+                        worldFolder = new File(worldContainer, worldName);
+                    }
+
+                } else {
+                    new WaveFunctionCollapseGenerator(generatorsConfigFields, player);
                 }
             }
-        }, MetadataHandler.PLUGIN);
-
-        // Start generation. This call will eventually lead to a WorldGenerationFinishEvent.
-        WaveFunctionCollapseGenerator.generateFromConfig(configFields, player);
-
-        return future;
-    }
-
-    public static CompletableFuture<ModularWorld> generateFromConfigAsync(String configFieldsString, Player player) {
-        ModuleGeneratorsConfigFields moduleGeneratorsConfigFields = ModuleGeneratorsConfig.getConfigFields(configFieldsString);
-        if (moduleGeneratorsConfigFields == null) return null;
-        return generateFromConfigAsync(moduleGeneratorsConfigFields, player);
-    }
-
-    public static void generateFromConfig(ModuleGeneratorsConfigFields generatorsConfigFields, Player player) {
-        String baseWorldName = generatorsConfigFields.getFilename().replace(".yml", "");
-        File worldContainer = Bukkit.getWorldContainer();
-        int i = 0;
-
-        // Increment until a unique world name is found
-        String worldName;
-        worldName = baseWorldName + "_" + i;
-        File worldFolder = new File(worldContainer, worldName);
-        while (worldFolder.exists()) {
-            worldName = baseWorldName + "_" + i;
-            i++;
-            worldFolder = new File(worldContainer, worldName);
-        }
-
-        new WaveFunctionCollapseGenerator(generatorsConfigFields, player, worldName, worldFolder);
+        }.runTaskAsynchronously(MetadataHandler.PLUGIN);
     }
 
     public static void shutdown() {
@@ -157,15 +112,19 @@ public class WaveFunctionCollapseGenerator {
     }
 
     private void reserveChunks() {
+        Logger.debug("Starting chunk reservation");
         modularGenerationStatus.finishedInitializing();
         modularGenerationStatus.startReservingChunks();
-        this.world = WorldInitializer.generateWorld(config.getWorldName(), config.getPlayer());
-        if (config.isSlowGeneration()) config.getPlayer().teleport(world.getSpawnLocation());
+        if (moduleGeneratorsConfigFields.isWorldGeneration()) {
+            this.world = WorldInitializer.generateWorld(worldName, player);
+        } else {
+            this.world = startLocation.getWorld();
+        }
 
         WorkloadRunnable reserveChunksTask = new WorkloadRunnable(.2, () -> {
             modularGenerationStatus.finishedReservingChunks(chunksReserved);
         });
-        int realChunkRadius = (int) Math.ceil(spatialGrid.getChunkSize() / 16d) * spatialGrid.getGridRadius();
+        int realChunkRadius = (int) Math.ceil(spatialGrid.getChunkSizeXZ() / 16d) * spatialGrid.getGridRadius();
         int chunkCounter = realChunkRadius * realChunkRadius;
         for (int x = -realChunkRadius; x < realChunkRadius; x++) {
             for (int z = -realChunkRadius; z < realChunkRadius; z++) {
@@ -174,7 +133,7 @@ public class WaveFunctionCollapseGenerator {
                 reserveChunksTask.addWorkload(() -> {
                     world.loadChunk(finalX, finalZ);
                     chunksReserved++;
-                    modularGenerationStatus.updateProgressReservingChunks( chunksReserved / (double) chunkCounter);
+                    modularGenerationStatus.updateProgressReservingChunks(chunksReserved / (double) chunkCounter);
                 });
             }
         }
@@ -183,6 +142,7 @@ public class WaveFunctionCollapseGenerator {
     }
 
     private void startArrangingModules() {
+        Logger.debug("Starting module arrangement");
         modularGenerationStatus.startArrangingModules();
         new InitializeGenerationTask().runTaskAsynchronously(MetadataHandler.PLUGIN);
     }
@@ -193,6 +153,8 @@ public class WaveFunctionCollapseGenerator {
         }
         isGenerating = true;
 
+        Logger.debug("Starting generation with starting module " + startingModule);
+
         try {
             modularGenerationStatus.finishedArrangingModules();
 
@@ -201,11 +163,8 @@ public class WaveFunctionCollapseGenerator {
                 return;
             }
 
-            if (config.isSlowGeneration()) {
-                new GenerateSlowlyTask().runTaskTimer(MetadataHandler.PLUGIN, 0L, config.getInterval());
-            } else {
-                generateFast();
-            }
+            generateFast();
+
         } catch (Exception e) {
             Logger.warn("Error during generation: " + e.getMessage());
             e.printStackTrace();
@@ -214,16 +173,23 @@ public class WaveFunctionCollapseGenerator {
     }
 
     private GridCell createStartChunk(String startingModule) {
-        GridCell startChunk = new GridCell(new Vector3i(), world, spatialGrid, spatialGrid.getCellMap(), this);
-        spatialGrid.getCellMap().put(new Vector3i(), startChunk);
-        spatialGrid.initializeCellNeighbors(startChunk, this);
+        Logger.debug("Creating start chunk at " + startLocation + " with radius " + moduleGeneratorsConfigFields.getRadius() +
+                " and chunk size " + moduleGeneratorsConfigFields.getModuleSizeXZ() + " and starting module " + startingModule);
 
+        Logger.debug("Initializing start grid cell at origin (0,0,0)");
+        GridCell startChunk = new GridCell(new Vector3i(), world, spatialGrid, spatialGrid.getCellMap(), this);
+
+        Logger.debug("Adding start cell to spatial grid map");
+        spatialGrid.getCellMap().put(new Vector3i(), startChunk);
+
+        Logger.debug("Looking up modules container for " + startingModule);
         ModulesContainer modulesContainer = ModulesContainer.getModulesContainers().get(startingModule);
         if (modulesContainer == null) {
-            Logger.sendMessage(config.getPlayer(), "Starting module was null! Canceling!");
+            Logger.sendMessage(player, "Starting module was null! Canceling!");
             return null;
         }
 
+        Logger.debug("Pasting starting module at origin");
         paste(new Vector3i(), modulesContainer);
         return startChunk;
     }
@@ -251,6 +217,7 @@ public class WaveFunctionCollapseGenerator {
     }
 
     private void paste(Vector3i chunkLocation, ModulesContainer modulesContainer) {
+        Logger.debug("Pasting chunk at " + chunkLocation + " with modules " + modulesContainer.getClipboardFilename());
         GridCell gridCell = spatialGrid.getCellMap().get(chunkLocation);
         if (gridCell == null) {
             Logger.warn("ChunkData not found at location: " + chunkLocation);
@@ -265,10 +232,6 @@ public class WaveFunctionCollapseGenerator {
         updateNeighbors(gridCell);
 
         chunkRollbackCounter.remove(gridCell);
-
-        if (config.isSlowGeneration()) {
-            scheduleActualPaste(gridCell);
-        }
     }
 
     private void updateNeighbors(GridCell gridCell) {
@@ -277,67 +240,45 @@ public class WaveFunctionCollapseGenerator {
                 .forEach(spatialGrid::updateCellPriority);
     }
 
-    private void scheduleActualPaste(GridCell gridCell) {
-        new ActualPasteTask() {
-            @Override
-            public void run() {
-                actualPaste(gridCell);
-            }
-        }.runTask(MetadataHandler.PLUGIN);
-    }
-
-    private void actualPaste(GridCell gridCell) {
-        ModulesContainer modulesContainer = gridCell.getModulesContainer();
-        if (modulesContainer == null || modulesContainer.getClipboard() == null) {
-            return;
-        }
-
-        ModulePasting.paste(modulesContainer.getClipboard(),
-                gridCell.getRealLocation().add(0, 0, 0),
-                modulesContainer.getRotation());
-
-        if (config.isDebug()) {
-            gridCell.showDebugTextDisplays();
-        }
-    }
-
     private void generateNextChunk(GridCell gridCell) {
+        Logger.debug("Generating next chunk at location: " + gridCell.getCellLocation());
         gridCell.updateValidOptions();
 
         HashSet<ModulesContainer> validOptions = gridCell.getValidOptions();
         if (validOptions == null || validOptions.isEmpty()) {
-//            Logger.debug("No valid options for cell at " + gridCell.getCellLocation() + " CANCELLING");
-            cancel();
+            Logger.debug("No valid options for cell at " + gridCell.getCellLocation() + ", initiating rollback");
+            org.bukkit.Location targetLocation = gridCell.getRealCenterLocation();
+            player.spigot().sendMessage(Logger.commandHoverMessage("Rolling back cell at " + gridCell.getCellLocation(), "Click to teleport", "tp "+ targetLocation.getX() + " " + targetLocation.getY() + " " + targetLocation.getZ()));
             rollbackChunk(gridCell);
             return;
         }
 
-        ModulesContainer modulesContainer = ModulesContainer.pickRandomModule(validOptions, gridCell);
+        ModulesContainer modulesContainer = pickWeightedRandomModule(validOptions, gridCell);
         if (modulesContainer == null) {
-//            Logger.debug("Failed to pick a module for cell at " + gridCell.getCellLocation());
+            Logger.debug("Failed to pick a module for cell at " + gridCell.getCellLocation());
             rollbackChunk(gridCell);
             return;
         }
 
-//        Logger.debug("picked module " + modulesContainer.getClipboardFilename() + " for coords " + gridCell.getCellLocation());
-
-        if (!modulesContainer.isNothing())
-            spatialGrid.initializeCellNeighbors(gridCell, this);
+        Logger.debug("picked module " + modulesContainer.getClipboardFilename() + " for coords " + gridCell.getCellLocation());
 
         paste(gridCell.getCellLocation(), modulesContainer);
     }
 
     private void rollbackChunk(GridCell gridCell) {
+        Logger.debug("Starting rollback for chunk at: " + gridCell.getCellLocation());
         int rollbacks = stats.rollbackCounter.incrementAndGet();
-//        Logger.debug("Rolling back " + gridCell.getCellLocation());
+        Logger.debug("Total rollbacks so far: " + rollbacks);
+
         if (rollbacks % 1000 == 0) {
             logRollbackStatus(gridCell, rollbacks);
         }
 
-        boolean resolved = tryAdjustingNeighbors(gridCell);
-        if (!resolved) {
-            performHardReset(gridCell);
-        }
+        // Hard reset all neighbors except the starting module
+        Map<Direction, GridCell> neighbors = gridCell.getOrientedNeighbors();
+        Logger.debug("Processing " + neighbors.size() + " neighbors for rollback");
+
+        spatialGrid.rollbackCell(gridCell);
     }
 
     private void logRollbackStatus(GridCell gridCell, int rollbacks) {
@@ -345,159 +286,29 @@ public class WaveFunctionCollapseGenerator {
         String message = String.format("Current rollback status: %d chunks rolled back. Latest rollback location: %d, %d, %d",
                 rollbacks, location.x, location.y, location.z);
         Logger.warn(message);
-        if (config.getPlayer() != null) {
-            config.getPlayer().sendMessage(message);
+        if (player != null) {
+            player.sendMessage(message);
         }
-    }
-
-    private void performHardReset(GridCell gridCell) {
-        int currentCount = chunkRollbackCounter.merge(gridCell, 1, Integer::sum);
-//        int rollBackRadius = Math.min(currentCount / 10, 2);
-        int rollBackRadius = 1;
-
-        int cellsReset = gridCell.hardReset(spatialGrid, config.isSlowGeneration(), rollBackRadius);
-        stats.decrementGeneratedChunks(cellsReset);
-    }
-
-    private boolean tryAdjustingNeighbors(GridCell gridCell) {
-        Map<Direction, GridCell> neighbors = gridCell.getOrientedNeighbors();
-        Map<GridCell, ModulesContainer> originalModules = new HashMap<>();
-        List<GridCell> generatedNeighbors = new ArrayList<>();
-
-        collectGeneratedNeighbors(neighbors, originalModules, generatedNeighbors);
-
-        boolean resolved = tryNeighborConfigurations(generatedNeighbors, gridCell, originalModules);
-        if (!resolved) {
-            revertNeighbors(originalModules);
-        }
-
-        return resolved;
-    }
-
-    private void collectGeneratedNeighbors(Map<Direction, GridCell> neighbors,
-                                           Map<GridCell, ModulesContainer> originalModules,
-                                           List<GridCell> generatedNeighbors) {
-        neighbors.values().stream()
-                .filter(neighbor -> neighbor != null && neighbor.isGenerated())
-                .forEach(neighbor -> {
-                    generatedNeighbors.add(neighbor);
-                    originalModules.put(neighbor, neighbor.getModulesContainer());
-                });
-    }
-
-    private boolean tryNeighborConfigurations(List<GridCell> neighbors, GridCell failedCell,
-                                              Map<GridCell, ModulesContainer> originalModules) {
-        if (neighbors.isEmpty()) {
-            return false;
-        }
-
-        List<List<ModulesContainer>> neighborOptions = new ArrayList<>();
-        List<GridCell> adjustableNeighbors = new ArrayList<>();
-
-        // Collect valid options for each neighbor
-        for (GridCell neighbor : neighbors) {
-            neighbor.updateValidOptions();
-            List<ModulesContainer> options = new ArrayList<>(neighbor.getValidOptions());
-
-            if (!options.isEmpty()) {
-                neighborOptions.add(options);
-                adjustableNeighbors.add(neighbor);
-            }
-        }
-
-        if (adjustableNeighbors.isEmpty()) {
-            return false;
-        }
-
-        // Try different combinations of neighbor modules
-        return tryAllCombinations(adjustableNeighbors, neighborOptions, failedCell);
-    }
-
-    private boolean tryAllCombinations(List<GridCell> neighbors,
-                                       List<List<ModulesContainer>> neighborOptions,
-                                       GridCell failedCell) {
-        int[] indices = new int[neighborOptions.size()];
-
-        do {
-            // Apply current combination
-            for (int i = 0; i < neighbors.size(); i++) {
-                GridCell neighbor = neighbors.get(i);
-                ModulesContainer module = neighborOptions.get(i).get(indices[i]);
-                neighbor.setModulesContainer(module);
-            }
-
-            // Check if this combination works
-            failedCell.updateValidOptions();
-            if (failedCell.getValidOptionCount() > 0) {
-                return true;
-            }
-
-        } while (incrementIndices(indices, neighborOptions));
-
-        return false;
-    }
-
-    private boolean incrementIndices(int[] indices, List<List<ModulesContainer>> options) {
-        for (int i = 0; i < indices.length; i++) {
-            indices[i]++;
-            if (indices[i] < options.get(i).size()) {
-                return true;
-            }
-            indices[i] = 0;
-        }
-        return false;
-    }
-
-    private void revertNeighbors(Map<GridCell, ModulesContainer> originalModules) {
-        originalModules.forEach((cell, module) -> {
-            cell.setModulesContainer(module);
-            cell.updateValidOptions();
-        });
     }
 
     private void done() {
+        Logger.debug("Done with generation");
         modularGenerationStatus.startPreparingPlacement();
         isGenerating = false;
-
-        if (!config.isSlowGeneration()) {
-            Logger.warn("Starting mass paste");
-            spatialGrid.clearGridGenerationData();
-            instantPaste();
-        } else {
-            cleanup();
-        }
+        instantPaste();
+        spatialGrid.clearGridGenerationData();
     }
 
     private void cleanup() {
-//        if (!getConfig().isSlowGeneration()) teleportToSpawn(config.getPlayer());
-
-//        reportUnusedModules(); this is just for debugging
         spatialGrid.clearAllData();
         waveFunctionCollapseGenerators.remove(this);
     }
 
-    private void reportUnusedModules() {
-        Set<String> usedModules = new HashSet<>();
-
-        // Collect all used modules
-        spatialGrid.getCellMap().values().stream()
-                .filter(cell -> cell.getModulesContainer() != null)
-                .forEach(cell -> usedModules.add(cell.getModulesContainer().getClipboardFilename()));
-
-        // Report unused modules
-        List<String> unusedModules = ModulesContainer.getModulesContainers().values().stream()
-                .map(ModulesContainer::getClipboardFilename)
-                .filter(filename -> !usedModules.contains(filename))
-                .toList();
-
-        if (!unusedModules.isEmpty()) {
-            Logger.sendMessage(config.getPlayer(), "Failed to use the following modules:");
-            Logger.warn("Failed to use the following modules:");
-            unusedModules.forEach(module -> {
-                Logger.sendMessage(config.getPlayer(), module);
-                Logger.warn(module);
-            });
-        }
+    /**
+     * Cancels the generation process.
+     */
+    public void cancel() {
+        isCancelled = true;
     }
 
     private void instantPaste() {
@@ -515,24 +326,9 @@ public class WaveFunctionCollapseGenerator {
             }
         }
 
-        if (config.isDebug()) {
-            orderedPasteDeque.forEach(chunkData -> {
-                if (chunkData != null) {
-                    chunkData.showDebugTextDisplays();
-                }
-            });
-        }
-
-        new ModulePasting(world, worldFolder, orderedPasteDeque, modularGenerationStatus, config.getSpawnPoolSuffix());
+        new ModulePasting(world, worldFolder, orderedPasteDeque, modularGenerationStatus, moduleGeneratorsConfigFields.getSpawnPoolSuffix(), startLocation);
 
         cleanup();
-    }
-
-    /**
-     * Cancels the generation process.
-     */
-    public void cancel() {
-        isCancelled = true;
     }
 
     /**
@@ -570,37 +366,10 @@ public class WaveFunctionCollapseGenerator {
         }
     }
 
-    private static class ActualPasteTask extends BukkitRunnable {
-        @Override
-        public void run() {
-        }
-    }
-
     private class InitializeGenerationTask extends BukkitRunnable {
         @Override
         public void run() {
-            start(config.getStartingModule());
-        }
-    }
-
-    private class GenerateSlowlyTask extends BukkitRunnable {
-        @Override
-        public void run() {
-            if (isCancelled) {
-                this.cancel();
-                return;
-            }
-
-            GridCell nextCell = spatialGrid.getNextGridCell();
-            if (nextCell == null) {
-                modularGenerationStatus.finishedArrangingModules();
-                done();
-                this.cancel();
-                return;
-            }
-
-            generateNextChunk(nextCell);
-            updateProgress();
+            start(startingModule);
         }
     }
 }

@@ -37,10 +37,13 @@ public final class ModulePasting {
     private ModularGenerationStatus modularGenerationStatus = null;
     private ModularWorld modularWorld;
     private String spawnPoolSuffix;
+    private Location startLocation;
 
-    public ModulePasting(World world, File worldFolder, Deque<GridCell> gridCellDeque, ModularGenerationStatus modularGenerationStatus, String spawnPoolSuffix) {
+    public ModulePasting(World world, File worldFolder, Deque<GridCell> gridCellDeque, ModularGenerationStatus modularGenerationStatus, String spawnPoolSuffix, Location startLocation) {
         this.modularGenerationStatus = modularGenerationStatus;
         this.spawnPoolSuffix = spawnPoolSuffix;
+        this.startLocation = startLocation;
+        Logger.debug("Created ModulePasting instance for world " + world.getName() + " with " + gridCellDeque.size() + " blocks to paste");
         batchPaste(gridCellDeque, interpretedSigns);
         createModularWorld(world, worldFolder);
     }
@@ -67,8 +70,6 @@ public final class ModulePasting {
         Clipboard finalTransformedClipboard = transformedClipboard;
         BlockVector3 finalOrigin = origin;
         transformedClipboard.getRegion().forEach(blockPos -> {
-//            BlockState blockState = finalTransformedClipboard.getBlock(blockPos);
-//            BlockData blockData = Bukkit.createBlockData(blockState.getAsString());
 
             BaseBlock baseBlock = finalTransformedClipboard.getFullBlock(blockPos);
             BlockData blockData = Bukkit.createBlockData(baseBlock.toImmutableState().getAsString());
@@ -100,48 +101,61 @@ public final class ModulePasting {
 
     public static void paste(Clipboard clipboard, Location location, Integer rotation) {
         if (rotation == null) {
-//            Logger.debug("Rotation was null during paste operation");
+            Logger.debug("Rotation was null during paste operation");
             return;
         }
 
-        com.sk89q.worldedit.world.World adaptedWorld = BukkitAdapter.adapt(location.getWorld());
-        Location adjustedLocation = adjustLocationForRotation(location, rotation, clipboard);
+        // Transform the clipboard using the same approach as batch paste
+        AffineTransform transform = new AffineTransform().rotateY(normalizeRotation(rotation));
+        Clipboard transformedClipboard;
+        try {
+            transformedClipboard = clipboard.transform(transform);
+        } catch (WorldEditException e) {
+            Logger.warn("Failed to transform clipboard: " + e.getMessage());
+            throw new RuntimeException(e);
+        }
+
+        // Get dimensions and calculate proper center
+        BlockVector3 minPoint = transformedClipboard.getMinimumPoint();
+
+        World world = location.getWorld();
+        int baseX = location.getBlockX();
+        int baseY = location.getBlockY();
+        int baseZ = location.getBlockZ();
+
+        // Create edit session for actual placement
+        com.sk89q.worldedit.world.World adaptedWorld = BukkitAdapter.adapt(world);
 
         try (EditSession editSession = WorldEdit.getInstance().newEditSession(adaptedWorld)) {
             editSession.setTrackingHistory(false);
-            ClipboardHolder holder = new ClipboardHolder(clipboard);
-            holder.setTransform(createRotationTransform(rotation));
-
-            Operation operation = holder.createPaste(editSession)
-                    .to(BlockVector3.at(adjustedLocation.getX(), adjustedLocation.getY(), adjustedLocation.getZ()))
-                    .build();
-
             editSession.setSideEffectApplier(SideEffectSet.none());
-            Operations.complete(operation);
-        } catch (WorldEditException e) {
+
+            // Process each block using calculated center point as reference
+            transformedClipboard.getRegion().forEach(blockPos -> {
+                try {
+                    BaseBlock baseBlock = transformedClipboard.getFullBlock(blockPos);
+
+                    // Skip air blocks
+                    if (baseBlock.getBlockType().getMaterial().isAir()) return;
+
+                    // Calculate world coordinates relative to center point
+                    int worldX = baseX + (blockPos.x() - minPoint.x());
+                    int worldY = baseY + (blockPos.y() - minPoint.y());
+                    int worldZ = baseZ + (blockPos.z() - minPoint.z());
+
+                    // Place the block
+                    BlockVector3 worldPos = BlockVector3.at(worldX, worldY, worldZ);
+                    editSession.setBlock(worldPos, baseBlock);
+
+                } catch (WorldEditException e) {
+                    Logger.warn("Failed to place block at " + blockPos + ": " + e.getMessage());
+                }
+            });
+
+        } catch (Exception e) {
             Logger.warn("Failed to paste structure: " + e.getMessage());
             throw new RuntimeException(e);
         }
-    }
-
-    private static AffineTransform createRotationTransform(int rotation) {
-        return new AffineTransform().rotateY(normalizeRotation(rotation));
-    }
-
-    private static Location adjustLocationForRotation(Location location, int rotation, Clipboard clipboard) {
-        Location adjustedLocation = location.clone();
-        BlockVector3 dimensions = clipboard.getDimensions();
-
-        switch (normalizeRotation(rotation)) {
-            case 90 -> adjustedLocation.add(0, 0, -dimensions.x());
-            case 180 -> adjustedLocation.add(-dimensions.x(), 0, dimensions.z());
-            case 270 -> adjustedLocation.add(dimensions.z(), 0, 0);
-            case 0 -> {
-            } // No adjustment needed
-            default -> Logger.warn("Invalid rotation angle: " + rotation);
-        }
-
-        return adjustedLocation;
     }
 
     private static int normalizeRotation(int rotation) {
@@ -159,7 +173,7 @@ public final class ModulePasting {
             if (gridCell == null || gridCell.getModulesContainer() == null) continue;
             Clipboard clipboard = gridCell.getModulesContainer().getClipboard();
             if (clipboard == null) continue;
-            pasteableList.addAll(generatePasteMeList(clipboard, gridCell.getRealLocation(), gridCell.getModulesContainer().getRotation(), interpretedSigns));
+            pasteableList.addAll(generatePasteMeList(clipboard, gridCell.getRealLocation(startLocation), gridCell.getModulesContainer().getRotation(), interpretedSigns));
         }
 
         List<Pasteable> slowBlocks = new ArrayList<>();
