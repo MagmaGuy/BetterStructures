@@ -74,12 +74,10 @@ public final class BetterStructures extends JavaPlugin {
         commandManager.registerCommand(new VersionCommand());
         commandManager.registerCommand(new SetupCommand());
         commandManager.registerCommand(new FirstTimeSetupCommand());
-        commandManager.registerCommand(new GenerateModulesInstantlyCommand());
-        commandManager.registerCommand(new GenerateModulesSlowlyCommand());
         commandManager.registerCommand(new GenerateModulesCommand());
         commandManager.registerCommand(new BetterStructuresCommand());
 
-        MagmaCore.checkVersionUpdate("103241", "https://www.spigotmc.org/resources/betterstructures.103241");
+        MagmaCore.checkVersionUpdate("103241", "https://nightbreak.io/plugin/betterstructures/");
 
         if (Bukkit.getPluginManager().getPlugin("WorldGuard") != null &&
                 Bukkit.getPluginManager().getPlugin("EliteMobs") != null)

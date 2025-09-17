@@ -28,7 +28,7 @@ public class EliteMobs {
             for (Player player : Bukkit.getOnlinePlayers())
                 if (player.hasPermission("betterstructures.*"))
                     Logger.sendMessage(player, "&cOne of your packs uses the EliteMobs plugin &4but EliteMobs is not currently installed on your server&c!" +
-                            " &2You can download it here: &9https://www.spigotmc.org/resources/%E2%9A%94elitemobs%E2%9A%94.40090/");
+                            " &2You can download it here: &9https://nightbreak.io/plugin/elitemobs/");
             return false;
         }
     }

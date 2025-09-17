@@ -113,7 +113,7 @@ public class SchematicContainer {
                             vanillaSpawns.put(new Vector(x, y, z), entityType);
                         } else if (line1.toLowerCase(Locale.ROOT).contains("[elitemobs]")) {
                             if (Bukkit.getPluginManager().getPlugin("EliteMobs") == null) {
-                                Bukkit.getLogger().warning("[BetterStructures] " + configFilename + " uses EliteMobs bosses but you do not have EliteMobs installed! BetterStructures does not require EliteMobs to work, but if you want cool EliteMobs boss fights you will have to install EliteMobs here: https://www.spigotmc.org/resources/%E2%9A%94elitemobs%E2%9A%94.40090/");
+                                Bukkit.getLogger().warning("[BetterStructures] " + configFilename + " uses EliteMobs bosses but you do not have EliteMobs installed! BetterStructures does not require EliteMobs to work, but if you want cool EliteMobs boss fights you will have to install EliteMobs here: https://nightbreak.io/plugin/elitemobs/");
                                 Bukkit.getLogger().warning("[BetterStructures] Since EliteMobs is not installed, " + configFilename + " will not be used.");
                                 valid = false;
                                 return;
