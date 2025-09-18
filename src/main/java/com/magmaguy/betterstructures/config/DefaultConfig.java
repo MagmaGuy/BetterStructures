@@ -52,6 +52,8 @@ public class DefaultConfig extends ConfigurationFile {
     private static int distanceSky;
     @Getter
     private static int distanceLiquid;
+    @Getter
+    private static int distanceDungeon;
 
     @Getter
     private static int maxOffsetSurface;
@@ -63,6 +65,8 @@ public class DefaultConfig extends ConfigurationFile {
     private static int maxOffsetSky;
     @Getter
     private static int maxOffsetLiquid;
+    @Getter
+    private static int maxOffsetDungeon;
 
     public DefaultConfig() {
         super("config.yml");
@@ -130,6 +134,12 @@ public class DefaultConfig extends ConfigurationFile {
                         "Sets the distance between structures liquid surfaces such as oceans.",
                         "Shorter distances between structures will result in more structures overall."),
                 fileConfiguration, "distanceLiquid", 65);
+        distanceDungeon = ConfigurationEngine.setInt(
+                List.of(
+                        "Sets the distance between dungeons.",
+                        "Shorter distances between dungeons will result in more dungeons overall."
+                ),
+                fileConfiguration, "distanceDungeon", 1000);
 
         // Initialize the maximum offsets from configuration
         maxOffsetSurface = ConfigurationEngine.setInt(
@@ -157,6 +167,11 @@ public class DefaultConfig extends ConfigurationFile {
                         "Used to tweak the randomization of the distance between structures on oceans.",
                         "Smaller values will result in structures being more on a grid, and larger values will result in them being less predictably placed."),
                 fileConfiguration, "maxOffsetLiquid", 5);
+        maxOffsetDungeon = ConfigurationEngine.setInt(
+                List.of(
+                        "Used to tweak the randomization of the distance between dungeons.",
+                        "Smaller values will result in dungeons being more on a grid, and larger values will result in them being less predictably placed."),
+                fileConfiguration, "maxOffsetDungeon", 300);
 
         ConfigurationEngine.fileSaverOnlyDefaults(fileConfiguration, file);
     }

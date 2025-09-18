@@ -36,17 +36,14 @@ public class ModularWorld {
     @Getter
     private final List<Location> barrelLocations = new ArrayList<>();
     private final HashSet<ModulePasting.InterpretedSign> otherLocations = new HashSet<>();
-    @Getter
-    private final ModularGenerationStatus modularGenerationStatus;
     private final List<ScheduledInstancedEntity> scheduledInstancedEntities = new ArrayList<>();
     @Getter
     private final File worldFolder;
     @Getter
     private World world = null;
 
-    public ModularWorld(World world, File worldFolder, List<ModulePasting.InterpretedSign> interpretedSigns, ModularGenerationStatus modularGenerationStatus) {
+    public ModularWorld(World world, File worldFolder, List<ModulePasting.InterpretedSign> interpretedSigns) {
         this.world = world;
-        this.modularGenerationStatus = modularGenerationStatus;
         this.worldFolder = worldFolder;
         for (ModulePasting.InterpretedSign interpretedSign : interpretedSigns) {
             for (String signText : interpretedSign.text()) {
@@ -58,13 +55,11 @@ public class ModularWorld {
                 else if (signText.contains("[exit]")) {
                     processExitLocations(interpretedSign);
                 } else if (signText.contains("[chest]")) {
-//                    Logger.debug("Chest detected");
                     chestLocations.add(new Location(world,
                             (int) interpretedSign.location().getX(),
                             (int) interpretedSign.location().getY(),
                             (int) interpretedSign.location().getZ()));
                 } else if (signText.contains("[barrel]")) {
-//                    Logger.debug("Barrel detected");
                     barrelLocations.add(new Location(world,
                             (int) interpretedSign.location().getX(),
                             (int) interpretedSign.location().getY(),
@@ -126,36 +121,28 @@ public class ModularWorld {
     //todo: maybe this should go into extractioncraft later
     public List<Location> spawnInaccessibleExitLocations() {
         List<Location> randomizedLocations = new ArrayList<>();
-//        Logger.debug("Spawning " + exitLocations.size() + " exit locations up");
         for (ExitLocation exitLocation : exitLocations) {
             File exitLocationsFile = new File(MetadataHandler.PLUGIN.getDataFolder().getAbsolutePath() + File.separatorChar + "components" + File.separatorChar + exitLocation.clipboardFilenameUp + ".schem");
             if (!exitLocationsFile.exists()) {
                 Logger.warn("Failed to find elevator file");
                 continue;
             }
-//            if (ThreadLocalRandom.current().nextBoolean()) {
             randomizedLocations.add(exitLocation.location);
-//            Logger.debug("Pasted exit location " + exitLocation.location + " from " + exitLocation.clipboardFilenameUp);
             Schematic.paste(Schematic.load(exitLocationsFile), exitLocation.location);
-//            }
         }
         return randomizedLocations;
     }
 
     public List<Location> spawnAccessibleExitLocations() {
         List<Location> randomizedLocations = new ArrayList<>();
-//        Logger.debug("Spawning " + exitLocations.size() + " exit locations down");
         for (ExitLocation exitLocation : exitLocations) {
             File exitLocationsFile = new File(MetadataHandler.PLUGIN.getDataFolder().getAbsolutePath() + File.separatorChar + "components" + File.separatorChar + exitLocation.clipboardFilenameDown + ".schem");
             if (!exitLocationsFile.exists()) {
                 Logger.warn("Failed to find elevator file");
                 continue;
             }
-//            if (ThreadLocalRandom.current().nextBoolean()) {
             randomizedLocations.add(exitLocation.location);
-//            Logger.debug("Pasted exit location " + exitLocation.location + " from " + exitLocation.clipboardFilenameDown);
             Schematic.paste(Schematic.load(exitLocationsFile), exitLocation.location);
-//            }
         }
         return randomizedLocations;
     }
@@ -164,7 +151,6 @@ public class ModularWorld {
         new BukkitRunnable() {
             @Override
             public void run() {
-                modularGenerationStatus.startPlacingMobs();
                 for (ModulePasting.InterpretedSign otherLocation : otherLocations)
                     for (String string : otherLocation.text())
                         if (string.contains("pool")) {
@@ -184,8 +170,6 @@ public class ModularWorld {
                         }
                 //got to keep the memory clear for this one, unfortunately
                 otherLocations.clear();
-                modularGenerationStatus.finishedPlacingMobs();
-                modularGenerationStatus.done();
                 generationFinished();
             }
         }.runTask(MetadataHandler.PLUGIN);
@@ -223,6 +207,5 @@ public class ModularWorld {
             String originalSpawnPool,
             int minLevel,
             int maxLevel
-    ) {
-    }
+    ){}
 }

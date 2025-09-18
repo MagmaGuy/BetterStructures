@@ -192,6 +192,7 @@ public class GeneratorConfigFields extends CustomConfigFields {
         UNDERGROUND_SHALLOW,
         SURFACE,
         SKY,
-        LIQUID_SURFACE
+        LIQUID_SURFACE,
+        DUNGEON
     }
 }
