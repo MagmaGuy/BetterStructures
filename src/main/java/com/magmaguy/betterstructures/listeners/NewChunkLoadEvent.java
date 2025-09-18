@@ -9,7 +9,11 @@ import com.magmaguy.betterstructures.buildingfitter.util.FitUndergroundDeepBuild
 import com.magmaguy.betterstructures.config.DefaultConfig;
 import com.magmaguy.betterstructures.config.ValidWorldsConfig;
 import com.magmaguy.betterstructures.config.generators.GeneratorConfigFields;
+import com.magmaguy.betterstructures.config.modulegenerators.ModuleGeneratorsConfig;
+import com.magmaguy.betterstructures.config.modulegenerators.ModuleGeneratorsConfigFields;
+import com.magmaguy.betterstructures.config.modules.WaveFunctionCollapseGenerator;
 import com.magmaguy.betterstructures.schematics.SchematicContainer;
+import com.magmaguy.magmacore.util.Logger;
 import org.bukkit.Chunk;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -19,6 +23,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.HashSet;
 import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class NewChunkLoadEvent implements Listener {
 
@@ -43,6 +48,7 @@ public class NewChunkLoadEvent implements Listener {
         deepUndergroundScanner(event.getChunk());
         skyScanner(event.getChunk());
         liquidSurfaceScanner(event.getChunk());
+        dungeonScanner(event.getChunk());
     }
 
     /**
@@ -131,5 +137,13 @@ public class NewChunkLoadEvent implements Listener {
         if (!isValidStructurePosition(chunk, GeneratorConfigFields.StructureType.LIQUID_SURFACE,
                 DefaultConfig.getDistanceLiquid(), DefaultConfig.getMaxOffsetLiquid())) return;
         new FitLiquidBuilding(chunk);
+    }
+
+    private void dungeonScanner(Chunk chunk) {
+        if (ModuleGeneratorsConfig.getModuleGenerators().isEmpty()) return;
+        if (!isValidStructurePosition(chunk, GeneratorConfigFields.StructureType.DUNGEON,
+                DefaultConfig.getDistanceDungeon(), DefaultConfig.getMaxOffsetDungeon())) return;
+        ModuleGeneratorsConfigFields moduleGeneratorsConfigFields = ModuleGeneratorsConfig.getModuleGenerators().values().stream().toList().get(ThreadLocalRandom.current().nextInt(0, ModuleGeneratorsConfig.getModuleGenerators().size()));
+        new WaveFunctionCollapseGenerator(moduleGeneratorsConfigFields, chunk.getBlock(8,0,8).getLocation());
     }
 }

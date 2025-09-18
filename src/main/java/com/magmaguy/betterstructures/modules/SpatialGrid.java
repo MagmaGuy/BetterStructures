@@ -3,6 +3,7 @@ package com.magmaguy.betterstructures.modules;
 import com.magmaguy.betterstructures.config.modules.WaveFunctionCollapseGenerator;
 import com.magmaguy.magmacore.util.Logger;
 import lombok.Getter;
+import org.bukkit.World;
 import org.joml.Vector3i;
 
 import java.util.*;
@@ -43,55 +44,65 @@ public class SpatialGrid {
         this.gridCellQueue = new PriorityQueue<>(cellComparator);
     }
 
+    public void initializeGrid(World world, WaveFunctionCollapseGenerator waveFunctionCollapseGenerator){
+        Logger.debug("Initializing grid with radius " + gridRadius);
+
+        for (int x = -gridRadius; x <= gridRadius; x++) {
+            for (int z = -gridRadius; z <= gridRadius; z++) {
+                for (int y = minYLevel-1; y <= maxYLevel+1; y++) {
+                    Vector3i gridCoord = new Vector3i(x, y, z);
+                    GridCell gridCell = new GridCell(gridCoord, world, this, cellMap, waveFunctionCollapseGenerator);
+                    cellMap.put(gridCoord, gridCell);
+                }
+            }
+        }
+
+        Logger.debug("Initializing neighbors for " + cellMap.size() + " cells");
+        for (GridCell gridCell : cellMap.values()) {
+            gridCell.initializeNeighbors();
+        }
+    }
+
     private Comparator<GridCell> createCellComparator() {
         //This way of comparing things is faster for small gens which are the ones we're currently using, but much slower at a scale due to the way things roll back
-//        return Comparator
-//                .comparingInt(GridCell::getValidOptionCount)
-//                .thenComparingInt(GridCell::getMagnitudeSquared);
         return Comparator
-                .comparingInt(GridCell::getMagnitudeSquared)
-                .thenComparingInt(GridCell::getValidOptionCount);
+                .comparingInt(GridCell::getValidOptionCount)
+                .thenComparingInt(GridCell::getMagnitudeSquared);
+//        return Comparator
+//                .comparingInt(GridCell::getMagnitudeSquared)
+//                .thenComparingInt(GridCell::getValidOptionCount);
     }
 
     public static Vector3i getDirectionOffset(Direction direction) {
         return new Vector3i(DIRECTION_OFFSETS.get(direction));
     }
 
-    public void enqueueCell(GridCell gridCell) {
-//        if (gridCell.getCellLocation().x ==0 && gridCell.getCellLocation().y ==0 && gridCell.getCellLocation().z == 0) Logger.debug("ABOUT TO ENQUEUE ZERO");
-        if (gridCell == null || isNothing(gridCell) || isWorldBorder(gridCell)) {
-            return;
-        }
-//        Logger.debug("enqueuing " + gridCell.getCellLocation());
-//        if (gridCell.getCellLocation().x ==0 && gridCell.getCellLocation().y ==0 && gridCell.getCellLocation().z == 0) Logger.debug("ENQUEUED ZERO");
-        gridCell.updateValidOptions();
-        gridCellQueue.add(gridCell);
-    }
-
     public void updateCellPriority(GridCell gridCell) {
-        if (gridCell == null || isNothing(gridCell) || isWorldBorder(gridCell)) {
+        if (gridCell == null || gridCell.isGenerated() ||gridCell.isBorder()) {
             return;
         }
+
+        Logger.debug("updating priority for cell at " + gridCell.getCellLocation() + " with " + gridCell.getValidOptionCount() + " valid options");
+
         gridCellQueue.remove(gridCell);
+        boolean hasGeneratedNotNothingNeighbors = false;
+        for (GridCell value : gridCell.getOrientedNeighbors().values())
+            if (value != null&& value.isGenerated() && !value.isNothing())
+                hasGeneratedNotNothingNeighbors = true;
+        if (!hasGeneratedNotNothingNeighbors) return;
         gridCell.updateValidOptions();
         gridCellQueue.add(gridCell);
     }
 
     public void rollbackCell(GridCell gridCell){
-        if (gridCell.isStartModule()) {
-            Logger.warn("Tried to rollback start module! This shouldn't happen.");
-            return;
-        }
-
-        gridCellQueue.remove(gridCell);
-
-        for (GridCell value : gridCell.getOrientedNeighbors().values()) {
-            if (value == null) continue;
-            value.resetData();
-            updateCellPriority(value);
-        }
-
         gridCell.resetData();
+        for (GridCell value : gridCell.getOrientedNeighbors().values()) {
+            if (value != null) value.resetData();
+        }
+        for (GridCell value : gridCell.getOrientedNeighbors().values()) {
+            if (value != null) updateCellPriority(value);
+        }
+        updateCellPriority(gridCell);
     }
 
     private boolean isNothing(GridCell cell) {
@@ -114,36 +125,6 @@ public class SpatialGrid {
         gridCellQueue.clear();
     }
 
-    /**
-     * Initializes neighboring cells for a given cell, respecting "nothing" boundaries.
-     *
-     * @param gridCell The cell to initialize neighbors for
-     */
-    public void initializeCellNeighbors(GridCell gridCell, WaveFunctionCollapseGenerator waveFunctionCollapseGenerator) {
-        if (gridCell == null || isNothing(gridCell)) {
-//            Logger.debug("skipping because it's nothing");
-            return;
-        }
-
-        for (Direction direction : Direction.values()) {
-            Vector3i offset = DIRECTION_OFFSETS.get(direction);
-            Vector3i neighborLocation = new Vector3i(gridCell.getCellLocation()).add(offset);
-
-            // Skip if outside bounds
-            if (!isWithinBounds(neighborLocation)) {
-                continue;
-            }
-
-            // Check if neighbor already exists
-            GridCell existingNeighbor = cellMap.get(neighborLocation);
-            if (existingNeighbor == null) {
-                // Create new neighbor only if the current cell isn't "nothing"
-                GridCell neighborCell = new GridCell(neighborLocation, gridCell.getWorld(), this, cellMap, waveFunctionCollapseGenerator);
-                cellMap.put(neighborLocation, neighborCell);
-                enqueueCell(neighborCell);
-            }
-        }
-    }
 
     public boolean isWithinBounds(Vector3i location) {
         return Math.abs(location.x) <= gridRadius &&
@@ -152,7 +133,6 @@ public class SpatialGrid {
                 Math.abs(location.z) <= gridRadius;
     }
 
-
     public boolean isBorder(Vector3i location) {
         return location.x == -gridRadius
                 || location.x == gridRadius
@@ -160,24 +140,23 @@ public class SpatialGrid {
                 || location.z == gridRadius;
     }
 
-
     public GridCell getNextGridCell() {
         GridCell next = gridCellQueue.poll();
         // Skip "nothing" cells in the queue
         while (next != null && isNothing(next)) {
             next = gridCellQueue.poll();
-        }
 
-        //Skip if it has no generated neighbors, it's some random island in the sky that got detached
-        boolean hasGeneratedNeighbors = false;
-        for (GridCell value : next.getOrientedNeighbors().values()) {
-            if (value !=null && value.isGenerated()) {
-                hasGeneratedNeighbors = true;
-                break;
+            if (next == null) {
+                return null;
+            }
+
+            for (GridCell value : next.getOrientedNeighbors().values()) {
+                if (value !=null && value.isGenerated()) {
+                    next = null;
+                    break;
+                }
             }
         }
-        if (!hasGeneratedNeighbors)
-            next = gridCellQueue.poll();
 
         return next;
     }

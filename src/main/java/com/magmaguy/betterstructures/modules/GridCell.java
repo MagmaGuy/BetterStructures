@@ -5,17 +5,14 @@ import com.magmaguy.betterstructures.config.modules.ModulePasting;
 import com.magmaguy.betterstructures.config.modules.WaveFunctionCollapseGenerator;
 import com.magmaguy.magmacore.util.Logger;
 import lombok.Getter;
-import lombok.Setter;
-import org.bukkit.Color;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.World;
+import org.bukkit.*;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.TextDisplay;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Transformation;
+import org.bukkit.util.Vector;
 import org.joml.AxisAngle4f;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
@@ -38,17 +35,7 @@ public class GridCell {
     @Getter
     private HashSet<ModulesContainer> validOptions = null;
     private List<TextDisplay> textDisplays;
-
-    public void setModulesContainer(ModulesContainer modulesContainer){
-        this.modulesContainer = modulesContainer;
-        if (waveFunctionCollapseGenerator.getModuleGeneratorsConfigFields().isDebug()) {
-            if (modulesContainer == null) debugPaste(Material.GRAY_STAINED_GLASS);
-            else if (modulesContainer.isNothing()) debugPaste(Material.BLUE_STAINED_GLASS);
-            else debugPaste(Material.GREEN_STAINED_GLASS);
-        }
-        if (modulesContainer == null || modulesContainer.isNothing()) return;
-        waveFunctionCollapseGenerator.getSpatialGrid().initializeCellNeighbors(this, waveFunctionCollapseGenerator);
-    }
+    private Map<Direction, GridCell> neighbors = new EnumMap<>(Direction.class);
 
     /**
      * Creates a new GridCell.
@@ -65,11 +52,32 @@ public class GridCell {
         this.cellMap = cellMap;
         this.magnitudeSquared = (int) cellLocation.lengthSquared();
         this.waveFunctionCollapseGenerator = waveFunctionCollapseGenerator;
-        if (waveFunctionCollapseGenerator.getModuleGeneratorsConfigFields().isDebug()) debugPaste(Material.RED_STAINED_GLASS);
+        if (waveFunctionCollapseGenerator.getModuleGeneratorsConfigFields().isDebug()) {
+            if (isBorder()) debugPaste(Material.PURPLE_STAINED_GLASS);
+            else debugPaste(Material.RED_STAINED_GLASS);
+        }
+        if (isBorder()) modulesContainer = ModulesContainer.nothingContainer;
     }
 
-    public boolean isHorizontalEdge() {
-        return Math.abs(cellLocation.x) == grid.getGridRadius() || Math.abs(cellLocation.z) == grid.getGridRadius();
+    public void initializeNeighbors() {
+        for (Direction direction : Direction.values()) {
+            Vector3i offset = SpatialGrid.getDirectionOffset(direction);
+            Vector3i neighborPos = new Vector3i(cellLocation).add(offset);
+            neighbors.put(direction, cellMap.get(neighborPos));
+        }
+    }
+
+    public void setModulesContainer(ModulesContainer modulesContainer) {
+        this.modulesContainer = modulesContainer;
+        if (waveFunctionCollapseGenerator.getModuleGeneratorsConfigFields().isDebug()) {
+            if (modulesContainer == null) debugPaste(Material.GRAY_STAINED_GLASS);
+            else if (modulesContainer.isNothing()) debugPaste(Material.BLUE_STAINED_GLASS);
+            else debugPaste(Material.GREEN_STAINED_GLASS);
+        }
+    }
+
+    public boolean isBorder() {
+        return Math.abs(cellLocation.x) == grid.getGridRadius() || Math.abs(cellLocation.z) == grid.getGridRadius() || cellLocation.y < grid.getMinYLevel() || cellLocation.y > grid.getMaxYLevel();
     }
 
     /**
@@ -86,6 +94,7 @@ public class GridCell {
      */
     public void updateValidOptions() {
         validOptions = ModulesContainer.getValidModulesFromSurroundings(this);
+        showDebugTextDisplays();
     }
 
     /**
@@ -110,14 +119,6 @@ public class GridCell {
      * @return Map of Direction to GridCell for each neighbor
      */
     public Map<Direction, GridCell> getOrientedNeighbors() {
-        Map<Direction, GridCell> neighbors = new EnumMap<>(Direction.class);
-
-        for (Direction direction : Direction.values()) {
-            Vector3i offset = SpatialGrid.getDirectionOffset(direction);
-            Vector3i neighborPos = new Vector3i(cellLocation).add(offset);
-            neighbors.put(direction, cellMap.get(neighborPos));
-        }
-
         return neighbors;
     }
 
@@ -139,18 +140,31 @@ public class GridCell {
      * Creates debug text displays showing cell information.
      */
     public void showDebugTextDisplays() {
-        if (modulesContainer == null) {
-            return;
-        }
+        if (!waveFunctionCollapseGenerator.getModuleGeneratorsConfigFields().isDebug()) return;
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (textDisplays != null && !textDisplays.isEmpty())        clearDebugDisplays();
+                textDisplays = new ArrayList<>();
 
-        clearDebugDisplays();
-        textDisplays = new ArrayList<>();
+                if (modulesContainer == null) {
+                    if (validOptions == null) {
+                        spawnDebugText(getRealCenterLocation(), "Uninitialized", Color.RED, 1);
+                        return;
+                    } else {
+                        spawnDebugText(getRealCenterLocation(), "Uninitialized", Color.GREEN, 1);
+                        spawnDebugText(getRealCenterLocation(), "Options count: " + validOptions.size(), Color.GREEN, 1);
+                        return;
+                    }
+                }
 
-        Color color = generateRandomColor();
-        Location centerLocation = getRealCenterLocation();
+                Color color = generateRandomColor();
+                Location centerLocation = getRealCenterLocation();
 
-        displayMainInfo(centerLocation, color);
-        displayBorderInfo(centerLocation, color);
+                displayMainInfo(centerLocation, color);
+                displayBorderInfo(centerLocation, color);
+            }
+        }.runTask(MetadataHandler.PLUGIN);
     }
 
     private Color generateRandomColor() {
@@ -160,12 +174,13 @@ public class GridCell {
 
     private Location getLocalCenterLocation() {
         double y = waveFunctionCollapseGenerator.getSpatialGrid().getChunkSizeY() / 2d;
-        if (modulesContainer != null && modulesContainer.getClipboard() != null) y = modulesContainer.getClipboard().getDimensions().y() / 2d;
+        if (modulesContainer != null && modulesContainer.getClipboard() != null)
+            y = modulesContainer.getClipboard().getDimensions().y() / 2d;
         Vector3i worldPos = grid.gridToWorld(cellLocation).add((int) (waveFunctionCollapseGenerator.getSpatialGrid().getChunkSizeXZ() / 2d), (int) y, (int) (waveFunctionCollapseGenerator.getSpatialGrid().getChunkSizeXZ() / 2d));
         return new Location(world, worldPos.x, worldPos.y, worldPos.z);
     }
 
-    public Location getRealCenterLocation(){
+    public Location getRealCenterLocation() {
         return getLocalCenterLocation().add(waveFunctionCollapseGenerator.getStartLocation());
     }
 
@@ -209,7 +224,8 @@ public class GridCell {
         new BukkitRunnable() {
             @Override
             public void run() {
-                TextDisplay textDisplay = (TextDisplay) world.spawnEntity(location, EntityType.TEXT_DISPLAY);
+                Location adjustedLocation = location.clone().subtract(new Vector(0,textDisplays.size()/2d,0));
+                TextDisplay textDisplay = (TextDisplay) world.spawnEntity(adjustedLocation, EntityType.TEXT_DISPLAY);
                 configureTextDisplay(textDisplay, text, color, scale);
                 textDisplays.add(textDisplay);
             }
@@ -225,24 +241,9 @@ public class GridCell {
                 new AxisAngle4f()
         ));
         display.setBackgroundColor(color);
-//        display.setTextOpacity((byte) 1);
         display.setSeeThrough(true);
         display.setText(text);
-        display.setViewRange(32);
-    }
-
-    /**
-     * Process a module being pasted into this cell.
-     *
-     * @param modulesContainer The module container to paste
-     */
-    public void processPaste(ModulesContainer modulesContainer) {
-        setModulesContainer(modulesContainer);
-
-        // Update neighbor options after paste
-        getOrientedNeighbors().values().stream()
-                .filter(Objects::nonNull)
-                .forEach(GridCell::updateValidOptions);
+        display.setViewRange(1);
     }
 
     /**
@@ -254,12 +255,16 @@ public class GridCell {
         return modulesContainer != null;
     }
 
+    public boolean isNothing(){
+        return modulesContainer != null && modulesContainer.isNothing();
+    }
+
     /**
      * Resets this cell's data.
      *
      */
     public void resetData() {
-        if (isStartModule()) return;
+        if (isStartModule() || isBorder()) return;
 
         setModulesContainer(null);
         this.validOptions = null;
@@ -323,6 +328,8 @@ public class GridCell {
         new BukkitRunnable() {
             @Override
             public void run() {
+                showDebugTextDisplays();
+
                 Location startLocation = getRealLocation(waveFunctionCollapseGenerator.getStartLocation());
 
                 if (modulesContainer == null || modulesContainer.isNothing()) {
@@ -332,12 +339,11 @@ public class GridCell {
 
                 ModulePasting.paste(modulesContainer.getClipboard(), startLocation, modulesContainer.getRotation());
 
-                showDebugTextDisplays();
                 Logger.debug("Pasted " + modulesContainer.getClipboardFilename() + " at " + startLocation + " with rotation " + modulesContainer.getRotation());
             }
         }.runTask(MetadataHandler.PLUGIN);
         try {
-            Thread.sleep(100);
+            Thread.sleep(50);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }

@@ -31,7 +31,7 @@ public class ModulesContainer {
     @Getter
     private boolean horizontalEdge = false;
     private static final String WORLD_BORDER = "world_border";
-    private static ModulesContainer nothingContainer;
+    public static ModulesContainer nothingContainer;
 
     public ModulesContainer(Clipboard clipboard, String clipboardFilename, ModulesConfigFields modulesConfigField, String configFilename, int rotation) {
         this.clipboard = clipboard;
@@ -118,14 +118,6 @@ public class ModulesContainer {
                 continue;
 
             HashSet<ModulesContainer> validBorderSpecificModules = new HashSet<>();
-
-//            if (buildBorderChunkDataEntry.getValue().getModulesContainer().validBorders.get(direction.getOpposite()) == null)
-//                Logger.debug("no valid direction " + direction.getOpposite() + " for " + buildBorderChunkDataEntry.getValue().getModulesContainer().getClipboardFilename() + " as it was " + buildBorderChunkDataEntry.getValue().getModulesContainer().validBorders);
-
-//            if (buildBorderChunkDataEntry.getValue().getModulesContainer().isNothing()){
-//            }
-
-//            validModules.add(modulesContainers.get("nothing"));
 
             for (ModulesContainer modulesContainer : buildBorderChunkDataEntry.getValue().getModulesContainer().validBorders.get(direction.getOpposite())) {
                 if (modulesContainer == null) {

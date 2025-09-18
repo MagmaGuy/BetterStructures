@@ -162,12 +162,6 @@ public class ModulesConfigFields extends CustomConfigFields {
                 Logger.warn("Biome " + minecraftBiomeString + " is not a valid biome! Fix it in " + filename);
             }
         this.cloneConfig = processString("cloneConfig", cloneConfig, cloneConfig, true);
-//        this.northIsPassable = processBoolean("northIsPassable", northIsPassable, northIsPassable, true);
-//        this.southIsPassable = processBoolean("southIsPassable", southIsPassable, southIsPassable, true);
-//        this.eastIsPassable = processBoolean("eastIsPassable", eastIsPassable, eastIsPassable, true);
-//        this.westIsPassable = processBoolean("westIsPassable", westIsPassable, westIsPassable, true);
-//        this.upIsPassable = processBoolean("upIsPassable", upIsPassable, upIsPassable, true);
-//        this.downIsPassable = processBoolean("downIsPassable", downIsPassable, downIsPassable, true);
         this.compoundModule = processString("compoundModule", compoundModule, compoundModule, true);
         this.isAutomaticallyPlaced = processBoolean("isAutomaticallyPlaced", isAutomaticallyPlaced, isAutomaticallyPlaced, true);
     }
