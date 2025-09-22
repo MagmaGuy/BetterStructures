@@ -23,6 +23,7 @@ public class BSPackage extends ContentPackage {
     @Getter
     private static final Map<String, BSPackage> bsPackages = new HashMap<>();
     private static final String schematicFolder = MetadataHandler.PLUGIN.getDataFolder().getAbsolutePath() + File.separatorChar + "schematics" + File.separatorChar;
+    private static final String modulesFolder = MetadataHandler.PLUGIN.getDataFolder().getAbsolutePath() + File.separatorChar + "modules" + File.separatorChar;
     @Getter
     private final ContentPackageConfigFields contentPackageConfigFields;
 
@@ -127,12 +128,20 @@ public class BSPackage extends ContentPackage {
 
     @Override
     protected ContentState getContentState() {
-        if (!getSpecificSchematicFolder().exists()) return ContentState.NOT_DOWNLOADED;
+        if (!isInstalled()) return ContentState.NOT_DOWNLOADED;
         if (contentPackageConfigFields.isEnabled()) return ContentState.INSTALLED;
         return ContentState.NOT_INSTALLED;
     }
 
     private File getSpecificSchematicFolder() {
         return new File(schematicFolder + contentPackageConfigFields.getFolderName());
+    }
+
+    private boolean isInstalled() {
+        if (contentPackageConfigFields.getContentPackageType().equals(ContentPackageConfigFields.ContentPackageType.MODULAR)){
+            return new File(modulesFolder + contentPackageConfigFields.getFolderName()).exists();
+        } else {
+            return new File(schematicFolder + contentPackageConfigFields.getFolderName()).exists();
+        }
     }
 }

@@ -23,17 +23,13 @@ public class ModuleGeneratorsConfigFields extends CustomConfigFields {
     @Getter
     protected boolean debug;
     @Getter
-    protected boolean generateInstantly;
-    @Getter
-    protected int delayBetweenPastes;
-    @Getter
-    protected int pasteBatchSize;
-    @Getter
     protected boolean useGradientLevels;
     @Getter
     protected String spawnPoolSuffix;
     @Getter
     protected boolean isWorldGeneration;
+    @Getter
+    protected String treasureFile;
 
     /**
      * Used by plugin-generated files (defaults)
@@ -59,11 +55,9 @@ public class ModuleGeneratorsConfigFields extends CustomConfigFields {
         this.moduleSizeXZ = processInt("moduleSizeXZ", moduleSizeXZ, 16, true);
         this.moduleSizeY = processInt("moduleSizeY", moduleSizeY, 16, true);
         this.debug = processBoolean("debug", debug, false, true);
-        this.generateInstantly = processBoolean("generateInstantly", generateInstantly, true, true);
-        this.delayBetweenPastes = processInt("delayBetweenPastes", delayBetweenPastes, 20, true);
-        this.pasteBatchSize = processInt("pasteBatchSize", pasteBatchSize, 1, true);
         this.useGradientLevels = processBoolean("useGradientLevels", useGradientLevels, useGradientLevels, true);
         this.spawnPoolSuffix = processString("spawnPoolSuffix", spawnPoolSuffix, spawnPoolSuffix, true);
         this.isWorldGeneration = processBoolean("isWorldGeneration", isWorldGeneration, isWorldGeneration, true);
+        this.treasureFile = processString("treasureFile", treasureFile, null, false);
     }
 }

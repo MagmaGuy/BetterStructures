@@ -1,4 +1,4 @@
-package com.magmaguy.betterstructures.config.modules;
+package com.magmaguy.betterstructures.modules;
 
 import com.magmaguy.betterstructures.MetadataHandler;
 import com.magmaguy.betterstructures.api.WorldGenerationFinishEvent;

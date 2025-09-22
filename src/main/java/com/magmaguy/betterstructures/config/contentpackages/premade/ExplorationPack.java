@@ -12,5 +12,6 @@ public class ExplorationPack extends ContentPackageConfigFields {
                 List.of("&fAdventure-focused pack of challenging structures!"),
                 "https://nightbreak.io/plugin/betterstructures/#exploration-pack",
                 "exploration");
+        setContentPackageType(ContentPackageType.STRUCTURE);
     }
 }

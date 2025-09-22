@@ -12,6 +12,7 @@ public class CavesAndLostCivilizationsPremium extends ContentPackageConfigFields
                 List.of("&fA pack of 101 underground lost landmarks!"),
                 "https://nightbreak.io/plugin/betterstructures/#caves-and-lost-civilizations-premium",
                 "caves_and_lost_civilizations_premium");
+        setContentPackageType(ContentPackageType.STRUCTURE);
     }
 }
 

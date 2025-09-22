@@ -12,5 +12,6 @@ public class EchoesOfThePast extends ContentPackageConfigFields {
                 List.of("&fExplore 122 structures featuring ruins and lost civilizations!"),
                 "https://nightbreak.io/plugin/betterstructures/#echoes-of-the-past",
                 "echoes");
+        setContentPackageType(ContentPackageType.STRUCTURE);
     }
 }

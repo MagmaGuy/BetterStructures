@@ -12,5 +12,6 @@ public class CavesAndLostCivilizationsFree extends ContentPackageConfigFields {
                 List.of("&fA pack of 49 underground lost landmarks!"),
                 "https://nightbreak.io/plugin/betterstructures/#caves-and-lost-civilizations-free",
                 "caves_and_lost_civilizations_free");
+        setContentPackageType(ContentPackageType.STRUCTURE);
     }
 }

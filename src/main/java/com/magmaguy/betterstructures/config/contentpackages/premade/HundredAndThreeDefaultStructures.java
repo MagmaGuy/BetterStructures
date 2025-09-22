@@ -12,5 +12,6 @@ public class HundredAndThreeDefaultStructures extends ContentPackageConfigFields
                 List.of("&f103 vanilla-like structures ready to be placed in your world!"),
                 "https://nightbreak.io/plugin/betterstructures/#103-default-structures",
                 "default");
+        setContentPackageType(ContentPackageType.STRUCTURE);
     }
 }
