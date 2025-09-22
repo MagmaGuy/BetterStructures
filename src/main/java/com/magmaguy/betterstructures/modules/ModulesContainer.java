@@ -107,11 +107,11 @@ public class ModulesContainer {
         modulesContainers.clear();
     }
 
-    public static HashSet<ModulesContainer> getValidModulesFromSurroundings(GridCell gridCell) {
+    public static HashSet<ModulesContainer> getValidModulesFromSurroundings(WFCNode WFCNode) {
         HashSet<ModulesContainer> validModules = null;
-        boolean isGridBorder = gridCell.getWaveFunctionCollapseGenerator().getSpatialGrid().isBorder(gridCell.getCellLocation());
+        boolean isGridBorder = WFCNode.getWfcGenerator().getSpatialGrid().isBoundary(WFCNode.getCellLocation());
 
-        for (Map.Entry<Direction, GridCell> buildBorderChunkDataEntry : gridCell.getOrientedNeighbors().entrySet()) {
+        for (Map.Entry<Direction, WFCNode> buildBorderChunkDataEntry : WFCNode.getOrientedNeighbors().entrySet()) {
             Direction direction = buildBorderChunkDataEntry.getKey();
             //Handle the neighbor not being generated yet
             if (buildBorderChunkDataEntry.getValue() == null || buildBorderChunkDataEntry.getValue().getModulesContainer() == null)
@@ -135,7 +135,7 @@ public class ModulesContainer {
                     }
 
                 boolean repeatStop = false;
-                for (GridCell neighbourData : gridCell.getOrientedNeighbors().values()) {
+                for (WFCNode neighbourData : WFCNode.getOrientedNeighbors().values()) {
                     if (neighbourData == null || neighbourData.getModulesContainer() == null) continue;
                     if (!modulesContainer.nothing &&
                             modulesContainer.getModulesConfigField().isNoRepeat() &&
@@ -157,11 +157,11 @@ public class ModulesContainer {
                         boolean isOutwardDirection = false;
 
                         // Determine if this direction points outward based on cell position
-                        Vector3i pos = gridCell.getCellLocation();
-                        if ((pos.x == -gridCell.getWaveFunctionCollapseGenerator().getSpatialGrid().getGridRadius() && checkDirection == Direction.WEST) ||
-                                (pos.x == gridCell.getWaveFunctionCollapseGenerator().getSpatialGrid().getGridRadius() && checkDirection == Direction.EAST) ||
-                                (pos.z == -gridCell.getWaveFunctionCollapseGenerator().getSpatialGrid().getGridRadius() && checkDirection == Direction.NORTH) ||
-                                (pos.z == gridCell.getWaveFunctionCollapseGenerator().getSpatialGrid().getGridRadius() && checkDirection == Direction.SOUTH)) {
+                        Vector3i pos = WFCNode.getCellLocation();
+                        if ((pos.x == -WFCNode.getWfcGenerator().getSpatialGrid().getLatticeRadius() && checkDirection == Direction.WEST) ||
+                                (pos.x == WFCNode.getWfcGenerator().getSpatialGrid().getLatticeRadius() && checkDirection == Direction.EAST) ||
+                                (pos.z == -WFCNode.getWfcGenerator().getSpatialGrid().getLatticeRadius() && checkDirection == Direction.NORTH) ||
+                                (pos.z == WFCNode.getWfcGenerator().getSpatialGrid().getLatticeRadius() && checkDirection == Direction.SOUTH)) {
                             isOutwardDirection = true;
                         }
 
@@ -186,7 +186,7 @@ public class ModulesContainer {
                     continue;
                 }
 
-                Vector3i loc = gridCell.getCellLocation();
+                Vector3i loc = WFCNode.getCellLocation();
                 if (loc.y < modulesContainer.modulesConfigField.getMinY() ||
                         loc.y > modulesContainer.modulesConfigField.getMaxY()) {
                     continue;
@@ -204,7 +204,7 @@ public class ModulesContainer {
         }
 
         if (validModules == null || validModules.isEmpty()) {
-//            Logger.debug(gridCell.getCellLocation() + " list was empty");
+//            Logger.debug(WFCNode.getCellLocation() + " list was empty");
             return new HashSet<>();
         }
         return validModules;
@@ -228,7 +228,7 @@ public class ModulesContainer {
             return module.rotation == neighbour.rotation;
     }
 
-    public static ModulesContainer pickWeightedRandomModule(HashSet<ModulesContainer> modules, GridCell gridCell) {
+    public static ModulesContainer pickWeightedRandomModule(HashSet<ModulesContainer> modules, WFCNode WFCNode) {
         Map<Integer, Double> weightMap = new HashMap<>();
         Map<Integer, ModulesContainer> moduleMap = new HashMap<>();
         int index = 0;
@@ -236,7 +236,7 @@ public class ModulesContainer {
         for (ModulesContainer modulesContainer : modules) {
             double weight = modulesContainer.getWeight();
             if (!modulesContainer.nothing && modulesContainer.getModulesConfigField().getRepetitionPenalty() != 0) {
-                for (GridCell value : gridCell.getOrientedNeighbors().values()) {
+                for (WFCNode value : WFCNode.getOrientedNeighbors().values()) {
                     if (value != null && value.getModulesContainer() != null && modulesContainer.getClipboardFilename().equals(value.getModulesContainer().getClipboardFilename())) {
                         weight += modulesContainer.getModulesConfigField().getRepetitionPenalty();
                     }

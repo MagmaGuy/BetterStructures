@@ -1,6 +1,6 @@
 package com.magmaguy.betterstructures.api;
 
-import com.magmaguy.betterstructures.config.modules.ModularWorld;
+import com.magmaguy.betterstructures.modules.ModularWorld;
 import lombok.Getter;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;

@@ -8,7 +8,6 @@ import com.magmaguy.betterstructures.config.contentpackages.ContentPackageConfig
 import com.magmaguy.betterstructures.config.generators.GeneratorConfig;
 import com.magmaguy.betterstructures.config.modulegenerators.ModuleGeneratorsConfig;
 import com.magmaguy.betterstructures.config.modules.ModulesConfig;
-import com.magmaguy.betterstructures.config.modules.WaveFunctionCollapseGenerator;
 import com.magmaguy.betterstructures.config.schematics.SchematicConfig;
 import com.magmaguy.betterstructures.config.spawnpools.SpawnPoolsConfig;
 import com.magmaguy.betterstructures.config.treasures.TreasureConfig;
@@ -16,6 +15,7 @@ import com.magmaguy.betterstructures.content.BSPackage;
 import com.magmaguy.betterstructures.listeners.FirstTimeSetupWarner;
 import com.magmaguy.betterstructures.listeners.NewChunkLoadEvent;
 import com.magmaguy.betterstructures.modules.ModulesContainer;
+import com.magmaguy.betterstructures.modules.WFCGenerator;
 import com.magmaguy.betterstructures.schematics.SchematicContainer;
 import com.magmaguy.betterstructures.thirdparty.WorldGuard;
 import com.magmaguy.easyminecraftgoals.NMSManager;
@@ -108,7 +108,7 @@ public final class BetterStructures extends JavaPlugin {
         HandlerList.unregisterAll(MetadataHandler.PLUGIN);
         BSPackage.shutdown();
         ModulesContainer.shutdown();
-        WaveFunctionCollapseGenerator.shutdown();
+        WFCGenerator.shutdown();
         Bukkit.getLogger().info("[BetterStructures] Shutdown!");
     }
 }

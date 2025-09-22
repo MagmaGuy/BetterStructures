@@ -12,5 +12,6 @@ public class FreeEliteShrines extends ContentPackageConfigFields {
                 List.of("&fFace 56 bosses in the perilous innards of 49 shrines!"),
                 "https://nightbreak.io/plugin/betterstructures/#free-elite-shrines",
                 "BetterStructures Free Elite Shrines");
+        setContentPackageType(ContentPackageType.STRUCTURE);
     }
 }

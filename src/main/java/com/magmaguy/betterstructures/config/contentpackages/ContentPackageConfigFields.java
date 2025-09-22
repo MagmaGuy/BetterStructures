@@ -2,6 +2,7 @@ package com.magmaguy.betterstructures.config.contentpackages;
 
 import com.magmaguy.magmacore.config.CustomConfigFields;
 import lombok.Getter;
+import lombok.Setter;
 
 import java.util.List;
 
@@ -16,6 +17,14 @@ public class ContentPackageConfigFields extends CustomConfigFields {
     private String downloadLink;
     @Getter
     private String folderName;
+    @Getter
+    @Setter
+    private ContentPackageType contentPackageType;
+
+    public enum ContentPackageType {
+        STRUCTURE,
+        MODULAR
+    }
 
     public ContentPackageConfigFields(String filename,
                                       boolean isEnabled,
@@ -42,5 +51,6 @@ public class ContentPackageConfigFields extends CustomConfigFields {
         this.downloadLink = processString("downloadLink" , downloadLink, downloadLink, false);
         this.version = processInt("version", version, 0, true);
         this.folderName = processString("folderName", folderName, null, true);
+        this.contentPackageType = processEnum("contentPackageType", contentPackageType, ContentPackageType.STRUCTURE, ContentPackageType.class, false);
     }
 }

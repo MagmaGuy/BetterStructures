@@ -2,7 +2,7 @@ package com.magmaguy.betterstructures.commands;
 
 import com.magmaguy.betterstructures.config.modulegenerators.ModuleGeneratorsConfig;
 import com.magmaguy.betterstructures.config.modulegenerators.ModuleGeneratorsConfigFields;
-import com.magmaguy.betterstructures.config.modules.WaveFunctionCollapseGenerator;
+import com.magmaguy.betterstructures.modules.WFCGenerator;
 import com.magmaguy.magmacore.command.AdvancedCommand;
 import com.magmaguy.magmacore.command.CommandData;
 import com.magmaguy.magmacore.command.SenderType;
@@ -33,7 +33,7 @@ public class GenerateModulesCommand extends AdvancedCommand {
             Logger.sendMessage(commandData.getCommandSender(), "File " + commandData.getStringArgument("moduleGeneratorsConfigFile") + " not found! The world won't generate.");
             return;
         }
-        WaveFunctionCollapseGenerator.generateFromConfig(
+        WFCGenerator.generateFromConfig(
                 moduleGeneratorsConfigFields,
                 commandData.getPlayerSender());
     }

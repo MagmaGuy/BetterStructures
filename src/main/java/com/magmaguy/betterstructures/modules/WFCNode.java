@@ -1,8 +1,6 @@
 package com.magmaguy.betterstructures.modules;
 
 import com.magmaguy.betterstructures.MetadataHandler;
-import com.magmaguy.betterstructures.config.modules.ModulePasting;
-import com.magmaguy.betterstructures.config.modules.WaveFunctionCollapseGenerator;
 import com.magmaguy.magmacore.util.Logger;
 import lombok.Getter;
 import org.bukkit.*;
@@ -20,64 +18,64 @@ import org.joml.Vector3i;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
-public class GridCell {
-    private final Vector3i cellLocation;
-    private final SpatialGrid grid;
+public class WFCNode {
+    private final Vector3i nodePosition;
+    private final WFCLattice lattice;
     @Getter
     private final World world;
-    private final Map<Vector3i, GridCell> cellMap;
+    private final Map<Vector3i, WFCNode> nodeMap;
     @Getter
     private final int magnitudeSquared;
     @Getter
-    private final WaveFunctionCollapseGenerator waveFunctionCollapseGenerator;
+    private final WFCGenerator wfcGenerator;
     @Getter
     private ModulesContainer modulesContainer;
     @Getter
-    private HashSet<ModulesContainer> validOptions = null;
+    private HashSet<ModulesContainer> possibleStates = null;
     private List<TextDisplay> textDisplays;
-    private Map<Direction, GridCell> neighbors = new EnumMap<>(Direction.class);
+    private Map<Direction, WFCNode> adjacentNodes = new EnumMap<>(Direction.class);
 
     /**
-     * Creates a new GridCell.
+     * Creates a new WFCNode.
      *
-     * @param cellLocation The grid coordinates of this cell
-     * @param world        The world this cell belongs to
-     * @param grid         The spatial grid this cell belongs to
-     * @param cellMap      The global cell map reference
+     * @param nodePosition The lattice coordinates of this node
+     * @param world        The world this node belongs to
+     * @param lattice      The WFC lattice this node belongs to
+     * @param nodeMap      The global node map reference
      */
-    public GridCell(Vector3i cellLocation, World world, SpatialGrid grid, Map<Vector3i, GridCell> cellMap, WaveFunctionCollapseGenerator waveFunctionCollapseGenerator) {
-        this.cellLocation = new Vector3i(cellLocation);  // Defensive copy
+    public WFCNode(Vector3i nodePosition, World world, WFCLattice lattice, Map<Vector3i, WFCNode> nodeMap, WFCGenerator wfcGenerator) {
+        this.nodePosition = new Vector3i(nodePosition);  // Defensive copy
         this.world = world;
-        this.grid = grid;
-        this.cellMap = cellMap;
-        this.magnitudeSquared = (int) cellLocation.lengthSquared();
-        this.waveFunctionCollapseGenerator = waveFunctionCollapseGenerator;
-        if (waveFunctionCollapseGenerator.getModuleGeneratorsConfigFields().isDebug()) {
-            if (isBorder()) debugPaste(Material.PURPLE_STAINED_GLASS);
+        this.lattice = lattice;
+        this.nodeMap = nodeMap;
+        this.magnitudeSquared = (int) nodePosition.lengthSquared();
+        this.wfcGenerator = wfcGenerator;
+        if (wfcGenerator.getModuleGeneratorsConfigFields().isDebug()) {
+            if (isBoundary()) debugPaste(Material.PURPLE_STAINED_GLASS);
             else debugPaste(Material.RED_STAINED_GLASS);
         }
-        if (isBorder()) modulesContainer = ModulesContainer.nothingContainer;
+        if (isBoundary()) modulesContainer = ModulesContainer.nothingContainer;
     }
 
     public void initializeNeighbors() {
         for (Direction direction : Direction.values()) {
-            Vector3i offset = SpatialGrid.getDirectionOffset(direction);
-            Vector3i neighborPos = new Vector3i(cellLocation).add(offset);
-            neighbors.put(direction, cellMap.get(neighborPos));
+            Vector3i offset = WFCLattice.getDirectionOffset(direction);
+            Vector3i neighborPos = new Vector3i(nodePosition).add(offset);
+            adjacentNodes.put(direction, nodeMap.get(neighborPos));
         }
     }
 
     public void setModulesContainer(ModulesContainer modulesContainer) {
         this.modulesContainer = modulesContainer;
-        if (waveFunctionCollapseGenerator.getModuleGeneratorsConfigFields().isDebug()) {
+        if (wfcGenerator.getModuleGeneratorsConfigFields().isDebug()) {
             if (modulesContainer == null) debugPaste(Material.GRAY_STAINED_GLASS);
             else if (modulesContainer.isNothing()) debugPaste(Material.BLUE_STAINED_GLASS);
             else debugPaste(Material.GREEN_STAINED_GLASS);
         }
     }
 
-    public boolean isBorder() {
-        return Math.abs(cellLocation.x) == grid.getGridRadius() || Math.abs(cellLocation.z) == grid.getGridRadius() || cellLocation.y < grid.getMinYLevel() || cellLocation.y > grid.getMaxYLevel();
+    public boolean isBoundary() {
+        return Math.abs(nodePosition.x) == lattice.getLatticeRadius() || Math.abs(nodePosition.z) == lattice.getLatticeRadius() || nodePosition.y < lattice.getMinYLevel() || nodePosition.y > lattice.getMaxYLevel();
     }
 
     /**
@@ -86,14 +84,14 @@ public class GridCell {
      * @return A new Vector3i containing the cell location
      */
     public Vector3i getCellLocation() {
-        return new Vector3i(cellLocation);
+        return new Vector3i(nodePosition);
     }
 
     /**
-     * Updates the valid module options for this cell based on its surroundings.
+     * Updates the possible states for this node based on its adjacent nodes.
      */
-    public void updateValidOptions() {
-        validOptions = ModulesContainer.getValidModulesFromSurroundings(this);
+    public void updatePossibleStates() {
+        possibleStates = ModulesContainer.getValidModulesFromSurroundings(this);
         showDebugTextDisplays();
     }
 
@@ -103,23 +101,35 @@ public class GridCell {
      * @return The number of valid options, or 0 if none are available
      */
     public int getValidOptionCount() {
-        if (validOptions == null) {
-            updateValidOptions();
+        if (possibleStates == null) {
+            updatePossibleStates();
         }
-        if (validOptions == null) {
-            Logger.warn("Valid options were null when trying to get the size for cell at " + cellLocation);
+        if (possibleStates == null) {
+            Logger.warn("Valid options were null when trying to get the size for cell at " + nodePosition);
             return 0;
         }
-        return validOptions.size();
+        return possibleStates.size();
     }
 
     /**
      * Gets a map of neighboring cells in each direction.
      *
-     * @return Map of Direction to GridCell for each neighbor
+     * @return Map of Direction to WFCNode for each neighbor
      */
-    public Map<Direction, GridCell> getOrientedNeighbors() {
-        return neighbors;
+    public Map<Direction, WFCNode> getOrientedNeighbors() {
+        return adjacentNodes;
+    }
+
+    /**
+     * Gets the possible states for this node.
+     * 
+     * @return Set of possible module states for this node
+     */
+    public HashSet<ModulesContainer> getValidOptions() {
+        if (possibleStates == null) {
+            updatePossibleStates();
+        }
+        return possibleStates;
     }
 
     /**
@@ -130,9 +140,9 @@ public class GridCell {
     public Location getRealLocation(Location startLocation) {
         Vector3i worldCoord;
         if (startLocation != null)
-            worldCoord = grid.gridToWorld(cellLocation).add(startLocation.getBlockX(), startLocation.getBlockY(), startLocation.getBlockZ());
+            worldCoord = lattice.latticeToWorld(nodePosition).add(startLocation.getBlockX(), startLocation.getBlockY(), startLocation.getBlockZ());
         else
-            worldCoord = grid.gridToWorld(cellLocation);
+            worldCoord = lattice.latticeToWorld(nodePosition);
         return new Location(world, worldCoord.x, worldCoord.y, worldCoord.z);
     }
 
@@ -140,7 +150,7 @@ public class GridCell {
      * Creates debug text displays showing cell information.
      */
     public void showDebugTextDisplays() {
-        if (!waveFunctionCollapseGenerator.getModuleGeneratorsConfigFields().isDebug()) return;
+        if (!wfcGenerator.getModuleGeneratorsConfigFields().isDebug()) return;
         new BukkitRunnable() {
             @Override
             public void run() {
@@ -148,12 +158,12 @@ public class GridCell {
                 textDisplays = new ArrayList<>();
 
                 if (modulesContainer == null) {
-                    if (validOptions == null) {
+                    if (possibleStates == null) {
                         spawnDebugText(getRealCenterLocation(), "Uninitialized", Color.RED, 1);
                         return;
                     } else {
                         spawnDebugText(getRealCenterLocation(), "Uninitialized", Color.GREEN, 1);
-                        spawnDebugText(getRealCenterLocation(), "Options count: " + validOptions.size(), Color.GREEN, 1);
+                        spawnDebugText(getRealCenterLocation(), "Options count: " + possibleStates.size(), Color.GREEN, 1);
                         return;
                     }
                 }
@@ -173,15 +183,15 @@ public class GridCell {
     }
 
     private Location getLocalCenterLocation() {
-        double y = waveFunctionCollapseGenerator.getSpatialGrid().getChunkSizeY() / 2d;
+        double y = lattice.getNodeSizeY() / 2d;
         if (modulesContainer != null && modulesContainer.getClipboard() != null)
             y = modulesContainer.getClipboard().getDimensions().y() / 2d;
-        Vector3i worldPos = grid.gridToWorld(cellLocation).add((int) (waveFunctionCollapseGenerator.getSpatialGrid().getChunkSizeXZ() / 2d), (int) y, (int) (waveFunctionCollapseGenerator.getSpatialGrid().getChunkSizeXZ() / 2d));
+        Vector3i worldPos = lattice.latticeToWorld(nodePosition).add((int) (lattice.getNodeSizeXZ() / 2d), (int) y, (int) (lattice.getNodeSizeXZ() / 2d));
         return new Location(world, worldPos.x, worldPos.y, worldPos.z);
     }
 
     public Location getRealCenterLocation() {
-        return getLocalCenterLocation().add(waveFunctionCollapseGenerator.getStartLocation());
+        return getLocalCenterLocation().add(wfcGenerator.getStartLocation());
     }
 
     private void displayMainInfo(Location centerLocation, Color color) {
@@ -251,7 +261,7 @@ public class GridCell {
      *
      * @return true if the cell has a module container
      */
-    public boolean isGenerated() {
+    public boolean isCollapsed() {
         return modulesContainer != null;
     }
 
@@ -263,27 +273,27 @@ public class GridCell {
      * Resets this cell's data.
      *
      */
-    public void resetData() {
-        if (isStartModule() || isBorder()) return;
+    public void resetState() {
+        if (isInitialNode() || isBoundary()) return;
 
         setModulesContainer(null);
-        this.validOptions = null;
-        if (waveFunctionCollapseGenerator.getModuleGeneratorsConfigFields().isDebug()) {
+        this.possibleStates = null;
+        if (wfcGenerator.getModuleGeneratorsConfigFields().isDebug()) {
             debugPaste(Material.GRAY_STAINED_GLASS);
         }
     }
 
 
-    public boolean isStartModule() {
-        return new Vector3i().equals(cellLocation);
+    public boolean isInitialNode() {
+        return new Vector3i().equals(nodePosition);
     }
 
     /**
      * Clears generation data for this cell.
      */
-    public void clearGridGenerationData() {
+    public void clearGenerationData() {
         clearDebugDisplays();
-        validOptions = null;
+        possibleStates = null;
     }
 
     private void clearDebugDisplays() {
@@ -294,8 +304,8 @@ public class GridCell {
     }
 
     private void placeMaterial(Location startLocation, Material material) {
-        int sizeXZ = waveFunctionCollapseGenerator.getModuleGeneratorsConfigFields().getModuleSizeXZ();
-        int sizeY = waveFunctionCollapseGenerator.getModuleGeneratorsConfigFields().getModuleSizeY();
+        int sizeXZ = wfcGenerator.getModuleGeneratorsConfigFields().getModuleSizeXZ();
+        int sizeY = wfcGenerator.getModuleGeneratorsConfigFields().getModuleSizeY();
 
         for (int x = 0; x < sizeXZ; x++) {
             for (int y = 0; y < sizeY; y++) {
@@ -330,7 +340,7 @@ public class GridCell {
             public void run() {
                 showDebugTextDisplays();
 
-                Location startLocation = getRealLocation(waveFunctionCollapseGenerator.getStartLocation());
+                Location startLocation = getRealLocation(wfcGenerator.getStartLocation());
 
                 if (modulesContainer == null || modulesContainer.isNothing()) {
                     placeMaterial(startLocation, material);
@@ -338,8 +348,6 @@ public class GridCell {
                 }
 
                 ModulePasting.paste(modulesContainer.getClipboard(), startLocation, modulesContainer.getRotation());
-
-                Logger.debug("Pasted " + modulesContainer.getClipboardFilename() + " at " + startLocation + " with rotation " + modulesContainer.getRotation());
             }
         }.runTask(MetadataHandler.PLUGIN);
         try {

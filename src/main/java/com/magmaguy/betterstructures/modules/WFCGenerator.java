@@ -1,16 +1,15 @@
-package com.magmaguy.betterstructures.config.modules;
+package com.magmaguy.betterstructures.modules;
 
 import com.magmaguy.betterstructures.MetadataHandler;
 import com.magmaguy.betterstructures.config.modulegenerators.ModuleGeneratorsConfigFields;
-import com.magmaguy.betterstructures.modules.GridCell;
-import com.magmaguy.betterstructures.modules.ModulesContainer;
-import com.magmaguy.betterstructures.modules.SpatialGrid;
-import com.magmaguy.betterstructures.modules.WorldInitializer;
 import com.magmaguy.magmacore.util.Logger;
 import lombok.Getter;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.boss.BarColor;
+import org.bukkit.boss.BarStyle;
+import org.bukkit.boss.BossBar;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.joml.Vector3i;
@@ -23,13 +22,13 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import static com.magmaguy.betterstructures.modules.ModulesContainer.pickWeightedRandomModule;
 
-public class WaveFunctionCollapseGenerator {
-    public static HashSet<WaveFunctionCollapseGenerator> waveFunctionCollapseGenerators = new HashSet<>();
+public class WFCGenerator {
+    public static HashSet<WFCGenerator> wfcGenerators = new HashSet<>();
     @Getter
     private ModuleGeneratorsConfigFields moduleGeneratorsConfigFields;
 
     @Getter
-    private SpatialGrid spatialGrid;
+    private WFCLattice spatialGrid;
     private Player player = null;
     private String startingModule;
     @Getter
@@ -41,14 +40,17 @@ public class WaveFunctionCollapseGenerator {
     private File worldFolder;
     private String worldName;
     private int rollbackCounter = 0;
+    private BossBar progressBar;
+    private int totalNodes = 0;
+    private int completedNodes = 0;
 
-    public WaveFunctionCollapseGenerator(ModuleGeneratorsConfigFields moduleGeneratorsConfigFields, Player player) {
+    public WFCGenerator(ModuleGeneratorsConfigFields moduleGeneratorsConfigFields, Player player) {
         this.player = player;
         this.startLocation = player.getLocation();
         initialize(moduleGeneratorsConfigFields);
     }
 
-    public WaveFunctionCollapseGenerator(ModuleGeneratorsConfigFields moduleGeneratorsConfigFields, Location startLocation) {
+    public WFCGenerator(ModuleGeneratorsConfigFields moduleGeneratorsConfigFields, Location startLocation) {
         this.moduleGeneratorsConfigFields = moduleGeneratorsConfigFields;
         this.startLocation = startLocation;
         initialize(moduleGeneratorsConfigFields);
@@ -74,21 +76,50 @@ public class WaveFunctionCollapseGenerator {
                     }
 
                 } else {
-                    new WaveFunctionCollapseGenerator(generatorsConfigFields, player);
+                    new WFCGenerator(generatorsConfigFields, player);
                 }
             }
         }.runTaskAsynchronously(MetadataHandler.PLUGIN);
     }
 
     public static void shutdown() {
-        waveFunctionCollapseGenerators.forEach(WaveFunctionCollapseGenerator::cancel);
-        waveFunctionCollapseGenerators.clear();
+        wfcGenerators.forEach(WFCGenerator::cancel);
+        wfcGenerators.clear();
+    }
+
+    private void initializeProgressBar() {
+        if (player != null) {
+            progressBar = Bukkit.createBossBar("Generating Structure...", BarColor.BLUE, BarStyle.SOLID);
+            progressBar.addPlayer(player);
+            progressBar.setProgress(0.0);
+        }
+    }
+
+    private void updateProgressBar(String message) {
+        if (progressBar != null && totalNodes > 0) {
+            double progress = (double) completedNodes / totalNodes;
+            progressBar.setProgress(Math.min(progress, 1.0));
+            progressBar.setTitle(message);
+        }
+    }
+
+    private void removeProgressBar() {
+        if (progressBar != null) {
+            progressBar.removeAll();
+            progressBar = null;
+        }
     }
 
     private void initialize(ModuleGeneratorsConfigFields moduleGeneratorsConfigFields) {
         this.moduleGeneratorsConfigFields = moduleGeneratorsConfigFields;
-        this.spatialGrid = new SpatialGrid(moduleGeneratorsConfigFields.getRadius(), moduleGeneratorsConfigFields.getModuleSizeXZ(), moduleGeneratorsConfigFields.getModuleSizeY(), moduleGeneratorsConfigFields.getMinChunkY(), moduleGeneratorsConfigFields.getMaxChunkY());
-        waveFunctionCollapseGenerators.add(this);
+        this.spatialGrid = new WFCLattice(moduleGeneratorsConfigFields.getRadius(), moduleGeneratorsConfigFields.getModuleSizeXZ(), moduleGeneratorsConfigFields.getModuleSizeY(), moduleGeneratorsConfigFields.getMinChunkY(), moduleGeneratorsConfigFields.getMaxChunkY());
+        wfcGenerators.add(this);
+
+        // Calculate total nodes for progress tracking
+        int radius = moduleGeneratorsConfigFields.getRadius();
+        int minY = moduleGeneratorsConfigFields.getMinChunkY();
+        int maxY = moduleGeneratorsConfigFields.getMaxChunkY();
+        totalNodes = (radius * 2 + 1) * (radius * 2 + 1) * (maxY - minY + 1);
 
         this.startingModule = moduleGeneratorsConfigFields.getStartModules().get(ThreadLocalRandom.current().nextInt(moduleGeneratorsConfigFields.getStartModules().size())) + "_rotation_0";
 
@@ -108,36 +139,24 @@ public class WaveFunctionCollapseGenerator {
             }
         }
 
+        initializeProgressBar();
         reserveChunks();
     }
 
     private void reserveChunks() {
-        Logger.debug("Starting chunk reservation");
+        updateProgressBar("Initializing lattice...");
         if (moduleGeneratorsConfigFields.isWorldGeneration()) {
             this.world = WorldInitializer.generateWorld(worldName, player);
         } else {
             this.world = startLocation.getWorld();
         }
 
-        spatialGrid.initializeGrid(world, this);
-
-//        WorkloadRunnable reserveChunksTask = new WorkloadRunnable(.2, () -> {});
-//        int realChunkRadius = (int) Math.ceil(spatialGrid.getChunkSizeXZ() / 16d) * spatialGrid.getGridRadius();
-//        for (int x = -realChunkRadius; x < realChunkRadius; x++) {
-//            for (int z = -realChunkRadius; z < realChunkRadius; z++) {
-//                int finalX = x;
-//                int finalZ = z;
-//                reserveChunksTask.addWorkload(() -> {
-//                    world.loadChunk(finalX, finalZ);
-//                });
-//            }
-//        }
-//        reserveChunksTask.runTaskTimer(MetadataHandler.PLUGIN, 0, 1);
+        spatialGrid.initializeLattice(world, this);
         startArrangingModules();
     }
 
     private void startArrangingModules() {
-        Logger.debug("Starting module arrangement");
+        updateProgressBar("Starting generation...");
         new InitializeGenerationTask().runTaskAsynchronously(MetadataHandler.PLUGIN);
     }
 
@@ -147,10 +166,10 @@ public class WaveFunctionCollapseGenerator {
         }
         isGenerating = true;
 
-        Logger.debug("Starting generation with starting module " + startingModule);
+        updateProgressBar("Collapsing initial node...");
 
         try {
-            GridCell startChunk = createStartChunk(startingModule);
+            WFCNode startChunk = createStartChunk(startingModule);
             if (startChunk == null) {
                 return;
             }
@@ -164,28 +183,24 @@ public class WaveFunctionCollapseGenerator {
         }
     }
 
-    private GridCell createStartChunk(String startingModule) {
-        Logger.debug("Creating start chunk at " + startLocation + " with radius " + moduleGeneratorsConfigFields.getRadius() +
-                " and chunk size " + moduleGeneratorsConfigFields.getModuleSizeXZ() + " and starting module " + startingModule);
+    private WFCNode createStartChunk(String startingModule) {
+        WFCNode startCell = spatialGrid.getNodeMap().get(new Vector3i());
 
-        Logger.debug("Initializing start grid cell at origin (0,0,0)");
-        GridCell startCell = spatialGrid.getCellMap().get(new Vector3i());
-
-        Logger.debug("Looking up modules container for " + startingModule);
         ModulesContainer modulesContainer = ModulesContainer.getModulesContainers().get(startingModule);
         if (modulesContainer == null) {
             Logger.warn("Starting module was null! Cancelling!");
             return null;
         }
 
-        Logger.debug("Pasting starting module at origin");
         paste(startCell, modulesContainer);
+        completedNodes++;
         return startCell;
     }
 
     private void generateFast() {
+        updateProgressBar("Propagating constraints...");
         while (!isCancelled) {
-            GridCell nextCell = spatialGrid.getNextGridCell();
+            WFCNode nextCell = spatialGrid.getLowestEntropyNode();
             if (nextCell == null) {
                 done();
                 break;
@@ -195,61 +210,74 @@ public class WaveFunctionCollapseGenerator {
         }
     }
 
-    private void paste(GridCell gridCell, ModulesContainer modulesContainer) {
-        Logger.debug("Pasting chunk at " + gridCell.getRealCenterLocation() + " with module " + modulesContainer.getClipboardFilename());
+    private void paste(WFCNode gridCell, ModulesContainer modulesContainer) {
+        // Record the decision for backtracking
+        spatialGrid.recordCollapseDecision(gridCell, modulesContainer);
+
         gridCell.setModulesContainer(modulesContainer);
-        gridCell.getOrientedNeighbors().values().forEach(spatialGrid::updateCellPriority);
+        gridCell.getOrientedNeighbors().values().forEach(spatialGrid::updateNodeEntropy);
     }
 
-    private void generateNextChunk(GridCell gridCell) {
-        Logger.debug("Generating next chunk at location: " + gridCell.getCellLocation());
-
+    private void generateNextChunk(WFCNode gridCell) {
         HashSet<ModulesContainer> validOptions = gridCell.getValidOptions();
         if (validOptions == null || validOptions.isEmpty()) {
-            Logger.debug("No valid options for cell at " + gridCell.getCellLocation() + ", initiating rollback");
+            updateProgressBar("Backtracking...");
             org.bukkit.Location targetLocation = gridCell.getRealCenterLocation();
-            if (player != null)
-                player.spigot().sendMessage(Logger.commandHoverMessage("Rolling back cell at " + gridCell.getCellLocation(), "Click to teleport", "tp " + targetLocation.getX() + " " + targetLocation.getY() + " " + targetLocation.getZ()));
-            rollbackChunk(gridCell);
+//            if (player != null)
+//                player.spigot().sendMessage(Logger.commandHoverMessage("Rolling back cell at " + gridCell.getCellLocation(), "Click to teleport", "tp " + targetLocation.getX() + " " + targetLocation.getY() + " " + targetLocation.getZ()));
+            rollbackChunk();
             return;
         }
 
         ModulesContainer modulesContainer = pickWeightedRandomModule(validOptions, gridCell);
         if (modulesContainer == null) {
-            Logger.debug("Failed to pick a module for cell at " + gridCell.getCellLocation());
-            rollbackChunk(gridCell);
+            updateProgressBar("Backtracking...");
+            rollbackChunk();
             return;
         }
 
-        Logger.debug("picked module " + modulesContainer.getClipboardFilename() + " for coords " + gridCell.getCellLocation());
-
         paste(gridCell, modulesContainer);
+        completedNodes++;
+        updateProgressBar("Generating... (" + completedNodes + "/" + totalNodes + ")");
     }
 
-    private void rollbackChunk(GridCell gridCell) {
-        Logger.debug("Starting rollback for chunk at: " + gridCell.getCellLocation());
-        spatialGrid.rollbackCell(gridCell);
+    private void rollbackChunk() {
+        // Use proper backtracking instead of just resetting
+        if (spatialGrid.backtrack()) {
+            updateProgressBar("Backtracking... (" + spatialGrid.getBacktrackDepth() + " decisions remaining)");
+        } else {
+            updateProgressBar("Generation failed - no decisions to backtrack");
+            cancel();
+            return;
+        }
+
         rollbackCounter++;
         if (rollbackCounter > 1000) {
+            updateProgressBar("Generation failed - exceeded backtrack limit");
+            Logger.warn("Exceeded backtrack limit!");
             cancel();
-            Logger.debug("Exceeded rollback limit, cancelling generation");
+            //retry
+            if (player != null) new WFCGenerator(moduleGeneratorsConfigFields, player);
+            else new WFCGenerator(moduleGeneratorsConfigFields, startLocation);
         }
     }
 
     private void done() {
-        Logger.debug("Done with generation");
+        updateProgressBar("Generation complete!");
         if (player != null) {
             player.sendMessage("Done assembling!");
             player.sendMessage("It will take a moment to paste the structure, and will require relogging.");
         }
         isGenerating = false;
         instantPaste();
-        spatialGrid.clearGridGenerationData();
+        spatialGrid.clearGenerationData();
+        removeProgressBar();
     }
 
     private void cleanup() {
         spatialGrid.clearAllData();
-        waveFunctionCollapseGenerators.remove(this);
+        wfcGenerators.remove(this);
+        removeProgressBar();
     }
 
     /**
@@ -257,16 +285,17 @@ public class WaveFunctionCollapseGenerator {
      */
     public void cancel() {
         isCancelled = true;
+        removeProgressBar();
     }
 
     private void instantPaste() {
         // This guarantees that the paste order is grouped by chunk, making pasting faster down the line.
-        Deque<GridCell> orderedPasteDeque = new ArrayDeque<>();
-        for (int x = -spatialGrid.getGridRadius(); x < spatialGrid.getGridRadius(); x++) {
-            for (int z = -spatialGrid.getGridRadius(); z < spatialGrid.getGridRadius(); z++) {
+        Deque<WFCNode> orderedPasteDeque = new ArrayDeque<>();
+        for (int x = -spatialGrid.getLatticeRadius(); x < spatialGrid.getLatticeRadius(); x++) {
+            for (int z = -spatialGrid.getLatticeRadius(); z < spatialGrid.getLatticeRadius(); z++) {
                 for (int y = spatialGrid.getMinYLevel(); y <= spatialGrid.getMaxYLevel(); y++) {
                     // Remove the cell from the map and get it in one go.
-                    GridCell cell = spatialGrid.getCellMap().remove(new Vector3i(x, y, z));
+                    WFCNode cell = spatialGrid.getNodeMap().remove(new Vector3i(x, y, z));
                     if (cell != null) {
                         orderedPasteDeque.add(cell);
                     }
@@ -274,7 +303,7 @@ public class WaveFunctionCollapseGenerator {
             }
         }
 
-        new ModulePasting(world, worldFolder, orderedPasteDeque, moduleGeneratorsConfigFields.getSpawnPoolSuffix(), startLocation);
+        new ModulePasting(world, worldFolder, orderedPasteDeque, moduleGeneratorsConfigFields.getSpawnPoolSuffix(), startLocation, moduleGeneratorsConfigFields);
 
         cleanup();
     }

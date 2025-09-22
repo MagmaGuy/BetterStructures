@@ -12,5 +12,6 @@ public class AdventurePack extends ContentPackageConfigFields {
                 List.of("&f107 tough and massive adventure builds!"),
                 "https://nightbreak.io/plugin/betterstructures/#adventure-pack",
                 "adventure");
+        setContentPackageType(ContentPackageType.STRUCTURE);
     }
 }
