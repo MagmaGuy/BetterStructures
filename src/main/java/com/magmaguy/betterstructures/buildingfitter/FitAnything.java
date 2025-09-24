@@ -12,6 +12,7 @@ import com.magmaguy.betterstructures.thirdparty.EliteMobs;
 import com.magmaguy.betterstructures.thirdparty.MythicMobs;
 import com.magmaguy.betterstructures.thirdparty.WorldGuard;
 import com.magmaguy.betterstructures.util.SurfaceMaterials;
+import com.magmaguy.betterstructures.util.WorldEditUtils;
 import com.magmaguy.betterstructures.worldedit.Schematic;
 import com.magmaguy.magmacore.util.Logger;
 import com.magmaguy.magmacore.util.SpigotMessage;
@@ -41,7 +42,6 @@ public class FitAnything {
     protected final int scanStep = 3;
     private final HashMap<Material, Integer> undergroundPedestalMaterials = new HashMap<>();
     private final HashMap<Material, Integer> surfacePedestalMaterials = new HashMap<>();
-    private final Chunk chunk;
     @Getter
     protected SchematicContainer schematicContainer;
     protected double startingScore = 100;
@@ -57,14 +57,12 @@ public class FitAnything {
     protected GeneratorConfigFields.StructureType structureType;
     private Material pedestalMaterial = null;
 
-    public FitAnything(Chunk chunk, SchematicContainer schematicContainer) {
+    public FitAnything(SchematicContainer schematicContainer) {
         this.schematicContainer = schematicContainer;
-        this.chunk = chunk;
         this.verticalOffset = schematicContainer.getClipboard().getMinimumPoint().y() - schematicContainer.getClipboard().getOrigin().y();
     }
 
-    public FitAnything(Chunk chunk) {
-        this.chunk = chunk;
+    public FitAnything() {
     }
 
     public static void commandBasedCreation(Chunk chunk, GeneratorConfigFields.StructureType structureType, SchematicContainer container) {
@@ -173,8 +171,25 @@ public class FitAnything {
                     Logger.warn("Failed to correctly spawn entities!");
                     exception.printStackTrace();
                 }
+                try{
+                    Logger.debug("Placing props");
+                    spawnProps(fitAnything.schematicClipboard);
+                } catch (Exception exception) {
+                    Logger.warn("Failed to correctly spawn props!");
+                    exception.printStackTrace();
+                }
             }
         };
+    }
+
+    private void spawnProps(Clipboard clipboard) {
+        // Apply the same offset that was used when pasting the schematic
+        Location adjustedLocation = location.clone().add(
+                schematicOffset.getX(),
+                schematicOffset.getY(),
+                schematicOffset.getZ()
+        );
+        WorldEditUtils.pasteArmorStandsOnlyFromTransformed(clipboard, adjustedLocation);
     }
 
     private void assignPedestalMaterial(Location location) {

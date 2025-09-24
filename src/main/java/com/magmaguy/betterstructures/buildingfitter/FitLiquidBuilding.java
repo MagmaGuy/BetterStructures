@@ -13,7 +13,7 @@ public class FitLiquidBuilding extends FitAnything {
 
     //For commands
     public FitLiquidBuilding(Chunk chunk, SchematicContainer schematicContainer) {
-        super(chunk, schematicContainer);
+        super(schematicContainer);
         super.structureType = GeneratorConfigFields.StructureType.LIQUID_SURFACE;
         this.schematicContainer = schematicContainer;
         this.schematicClipboard = schematicContainer.getClipboard();
@@ -21,7 +21,7 @@ public class FitLiquidBuilding extends FitAnything {
     }
 
     public FitLiquidBuilding(Chunk chunk) {
-        super(chunk);
+        super();
         super.structureType = GeneratorConfigFields.StructureType.LIQUID_SURFACE;
         scan(chunk);
     }

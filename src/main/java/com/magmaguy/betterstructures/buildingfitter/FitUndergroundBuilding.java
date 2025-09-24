@@ -20,7 +20,7 @@ public class FitUndergroundBuilding extends FitAnything {
 
     //For commands
     public FitUndergroundBuilding(Chunk chunk, SchematicContainer schematicContainer, int lowestY, int highestY, GeneratorConfigFields.StructureType structureType) {
-        super(chunk, schematicContainer);
+        super(schematicContainer);
         super.structureType = structureType;
         this.lowestY = lowestY;
         this.highestY = highestY;
@@ -30,7 +30,7 @@ public class FitUndergroundBuilding extends FitAnything {
     }
 
     public FitUndergroundBuilding(Chunk chunk, int lowestY, int highestY, GeneratorConfigFields.StructureType structureType) {
-        super(chunk);
+        super();
         super.structureType = structureType;
         this.lowestY = lowestY;
         this.highestY = highestY;

@@ -16,66 +16,42 @@ import com.sk89q.worldedit.WorldEdit;
 import com.sk89q.worldedit.WorldEditException;
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
-import com.sk89q.worldedit.function.mask.BlockTypeMask;
-import com.sk89q.worldedit.function.operation.Operation;
-import com.sk89q.worldedit.function.operation.Operations;
 import com.sk89q.worldedit.math.BlockVector3;
 import com.sk89q.worldedit.math.transform.AffineTransform;
-import com.sk89q.worldedit.session.ClipboardHolder;
 import com.sk89q.worldedit.util.SideEffectSet;
 import com.sk89q.worldedit.world.block.BaseBlock;
-import com.sk89q.worldedit.world.block.BlockType;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
-import org.bukkit.block.BlockFace;
 import org.bukkit.block.Container;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Directional;
 import org.bukkit.block.data.Rail;
 import org.bukkit.block.data.type.Chest;
 import org.bukkit.block.data.type.Sign;
-import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 
 import java.io.File;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.ArrayList;
+import java.util.Deque;
+import java.util.List;
 
 public final class ModulePasting {
     private final List<InterpretedSign> interpretedSigns = new ArrayList<>();
     private final List<ChestPlacement> chestsToPlace = new ArrayList<>();
     private final List<EntitySpawn> entitiesToSpawn = new ArrayList<>();
-    private ModularWorld modularWorld;
     private final String spawnPoolSuffix;
     private final Location startLocation;
-    private final boolean debug;
     private final boolean createModularWorld;
-    private World world;
-    private File worldFolder;
-    private ModuleGeneratorsConfigFields moduleGeneratorsConfigFields;
     private final List<NbtPlacement> nbtToPlace = new ArrayList<>();
-    private record NbtPlacement(Location location, BaseBlock baseBlock) {}
-    private static boolean isNbtRichMaterial(Material m) {
-        if (m == Material.CHEST || m == Material.TRAPPED_CHEST) return false;
-        if (m.name().endsWith("_SIGN") || m.name().endsWith("_WALL_SIGN") || m.name().endsWith("_HANGING_SIGN"))
-            return false;
-
-        return switch (m) {
-            case SPAWNER,
-                 DISPENSER, DROPPER, HOPPER,
-                 BEACON, LECTERN, JUKEBOX,
-                 COMMAND_BLOCK, REPEATING_COMMAND_BLOCK, CHAIN_COMMAND_BLOCK,
-                 PLAYER_HEAD, PLAYER_WALL_HEAD,
-                 SCULK_CATALYST, SCULK_SHRIEKER
-                    -> true;
-            default -> false;
-        };
-    }
+    private ModularWorld modularWorld;
+    private final World world;
+    private final File worldFolder;
+    private final ModuleGeneratorsConfigFields moduleGeneratorsConfigFields;
 
     public ModulePasting(World world, File worldFolder, Deque<WFCNode> WFCNodeDeque, String spawnPoolSuffix, Location startLocation, ModuleGeneratorsConfigFields moduleGeneratorsConfigFields) {
         this.spawnPoolSuffix = spawnPoolSuffix;
@@ -86,7 +62,6 @@ public final class ModulePasting {
 
         // Check debug mode and modular world creation settings from first node
         WFCNode firstNode = WFCNodeDeque.peek();
-        this.debug = true;
         this.createModularWorld = firstNode != null && firstNode.getWfcGenerator() != null &&
                 firstNode.getWfcGenerator().getModuleGeneratorsConfigFields().isWorldGeneration();
 
@@ -107,6 +82,22 @@ public final class ModulePasting {
                 );
             }
         }
+    }
+
+    private static boolean isNbtRichMaterial(Material m) {
+        if (m == Material.CHEST || m == Material.TRAPPED_CHEST) return false;
+        if (m.name().endsWith("_SIGN") || m.name().endsWith("_WALL_SIGN") || m.name().endsWith("_HANGING_SIGN"))
+            return false;
+
+        return switch (m) {
+            case SPAWNER,
+                 DISPENSER, DROPPER, HOPPER,
+                 BEACON, LECTERN, JUKEBOX,
+                 COMMAND_BLOCK, REPEATING_COMMAND_BLOCK, CHAIN_COMMAND_BLOCK,
+                 PLAYER_HEAD, PLAYER_WALL_HEAD,
+                 SCULK_CATALYST, SCULK_SHRIEKER -> true;
+            default -> false;
+        };
     }
 
     public static void paste(Clipboard clipboard, Location location, Integer rotation) {
@@ -171,6 +162,21 @@ public final class ModulePasting {
 
     private static int normalizeRotation(int rotation) {
         return (360 - rotation) % 360;
+    }
+
+    public static void pasteArmorStands(Clipboard clipboard, Location location, Integer rotation) {
+        if (rotation == null) rotation = 0;
+
+        AffineTransform transform = new AffineTransform().rotateY(normalizeRotation(rotation));
+        Clipboard transformedClipboard;
+        try {
+            transformedClipboard = clipboard.transform(transform);
+        } catch (WorldEditException e) {
+            Logger.warn("Failed to transform clipboard for entities: " + e.getMessage());
+            return;
+        }
+
+        WorldEditUtils.pasteArmorStandsOnlyFromTransformed(transformedClipboard, location);
     }
 
     private List<Pasteable> generatePasteMeList(Clipboard clipboard,
@@ -341,7 +347,7 @@ public final class ModulePasting {
         return freshlyInterpretedSigns;
     }
 
-    private void postPasteProcessing(List<EntityPasteInfo> entityPasteInfos){
+    private void postPasteProcessing(List<EntityPasteInfo> entityPasteInfos) {
         if (createModularWorld) {
             createModularWorld(world, worldFolder);
             modularWorld.spawnOtherEntities();
@@ -410,74 +416,33 @@ public final class ModulePasting {
     private void pasteArmorStandsForBatch(List<EntityPasteInfo> entityPasteInfos) {
         for (EntityPasteInfo info : entityPasteInfos) {
             try {
-                pasteArmorStandsOnlyFromTransformed(info.clipboard, info.location);
+                WorldEditUtils.pasteArmorStandsOnlyFromTransformed(info.clipboard, info.location);
             } catch (Exception e) {
                 Logger.warn("Failed to paste entities for batch operation at " + info.location + ": " + e.getMessage());
             }
         }
     }
 
-    // Record to hold entity paste information - now with transformed clipboard
-    private record EntityPasteInfo(Clipboard clipboard, Location location, Integer rotation) {}
-
-    // Special version for batch that uses pre-transformed clipboards
-    private static void pasteArmorStandsOnlyFromTransformed(Clipboard transformedClipboard, Location location) {
-        com.sk89q.worldedit.world.World adaptedWorld = BukkitAdapter.adapt(location.getWorld());
-
-        try (EditSession editSession = WorldEdit.getInstance().newEditSession(adaptedWorld)) {
-            editSession.setTrackingHistory(false);
-            editSession.setSideEffectApplier(SideEffectSet.none());
-
-            ClipboardHolder clipboardHolder = new ClipboardHolder(transformedClipboard);
-
-            BlockVector3 minPoint = transformedClipboard.getMinimumPoint();
-            BlockVector3 origin   = transformedClipboard.getOrigin();
-
-            // Align entities the same way you aligned blocks: min -> base
-            BlockVector3 pastePosition = BlockVector3.at(
-                    location.getBlockX() + (origin.x() - minPoint.x()),
-                    location.getBlockY() + (origin.y() - minPoint.y()),
-                    location.getBlockZ() + (origin.z() - minPoint.z())
-            );
-
-            Operation operation = clipboardHolder
-                    .createPaste(editSession)
-                    .to(pastePosition)
-                    .copyEntities(true)
-                    .copyBiomes(false)
-                    .ignoreAirBlocks(true)
-                    .maskSource(new BlockTypeMask(transformedClipboard, new BlockType[0]))
-                    .build();
-
-            Operations.complete(operation);
-
-        } catch (Exception e) {
-            Logger.warn("Failed to paste entities at " + location + ": " + e.getMessage());
-        }
-    }
-
-    public static void pasteArmorStands(Clipboard clipboard, Location location, Integer rotation) {
-        if (rotation == null) rotation = 0;
-
-        AffineTransform transform = new AffineTransform().rotateY(normalizeRotation(rotation));
-        Clipboard transformedClipboard;
-        try {
-            transformedClipboard = clipboard.transform(transform);
-        } catch (WorldEditException e) {
-            Logger.warn("Failed to transform clipboard for entities: " + e.getMessage());
-            return;
-        }
-
-        pasteArmorStandsOnlyFromTransformed(transformedClipboard, location);
-    }
-
     private void createModularWorld(World world, File worldFolder) {
         modularWorld = new ModularWorld(world, worldFolder, interpretedSigns);
     }
 
-    private record ChestPlacement(Location location, Material material, Integer rotation) {}
-    private record EntitySpawn(Location location, EntityType entityType) {}
+    private record NbtPlacement(Location location, BaseBlock baseBlock) {
+    }
 
-    public record InterpretedSign(Location location, List<String> text) {}
-    private record Pasteable(Location location, BlockData blockData) {}
+    // Record to hold entity paste information - now with transformed clipboard
+    private record EntityPasteInfo(Clipboard clipboard, Location location, Integer rotation) {
+    }
+
+    private record ChestPlacement(Location location, Material material, Integer rotation) {
+    }
+
+    private record EntitySpawn(Location location, EntityType entityType) {
+    }
+
+    public record InterpretedSign(Location location, List<String> text) {
+    }
+
+    private record Pasteable(Location location, BlockData blockData) {
+    }
 }
