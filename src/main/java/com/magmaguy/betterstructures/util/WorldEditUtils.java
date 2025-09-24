@@ -1,19 +1,28 @@
 package com.magmaguy.betterstructures.util;
 
+import com.magmaguy.magmacore.util.Logger;
 import com.sk89q.jnbt.CompoundTag;
 import com.sk89q.jnbt.ListTag;
 import com.sk89q.jnbt.StringTag;
+import com.sk89q.worldedit.EditSession;
+import com.sk89q.worldedit.WorldEdit;
 import com.sk89q.worldedit.WorldEditException;
+import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.entity.BaseEntity;
 import com.sk89q.worldedit.entity.Entity;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
+import com.sk89q.worldedit.function.mask.BlockTypeMask;
 import com.sk89q.worldedit.function.operation.Operation;
+import com.sk89q.worldedit.function.operation.Operations;
 import com.sk89q.worldedit.math.BlockVector3;
 import com.sk89q.worldedit.regions.CuboidRegion;
 import com.sk89q.worldedit.regions.Region;
+import com.sk89q.worldedit.session.ClipboardHolder;
+import com.sk89q.worldedit.util.SideEffectSet;
 import com.sk89q.worldedit.world.block.BaseBlock;
 import com.sk89q.worldedit.world.block.BlockState;
 import com.sk89q.worldedit.world.block.BlockStateHolder;
+import com.sk89q.worldedit.world.block.BlockType;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.util.Vector;
@@ -193,4 +202,42 @@ public class WorldEditUtils {
             }
         };
     }
+
+    public static void pasteArmorStandsOnlyFromTransformed(Clipboard transformedClipboard, Location location) {
+        com.sk89q.worldedit.world.World adaptedWorld = BukkitAdapter.adapt(location.getWorld());
+
+        try (EditSession editSession = WorldEdit.getInstance().newEditSession(adaptedWorld)) {
+            editSession.setTrackingHistory(false);
+            editSession.setSideEffectApplier(SideEffectSet.none());
+
+            ClipboardHolder clipboardHolder = new ClipboardHolder(transformedClipboard);
+
+            BlockVector3 minPoint = transformedClipboard.getMinimumPoint();
+            BlockVector3 origin   = transformedClipboard.getOrigin();
+
+            // Align entities the same way you aligned blocks: min -> base
+            BlockVector3 pastePosition = BlockVector3.at(
+                    location.getBlockX() + (origin.x() - minPoint.x()),
+                    location.getBlockY() + (origin.y() - minPoint.y()),
+                    location.getBlockZ() + (origin.z() - minPoint.z())
+            );
+
+            Operation operation = clipboardHolder
+                    .createPaste(editSession)
+                    .to(pastePosition)
+                    .copyEntities(true)
+                    .copyBiomes(false)
+                    .ignoreAirBlocks(true)
+                    .maskSource(new BlockTypeMask(transformedClipboard, new BlockType[0]))
+                    .build();
+
+            Operations.complete(operation);
+
+            Logger.debug("Pasted entities at " + location);
+
+        } catch (Exception e) {
+            Logger.warn("Failed to paste entities at " + location + ": " + e.getMessage());
+        }
+    }
+
 }

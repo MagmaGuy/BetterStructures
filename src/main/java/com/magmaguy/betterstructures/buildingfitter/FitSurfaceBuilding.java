@@ -14,7 +14,7 @@ public class FitSurfaceBuilding extends FitAnything {
 
     //For commands
     public FitSurfaceBuilding(Chunk chunk, SchematicContainer schematicContainer) {
-        super(chunk, schematicContainer);
+        super(schematicContainer);
         super.structureType = GeneratorConfigFields.StructureType.SURFACE;
         this.schematicContainer = schematicContainer;
         this.schematicClipboard = schematicContainer.getClipboard();
@@ -22,7 +22,7 @@ public class FitSurfaceBuilding extends FitAnything {
     }
 
     public FitSurfaceBuilding(Chunk chunk) {
-        super(chunk);
+        super();
         super.structureType = GeneratorConfigFields.StructureType.SURFACE;
         scan(chunk);
     }
