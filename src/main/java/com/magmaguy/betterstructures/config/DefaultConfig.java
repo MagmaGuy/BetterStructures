@@ -139,7 +139,7 @@ public class DefaultConfig extends ConfigurationFile {
                         "Sets the distance between dungeons.",
                         "Shorter distances between dungeons will result in more dungeons overall."
                 ),
-                fileConfiguration, "distanceDungeon", 1000);
+                fileConfiguration, "distanceDungeonV2", 31);
 
         // Initialize the maximum offsets from configuration
         maxOffsetSurface = ConfigurationEngine.setInt(
@@ -171,7 +171,7 @@ public class DefaultConfig extends ConfigurationFile {
                 List.of(
                         "Used to tweak the randomization of the distance between dungeons.",
                         "Smaller values will result in dungeons being more on a grid, and larger values will result in them being less predictably placed."),
-                fileConfiguration, "maxOffsetDungeon", 300);
+                fileConfiguration, "maxOffsetDungeonV2", 18);
 
         ConfigurationEngine.fileSaverOnlyDefaults(fileConfiguration, file);
     }
