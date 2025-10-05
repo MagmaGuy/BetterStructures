@@ -232,9 +232,7 @@ public class WorldEditUtils {
                     .build();
 
             Operations.complete(operation);
-
-            Logger.debug("Pasted entities at " + location);
-
+            
         } catch (Exception e) {
             Logger.warn("Failed to paste entities at " + location + ": " + e.getMessage());
         }

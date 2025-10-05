@@ -265,7 +265,6 @@ public class Schematic {
                                 // configure here
                                 .build();
                         Operations.complete(worldeditPaste);
-//                        Logger.debug("WorldEdit pasted block " + pasteBlock.block().getType() + " at " + pasteBlock.block().getLocation());
                     } catch (WorldEditException e) {
                         throw new RuntimeException(e);
                     }
