@@ -51,7 +51,6 @@ public class WFCGenerator {
     }
 
     public WFCGenerator(ModuleGeneratorsConfigFields moduleGeneratorsConfigFields, Location startLocation) {
-        Logger.debug("Starting generator with location: " + startLocation.toString());
         this.moduleGeneratorsConfigFields = moduleGeneratorsConfigFields;
         this.startLocation = startLocation;
         initialize(moduleGeneratorsConfigFields);

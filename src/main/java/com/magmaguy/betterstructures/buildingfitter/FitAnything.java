@@ -172,7 +172,6 @@ public class FitAnything {
                     exception.printStackTrace();
                 }
                 try{
-                    Logger.debug("Placing props");
                     spawnProps(fitAnything.schematicClipboard);
                 } catch (Exception exception) {
                     Logger.warn("Failed to correctly spawn props!");
@@ -183,13 +182,8 @@ public class FitAnything {
     }
 
     private void spawnProps(Clipboard clipboard) {
-        // Apply the same offset that was used when pasting the schematic
-        Location adjustedLocation = location.clone().add(
-                schematicOffset.getX(),
-                schematicOffset.getY(),
-                schematicOffset.getZ()
-        );
-        WorldEditUtils.pasteArmorStandsOnlyFromTransformed(clipboard, adjustedLocation);
+        // Don't add schematicOffset here - let pasteArmorStandsOnlyFromTransformed handle the alignment
+        WorldEditUtils.pasteArmorStandsOnlyFromTransformed(clipboard, location.clone().add(schematicOffset));
     }
 
     private void assignPedestalMaterial(Location location) {

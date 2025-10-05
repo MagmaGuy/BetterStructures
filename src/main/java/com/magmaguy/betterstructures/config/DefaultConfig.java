@@ -139,7 +139,7 @@ public class DefaultConfig extends ConfigurationFile {
                         "Sets the distance between dungeons.",
                         "Shorter distances between dungeons will result in more dungeons overall."
                 ),
-                fileConfiguration, "distanceDungeonV2", 31);
+                fileConfiguration, "distanceDungeonV2", 80);
 
         // Initialize the maximum offsets from configuration
         maxOffsetSurface = ConfigurationEngine.setInt(

@@ -140,12 +140,9 @@ public class NewChunkLoadEvent implements Listener {
     }
 
     private void dungeonScanner(Chunk chunk) {
-        Logger.debug("Chunk loading detected");
         if (ModuleGeneratorsConfig.getModuleGenerators().isEmpty()) return;
-        Logger.debug("Module generators loaded");
         if (!isValidStructurePosition(chunk, GeneratorConfigFields.StructureType.DUNGEON,
                 DefaultConfig.getDistanceDungeon(), DefaultConfig.getMaxOffsetDungeon())) return;
-        Logger.debug("Dungeon found");
         ModuleGeneratorsConfigFields moduleGeneratorsConfigFields = ModuleGeneratorsConfig.getModuleGenerators().values().stream().toList().get(ThreadLocalRandom.current().nextInt(0, ModuleGeneratorsConfig.getModuleGenerators().size()));
         new WFCGenerator(moduleGeneratorsConfigFields, chunk.getBlock(8,0,8).getLocation());
     }

@@ -151,13 +151,6 @@ public class GeneratorConfigFields extends CustomConfigFields {
             fileConfiguration.set("validBiomesV2", fullBiomeList);
         }
 
-        // Debug output
-//        if (!validBiomesNamespaces.isEmpty()) {
-//            Logger.debug("Valid biomes for " + filename + ":");
-//            for (String biome : validBiomesNamespaces) {
-//                Logger.debug(" - " + biome);
-//            }
-//        }
     }
 
     /**

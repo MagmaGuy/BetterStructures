@@ -91,7 +91,7 @@ public class ModularWorld {
                     "genericelevator_down"));
             return;
         }
-//        Logger.debug("Exit location " + exitClipboardFilename + " detected");
+
         exitLocations.add(new ExitLocation(new Location(world,
                 (int) interpretedSign.location().getX(),
                 (int) interpretedSign.location().getY(),

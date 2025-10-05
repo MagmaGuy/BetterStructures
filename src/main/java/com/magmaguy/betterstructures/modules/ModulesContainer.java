@@ -121,7 +121,6 @@ public class ModulesContainer {
 
             for (ModulesContainer modulesContainer : buildBorderChunkDataEntry.getValue().getModulesContainer().validBorders.get(direction.getOpposite())) {
                 if (modulesContainer == null) {
-//                    Logger.debug("null module, somehow, for " + buildBorderChunkDataEntry.getValue().getModulesContainer().clipboardFilename);
                     continue;
                 }
 
@@ -130,7 +129,6 @@ public class ModulesContainer {
                 if (modulesContainer.isHorizontalEdge() != isGridBorder)
                     //'nothing' should be compatible anywhere
                     if (!(isGridBorder && modulesContainer.nothing)) {
-//                        Logger.debug("Prevented placement of border in non-border zone");
                         continue;
                     }
 
@@ -204,7 +202,6 @@ public class ModulesContainer {
         }
 
         if (validModules == null || validModules.isEmpty()) {
-//            Logger.debug(WFCNode.getCellLocation() + " list was empty");
             return new HashSet<>();
         }
         return validModules;
