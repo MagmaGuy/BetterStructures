@@ -1,8 +1,14 @@
 package com.magmaguy.betterstructures.config.modulegenerators;
 
+import com.magmaguy.betterstructures.config.modules.ModulesConfig;
+import com.magmaguy.betterstructures.config.modules.ModulesConfigFields;
 import com.magmaguy.magmacore.config.CustomConfigFields;
+import com.magmaguy.magmacore.util.Logger;
 import lombok.Getter;
+import lombok.Setter;
+import org.bukkit.World;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class ModuleGeneratorsConfigFields extends CustomConfigFields {
@@ -10,7 +16,6 @@ public class ModuleGeneratorsConfigFields extends CustomConfigFields {
     protected int radius;
     @Getter
     protected boolean edges;
-    @Getter
     protected List<String> startModules;
     @Getter
     protected int minChunkY;
@@ -30,6 +35,20 @@ public class ModuleGeneratorsConfigFields extends CustomConfigFields {
     protected boolean isWorldGeneration;
     @Getter
     protected String treasureFile;
+    @Getter
+    @Setter
+    private List<String> validWorlds = null;
+    @Getter
+    @Setter
+    private List<World.Environment> validWorldEnvironments = null;
+
+    public List<String> getStartModules() {
+        List<String> existingModules = new ArrayList<>();
+        for (ModulesConfigFields value : ModulesConfig.getModuleConfigurations().values())
+            if (startModules.contains(value.getFilename().replace(".yml", ".schem")))
+                existingModules.add(value.getFilename().replace(".yml", ".schem"));
+        return existingModules;
+    }
 
     /**
      * Used by plugin-generated files (defaults)
@@ -59,5 +78,7 @@ public class ModuleGeneratorsConfigFields extends CustomConfigFields {
         this.spawnPoolSuffix = processString("spawnPoolSuffix", spawnPoolSuffix, spawnPoolSuffix, true);
         this.isWorldGeneration = processBoolean("isWorldGeneration", isWorldGeneration, isWorldGeneration, true);
         this.treasureFile = processString("treasureFile", treasureFile, null, false);
+        this.validWorlds = processStringList("validWorlds", validWorlds, new ArrayList<>(), false);
+        this.validWorldEnvironments = processEnumList("validWorldEnvironments", validWorldEnvironments, null, World.Environment.class, false);
     }
 }

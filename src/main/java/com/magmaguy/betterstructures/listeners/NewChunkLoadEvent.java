@@ -21,7 +21,9 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.world.ChunkLoadEvent;
 import org.bukkit.scheduler.BukkitRunnable;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -143,7 +145,14 @@ public class NewChunkLoadEvent implements Listener {
         if (ModuleGeneratorsConfig.getModuleGenerators().isEmpty()) return;
         if (!isValidStructurePosition(chunk, GeneratorConfigFields.StructureType.DUNGEON,
                 DefaultConfig.getDistanceDungeon(), DefaultConfig.getMaxOffsetDungeon())) return;
-        ModuleGeneratorsConfigFields moduleGeneratorsConfigFields = ModuleGeneratorsConfig.getModuleGenerators().values().stream().toList().get(ThreadLocalRandom.current().nextInt(0, ModuleGeneratorsConfig.getModuleGenerators().size()));
+        List<ModuleGeneratorsConfigFields> validatedGenerators = new ArrayList<>();
+        for (ModuleGeneratorsConfigFields moduleGeneratorsConfigFields : ModuleGeneratorsConfig.getModuleGenerators().values()){
+            if (moduleGeneratorsConfigFields.getValidWorlds() != null && !moduleGeneratorsConfigFields.getValidWorlds().isEmpty() && !moduleGeneratorsConfigFields.getValidWorlds().contains(chunk.getWorld().getName())) continue;
+            if (moduleGeneratorsConfigFields.getValidWorldEnvironments() != null && !moduleGeneratorsConfigFields.getValidWorldEnvironments().isEmpty() && !moduleGeneratorsConfigFields.getValidWorldEnvironments().contains(chunk.getWorld().getEnvironment())) continue;
+            validatedGenerators.add(moduleGeneratorsConfigFields);
+        }
+        if (validatedGenerators.isEmpty()) return;
+        ModuleGeneratorsConfigFields moduleGeneratorsConfigFields = validatedGenerators.get(ThreadLocalRandom.current().nextInt(0, ModuleGeneratorsConfig.getModuleGenerators().size()));
         new WFCGenerator(moduleGeneratorsConfigFields, chunk.getBlock(8,0,8).getLocation());
     }
 }
