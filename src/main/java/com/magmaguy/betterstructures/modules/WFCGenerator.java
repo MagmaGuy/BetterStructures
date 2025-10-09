@@ -18,6 +18,7 @@ import java.io.File;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.HashSet;
+import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 import static com.magmaguy.betterstructures.modules.ModulesContainer.pickWeightedRandomModule;
@@ -121,7 +122,14 @@ public class WFCGenerator {
         int maxY = moduleGeneratorsConfigFields.getMaxChunkY();
         totalNodes = (radius * 2 + 1) * (radius * 2 + 1) * (maxY - minY + 1);
 
-        this.startingModule = moduleGeneratorsConfigFields.getStartModules().get(ThreadLocalRandom.current().nextInt(moduleGeneratorsConfigFields.getStartModules().size())) + "_rotation_0";
+        List<String> startModules = moduleGeneratorsConfigFields.getStartModules();
+        if (startModules.isEmpty()) {
+            if (player != null) player.sendMessage("No start modules exist, you need to install or make modules first!");
+            Logger.warn("No start modules exist, you need to install or make modules first!");
+            cancel();
+            return;
+        }
+        this.startingModule = startModules.get(ThreadLocalRandom.current().nextInt(moduleGeneratorsConfigFields.getStartModules().size())) + "_rotation_0";
 
         if (moduleGeneratorsConfigFields.isWorldGeneration()) {
             String baseWorldName = moduleGeneratorsConfigFields.getFilename().replace(".yml", "");

@@ -1,6 +1,7 @@
 package com.magmaguy.betterstructures.config.modulegenerators.premade;
 
 import com.magmaguy.betterstructures.config.modulegenerators.ModuleGeneratorsConfigFields;
+import org.bukkit.World;
 
 import java.util.List;
 
@@ -23,5 +24,6 @@ public class DungeoneeringModuleGeneratorConfig extends ModuleGeneratorsConfigFi
                 "Betterstructures_ModularDungeon_Premium_Center_3.schem");
         isWorldGeneration = false;
         treasureFile = "treasure_overworld_underground.yml";
+        setValidWorldEnvironments(List.of(World.Environment.NORMAL, World.Environment.CUSTOM));
     }
 }
