@@ -50,7 +50,7 @@ public class ContentPackageConfigFields extends CustomConfigFields {
         this.description = processStringList("description", description, null, true);
         this.downloadLink = processString("downloadLink" , downloadLink, downloadLink, false);
         this.version = processInt("version", version, 0, true);
-        this.folderName = processString("folderName", folderName, null, true);
+        this.folderName = processString("folderNameV2", folderName, null, true);
         this.contentPackageType = processEnum("contentPackageType", contentPackageType, ContentPackageType.STRUCTURE, ContentPackageType.class, false);
     }
 }
