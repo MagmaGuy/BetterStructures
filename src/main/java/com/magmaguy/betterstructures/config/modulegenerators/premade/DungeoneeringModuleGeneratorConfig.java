@@ -24,6 +24,7 @@ public class DungeoneeringModuleGeneratorConfig extends ModuleGeneratorsConfigFi
                 "Betterstructures_ModularDungeon_Premium_Center_3.schem");
         isWorldGeneration = false;
         treasureFile = "treasure_overworld_underground.yml";
+        centerModuleAltitude = -15;
         setValidWorldEnvironments(List.of(World.Environment.NORMAL, World.Environment.CUSTOM));
     }
 }

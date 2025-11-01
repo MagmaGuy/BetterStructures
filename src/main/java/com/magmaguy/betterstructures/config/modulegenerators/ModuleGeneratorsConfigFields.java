@@ -3,7 +3,6 @@ package com.magmaguy.betterstructures.config.modulegenerators;
 import com.magmaguy.betterstructures.config.modules.ModulesConfig;
 import com.magmaguy.betterstructures.config.modules.ModulesConfigFields;
 import com.magmaguy.magmacore.config.CustomConfigFields;
-import com.magmaguy.magmacore.util.Logger;
 import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.World;
@@ -41,6 +40,9 @@ public class ModuleGeneratorsConfigFields extends CustomConfigFields {
     @Getter
     @Setter
     private List<World.Environment> validWorldEnvironments = null;
+    @Getter
+    @Setter
+    protected int centerModuleAltitude = 0;
 
     public List<String> getStartModules() {
         List<String> existingModules = new ArrayList<>();
@@ -80,5 +82,6 @@ public class ModuleGeneratorsConfigFields extends CustomConfigFields {
         this.treasureFile = processString("treasureFile", treasureFile, null, false);
         this.validWorlds = processStringList("validWorlds", validWorlds, new ArrayList<>(), false);
         this.validWorldEnvironments = processEnumList("validWorldEnvironments", validWorldEnvironments, null, World.Environment.class, false);
+        this.centerModuleAltitude = processInt("centerModuleAltitude", centerModuleAltitude, 0, false);
     }
 }
