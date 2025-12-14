@@ -11,9 +11,11 @@ public class ChestFillEvent extends Event implements Cancellable {
     private static final HandlerList handlers = new HandlerList();
     private boolean isCancelled = false;
     private Container container;
+    private String treasureConfigFilename;
 
-    public ChestFillEvent(Container container) {
+    public ChestFillEvent(Container container, String treasureConfigFilename) {
         this.container = container;
+        this.treasureConfigFilename = treasureConfigFilename;
     }
 
     @NotNull
@@ -43,6 +45,16 @@ public class ChestFillEvent extends Event implements Cancellable {
      */
     public Container getContainer() {
         return container;
+    }
+
+    /**
+     * Returns the filename of the treasure configuration used to fill this chest.
+     * This can be used to identify which loot table was used.
+     *
+     * @return The treasure config filename, or null if not set
+     */
+    public String getTreasureConfigFilename() {
+        return treasureConfigFilename;
     }
 
     public static HandlerList getHandlerList() {

@@ -296,12 +296,16 @@ public class FitAnything {
                     continue;
                 }
 
-                if (schematicContainer.getChestContents() != null)
+                String treasureFilename;
+                if (schematicContainer.getChestContents() != null) {
                     schematicContainer.getChestContents().rollChestContents(container);
-                else
+                    treasureFilename = schematicContainer.getSchematicConfigField().getTreasureFile();
+                } else {
                     schematicContainer.getGeneratorConfigFields().getChestContents().rollChestContents(container);
+                    treasureFilename = schematicContainer.getGeneratorConfigFields().getTreasureFilename();
+                }
 
-                ChestFillEvent chestFillEvent = new ChestFillEvent(container);
+                ChestFillEvent chestFillEvent = new ChestFillEvent(container, treasureFilename);
                 Bukkit.getServer().getPluginManager().callEvent(chestFillEvent);
                 if (!chestFillEvent.isCancelled())
                     container.update(true);
