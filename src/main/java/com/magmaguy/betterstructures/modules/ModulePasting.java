@@ -7,10 +7,10 @@ import com.magmaguy.betterstructures.config.modulegenerators.ModuleGeneratorsCon
 import com.magmaguy.betterstructures.config.treasures.TreasureConfig;
 import com.magmaguy.betterstructures.config.treasures.TreasureConfigFields;
 import com.magmaguy.betterstructures.util.WorldEditUtils;
-import com.magmaguy.betterstructures.util.distributedload.WorkloadRunnable;
 import com.magmaguy.easyminecraftgoals.NMSManager;
 import com.magmaguy.magmacore.util.Logger;
 import com.magmaguy.magmacore.util.SpigotMessage;
+import com.magmaguy.magmacore.util.WorkloadRunnable;
 import com.sk89q.worldedit.EditSession;
 import com.sk89q.worldedit.WorldEdit;
 import com.sk89q.worldedit.WorldEditException;
@@ -387,12 +387,13 @@ public final class ModulePasting {
             if (block.getBlockData() instanceof Chest chest) {
                 block.setBlockData(chest, false);
 
-                TreasureConfigFields treasureConfigFields = TreasureConfig.getConfigFields(moduleGeneratorsConfigFields.getTreasureFile());
+                String treasureFilename = moduleGeneratorsConfigFields.getTreasureFile();
+                TreasureConfigFields treasureConfigFields = TreasureConfig.getConfigFields(treasureFilename);
                 if (treasureConfigFields != null) {
                     ChestContents chestContents = new ChestContents(treasureConfigFields);
                     Container container = (Container) block.getState();
                     chestContents.rollChestContents(container);
-                    ChestFillEvent chestFillEvent = new ChestFillEvent(container);
+                    ChestFillEvent chestFillEvent = new ChestFillEvent(container, treasureFilename);
                     Bukkit.getServer().getPluginManager().callEvent(chestFillEvent);
                     if (!chestFillEvent.isCancelled())
                         container.update(true);

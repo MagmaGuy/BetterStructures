@@ -10,7 +10,7 @@ public class DungeoneeringModulesPackPremium extends ContentPackageConfigFields 
                 true,
                 "&2Dungeoneering Modules Premium",
                 List.of("&fThe first modular dungeon for BetterStructures!"),
-                "https://nightbreak.io/plugin/betterstructures/#echoes-of-the-past",
+                "https://nightbreak.io/plugin/betterstructures/#dungeoneering-modules-premium",
                 "dungeoneering_modules_premium");
         setContentPackageType(ContentPackageType.MODULAR);
     }

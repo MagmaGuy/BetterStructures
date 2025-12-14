@@ -68,6 +68,8 @@ public final class BetterStructures extends JavaPlugin {
         CommandManager commandManager = new CommandManager(this, "betterstructures");
         commandManager.registerCommand(new LootifyCommand());
         commandManager.registerCommand(new PlaceCommand());
+        commandManager.registerCommand(new PregenerateCommand());
+        commandManager.registerCommand(new CancelPregenerateCommand());
         commandManager.registerCommand(new ReloadCommand());
         commandManager.registerCommand(new SilentCommand());
         commandManager.registerCommand(new TeleportCommand());
