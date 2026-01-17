@@ -307,8 +307,10 @@ public class FitAnything {
 
                 ChestFillEvent chestFillEvent = new ChestFillEvent(container, treasureFilename);
                 Bukkit.getServer().getPluginManager().callEvent(chestFillEvent);
-                if (!chestFillEvent.isCancelled())
+                if (!chestFillEvent.isCancelled()) {
                     container.update(true);
+
+                }
             }
     }
 

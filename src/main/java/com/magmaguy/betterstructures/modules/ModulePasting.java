@@ -2,6 +2,7 @@ package com.magmaguy.betterstructures.modules;
 
 import com.magmaguy.betterstructures.MetadataHandler;
 import com.magmaguy.betterstructures.api.ChestFillEvent;
+import com.magmaguy.betterstructures.config.DefaultConfig;
 import com.magmaguy.betterstructures.chests.ChestContents;
 import com.magmaguy.betterstructures.config.modulegenerators.ModuleGeneratorsConfigFields;
 import com.magmaguy.betterstructures.config.treasures.TreasureConfig;
@@ -70,16 +71,18 @@ public final class ModulePasting {
         createModularWorld(world, worldFolder);
 
         // Send notification to players
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            if (player.hasPermission("betterstructures.warn")) {
-                player.spigot().sendMessage(
-                        SpigotMessage.commandHoverMessage(
-                                "[BetterStructures] New dungeon started generating! Do not stop your server now. Click to teleport. Do \"/betterstructures silent\" to stop getting warnings!",
-                                "Click to teleport to " + startLocation.getWorld().getName() + ", " +
-                                        startLocation.getBlockX() + ", " + startLocation.getBlockY() + ", " + startLocation.getBlockZ(),
-                                "/betterstructures teleport " + startLocation.getWorld().getName() + " " +
-                                        startLocation.getBlockX() + " " + startLocation.getBlockY() + " " + startLocation.getBlockZ())
-                );
+        if (DefaultConfig.isNewBuildingWarn()) {
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                if (player.hasPermission("betterstructures.warn")) {
+                    player.spigot().sendMessage(
+                            SpigotMessage.commandHoverMessage(
+                                    "[BetterStructures] New dungeon started generating! Do not stop your server now. Click to teleport. Do \"/betterstructures silent\" to stop getting warnings!",
+                                    "Click to teleport to " + startLocation.getWorld().getName() + ", " +
+                                            startLocation.getBlockX() + ", " + startLocation.getBlockY() + ", " + startLocation.getBlockZ(),
+                                    "/betterstructures teleport " + startLocation.getWorld().getName() + " " +
+                                            startLocation.getBlockX() + " " + startLocation.getBlockY() + " " + startLocation.getBlockZ())
+                    );
+                }
             }
         }
     }

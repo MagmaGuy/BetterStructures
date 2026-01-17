@@ -86,8 +86,8 @@ public class LootifyCommand extends AdvancedCommand {
         String info;
         if (itemStack.hasItemMeta() && itemStack.getItemMeta().hasDisplayName())
             info = itemStack.getItemMeta().getDisplayName().replace(" ", "_");
-        else if (itemStack.hasItemMeta() && itemStack.getItemMeta().hasLocalizedName())
-            info = itemStack.getItemMeta().getLocalizedName();
+        else if (itemStack.hasItemMeta() && itemStack.getItemMeta().hasItemName())
+            info = itemStack.getItemMeta().getItemName();
         else
             info = itemStack.getType().toString();
         Map<String, Object> configMap = new HashMap<>();
