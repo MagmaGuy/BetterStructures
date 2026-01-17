@@ -14,6 +14,7 @@ import org.bukkit.configuration.MemorySection;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.loot.LootTables;
 
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
@@ -37,6 +38,9 @@ public class TreasureConfigFields extends CustomConfigFields {
     @Getter
     @Setter
     private double standardDeviation = 3;
+    @Getter
+    @Setter
+    private LootTables vanillaTreasure = null;
 
     public TreasureConfigFields(String filename, boolean isEnabled) {
         super(filename, isEnabled);
@@ -49,8 +53,20 @@ public class TreasureConfigFields extends CustomConfigFields {
         this.rawEnchantmentSettings = processMapWithKey("procedurallyGeneratedItemSettings", DefaultChestContents.generateProcedurallyGeneratedItems());
         this.mean = processDouble("mean", mean, 4, true);
         this.standardDeviation = processDouble("standardDeviation", standardDeviation, 3, true);
+        this.vanillaTreasure = parseVanillaTreasure(processString("vanillaTreasure", null, null, false));
         chestContents = new ChestContents(this);
         parseEnchantmentSettings();
+    }
+
+    private LootTables parseVanillaTreasure(String vanillaTreasureString) {
+        if (vanillaTreasureString == null || vanillaTreasureString.isEmpty()) return null;
+        try {
+            return LootTables.valueOf(vanillaTreasureString.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            Logger.warn("Invalid vanillaTreasure value '" + vanillaTreasureString + "' in configuration file " + filename +
+                    ". Please use a valid LootTables enum value (e.g., BURIED_TREASURE, SHIPWRECK_TREASURE, etc.)");
+            return null;
+        }
     }
 
     private void parseEnchantmentSettings() {

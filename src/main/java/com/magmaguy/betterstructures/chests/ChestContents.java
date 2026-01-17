@@ -11,6 +11,8 @@ import org.bukkit.Material;
 import org.bukkit.block.Container;
 import org.bukkit.configuration.MemorySection;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.loot.LootContext;
+import org.bukkit.loot.LootTables;
 
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
@@ -148,6 +150,19 @@ public class ChestContents {
     }
 
     public void rollChestContents(Container chest) {
+        // Roll custom loot if available
+        if (!chestRarities.isEmpty()) {
+            rollCustomLoot(chest);
+        }
+
+        // Roll vanilla loot if available
+        LootTables vanillaTreasure = treasureConfigFields.getVanillaTreasure();
+        if (vanillaTreasure != null) {
+            rollVanillaLoot(chest, vanillaTreasure);
+        }
+    }
+
+    private void rollCustomLoot(Container chest) {
         int amount = (int) Math.max(Math.ceil(ThreadLocalRandom.current().nextGaussian(treasureConfigFields.getMean(), treasureConfigFields.getStandardDeviation())), 0);
         //Guarantee that at least one item will drop
         amount++;
@@ -158,16 +173,30 @@ public class ChestContents {
         for (int i = 0; i < amount; i++) {
             ItemStack itemStack = chestRarities.get(WeighedProbability.pickWeightedProbability(weightsMap)).rollLoot();
             if (itemStack != null) {
-                int counter = 0;
-                while (counter < 100) {
-                    int randomizedIndex = ThreadLocalRandom.current().nextInt(0, chest.getSnapshotInventory().getSize());
-                    if (chest.getSnapshotInventory().getItem(randomizedIndex) == null) {
-                        chest.getSnapshotInventory().setItem(randomizedIndex, itemStack);
-                        break;
-                    }
-                    counter++;
-                }
+                placeItemInChest(chest, itemStack);
             }
+        }
+    }
+
+    private void rollVanillaLoot(Container chest, LootTables lootTable) {
+        LootContext lootContext = new LootContext.Builder(chest.getLocation()).build();
+        Collection<ItemStack> loot = lootTable.getLootTable().populateLoot(ThreadLocalRandom.current(), lootContext);
+        for (ItemStack itemStack : loot) {
+            if (itemStack != null && itemStack.getType() != Material.AIR) {
+                placeItemInChest(chest, itemStack);
+            }
+        }
+    }
+
+    private void placeItemInChest(Container chest, ItemStack itemStack) {
+        int counter = 0;
+        while (counter < 100) {
+            int randomizedIndex = ThreadLocalRandom.current().nextInt(0, chest.getSnapshotInventory().getSize());
+            if (chest.getSnapshotInventory().getItem(randomizedIndex) == null) {
+                chest.getSnapshotInventory().setItem(randomizedIndex, itemStack);
+                break;
+            }
+            counter++;
         }
     }
 

@@ -32,8 +32,9 @@ public class ChunkPregenerator implements Listener {
     private final String shape;
     private final boolean setWorldBorder;
     private final double tickUsage;
-    private final int maxRadius;
-    private int actualMaxRadius = 0;
+    private final int maxRadiusBlocks;
+    private final int maxRadiusChunks;
+    private int actualMaxRadiusChunks = 0;
     private final Set<String> generatedChunks = new HashSet<>();
     private final Set<String> loadedChunks = new HashSet<>(); // Track which chunks have been loaded (to avoid double counting)
     private int newlyGeneratedChunks = 0;
@@ -48,14 +49,15 @@ public class ChunkPregenerator implements Listener {
     private volatile boolean isCancelled = false;
     private volatile boolean isPaused = false;
 
-    public ChunkPregenerator(World world, Location center, String shape, int maxRadius, boolean setWorldBorder) {
+    public ChunkPregenerator(World world, Location center, String shape, int maxRadiusBlocks, int maxRadiusChunks, boolean setWorldBorder) {
         this.world = world;
         this.center = center;
         this.shape = shape;
-        this.maxRadius = maxRadius;
+        this.maxRadiusBlocks = maxRadiusBlocks;
+        this.maxRadiusChunks = maxRadiusChunks;
         this.setWorldBorder = setWorldBorder;
         this.tickUsage = DefaultConfig.getPercentageOfTickUsedForPregeneration();
-        
+
         // Register as event listener to track actual structure generation
         Bukkit.getPluginManager().registerEvents(this, MetadataHandler.PLUGIN);
     }
@@ -68,7 +70,7 @@ public class ChunkPregenerator implements Listener {
         centerChunkX = center.getBlockX() >> 4;
         centerChunkZ = center.getBlockZ() >> 4;
 
-        Logger.info("Starting chunk pregeneration with shape: " + shape + ", center: (" + centerChunkX + ", " + centerChunkZ + ")");
+        Logger.info("Starting chunk pregeneration with shape: " + shape + ", center chunk: (" + centerChunkX + ", " + centerChunkZ + "), radius: " + maxRadiusBlocks + " blocks (" + maxRadiusChunks + " chunks)");
 
         // Register this pregenerator as active
         activePregenerators.add(this);
@@ -123,12 +125,12 @@ public class ChunkPregenerator implements Listener {
         }
 
         // Check if we've reached the maximum radius
-        if (currentRadius > maxRadius) {
+        if (currentRadius > maxRadiusChunks) {
             onComplete();
             return;
         }
 
-        actualMaxRadius = currentRadius;
+        actualMaxRadiusChunks = currentRadius;
 
         final boolean[] chunksAdded = {false};
 
@@ -248,7 +250,7 @@ public class ChunkPregenerator implements Listener {
 
     private void onComplete() {
         cleanup();
-        Logger.info("Chunk pregeneration completed. Processed " + generatedChunks.size() + " chunks, newly generated " + newlyGeneratedChunks + " chunks with max radius: " + actualMaxRadius);
+        Logger.info("Chunk pregeneration completed. Processed " + generatedChunks.size() + " chunks, newly generated " + newlyGeneratedChunks + " chunks with max radius: " + maxRadiusBlocks + " blocks (" + actualMaxRadiusChunks + " chunks)");
 
         if (setWorldBorder) {
             setWorldBorder();
@@ -257,7 +259,7 @@ public class ChunkPregenerator implements Listener {
 
     private void onCancelled() {
         cleanup();
-        Logger.info("Chunk pregeneration cancelled. Processed " + generatedChunks.size() + " chunks, newly generated " + newlyGeneratedChunks + " chunks with max radius: " + actualMaxRadius);
+        Logger.info("Chunk pregeneration cancelled. Processed " + generatedChunks.size() + " chunks, newly generated " + newlyGeneratedChunks + " chunks with max radius reached: " + (actualMaxRadiusChunks * 16) + " blocks (" + actualMaxRadiusChunks + " chunks)");
     }
 
     private void cleanup() {
@@ -349,8 +351,9 @@ public class ChunkPregenerator implements Listener {
         Logger.info("Generation Settings:");
         Logger.info("  - Shape: " + shape);
         Logger.info("  - Tick Usage: " + String.format("%.1f", tickUsage * 100) + "%");
-        Logger.info("  - Current Radius: " + currentRadius + " / " + maxRadius);
-        Logger.info("  - Max Radius Reached: " + actualMaxRadius);
+        Logger.info("  - Target Radius: " + maxRadiusBlocks + " blocks (" + maxRadiusChunks + " chunks)");
+        Logger.info("  - Current Chunk Radius: " + currentRadius + " / " + maxRadiusChunks + " (" + (currentRadius * 16) + " / " + maxRadiusBlocks + " blocks)");
+        Logger.info("  - Max Chunk Radius Reached: " + actualMaxRadiusChunks);
         Logger.info("Structures Generated (Total): " + structuresGeneratedTotal);
         Logger.info("Structures Generated (Last 30s): " + structuresGeneratedLast30s);
         if (estimatedTimeLeft != null) {
@@ -414,12 +417,12 @@ public class ChunkPregenerator implements Listener {
     
     private int calculateExpectedChunksTotal() {
         try {
-            // Calculate all chunks that will be generated within maxRadius
+            // Calculate all chunks that will be generated within maxRadiusChunks
             Set<String> chunksToGenerate = new HashSet<>();
-            
+
             if ("SQUARE".equalsIgnoreCase(shape)) {
                 // Square: match generateSquareLayer logic - edge chunks for each radius
-                for (int radius = 0; radius <= maxRadius; radius++) {
+                for (int radius = 0; radius <= maxRadiusChunks; radius++) {
                     // Top and bottom edges
                     for (int x = centerChunkX - radius; x <= centerChunkX + radius; x++) {
                         // Top edge
@@ -436,8 +439,8 @@ public class ChunkPregenerator implements Listener {
                     }
                 }
             } else if ("CIRCLE".equalsIgnoreCase(shape)) {
-                // Circle: all chunks within maxRadius
-                for (int radius = 0; radius <= maxRadius; radius++) {
+                // Circle: all chunks within maxRadiusChunks
+                for (int radius = 0; radius <= maxRadiusChunks; radius++) {
                     int radiusSquared = radius * radius;
                     int nextRadiusSquared = (radius + 1) * (radius + 1);
                     for (int x = centerChunkX - radius - 1; x <= centerChunkX + radius + 1; x++) {
@@ -452,7 +455,7 @@ public class ChunkPregenerator implements Listener {
                     }
                 }
             }
-            
+
             return chunksToGenerate.size();
         } catch (Exception e) {
             Logger.warn("Failed to calculate expected chunks total: " + e.getMessage());
@@ -481,19 +484,13 @@ public class ChunkPregenerator implements Listener {
 
     private void setWorldBorder() {
         try {
-            double borderSize;
-            if ("SQUARE".equalsIgnoreCase(shape)) {
-                // Square: (actualMaxRadius * 2 + 1) * 16 blocks
-                borderSize = (actualMaxRadius * 2 + 1) * 16.0;
-            } else {
-                // Circle: (actualMaxRadius * 2) * 16 blocks
-                borderSize = (actualMaxRadius * 2) * 16.0;
-            }
+            // World border size is diameter, so multiply radius by 2
+            double borderSize = maxRadiusBlocks * 2.0;
 
             world.getWorldBorder().setCenter(center.getX(), center.getZ());
             world.getWorldBorder().setSize(borderSize);
 
-            Logger.info("World border set to size: " + borderSize + " blocks, center: (" + center.getX() + ", " + center.getZ() + ")");
+            Logger.info("World border set to size: " + borderSize + " blocks (radius: " + maxRadiusBlocks + "), center: (" + center.getX() + ", " + center.getZ() + ")");
         } catch (Exception e) {
             Logger.warn("Failed to set world border: " + e.getMessage());
         }

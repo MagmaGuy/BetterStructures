@@ -17,11 +17,11 @@ public class PregenerateCommand extends AdvancedCommand {
         super(List.of("pregenerate"));
         addArgument("center", new ListStringCommandArgument(List.of("HERE", "WORLD_CENTER", "WORLD_SPAWN"), "Center of the generation"));
         addArgument("shape", new ListStringCommandArgument(List.of("SQUARE", "CIRCLE"), "Shape of the generation"));
-        addArgument("radius", new IntegerCommandArgument("Radius to generate"));
+        addArgument("radius", new IntegerCommandArgument("Radius in blocks to generate"));
         addArgument("setWorldBorder", new ListStringCommandArgument(List.of("TRUE", "FALSE"), "Set a world border at the end?"));
-        setUsage("/betterstructures pregenerate <centerType> <shape> <radius> <applyWorldBorder>");
+        setUsage("/betterstructures pregenerate <centerType> <shape> <radiusInBlocks> <applyWorldBorder>");
         setPermission("betterstructures.*");
-        setDescription("Pregenerates chunks from a center point outward in either a square or circle pattern up to the specified radius.");
+        setDescription("Pregenerates chunks from a center point outward in either a square or circle pattern up to the specified radius in blocks.");
         setSenderType(SenderType.PLAYER);
     }
 
@@ -63,14 +63,17 @@ public class PregenerateCommand extends AdvancedCommand {
             return;
         }
 
-        Logger.sendMessage(commandData.getCommandSender(), "&2Starting chunk pregeneration with shape: " + shape + ", center: " + centerArg + ", radius: " + radius);
+        int radiusInBlocks = radius;
+        int radiusInChunks = (int) Math.ceil(radiusInBlocks / 16.0);
+
+        Logger.sendMessage(commandData.getCommandSender(), "&2Starting chunk pregeneration with shape: " + shape + ", center: " + centerArg + ", radius: " + radiusInBlocks + " blocks (" + radiusInChunks + " chunks)");
         if (setWorldBorder) {
             Logger.sendMessage(commandData.getCommandSender(), "&2World border will be set to match the generated area.");
         }
         Logger.sendMessage(commandData.getCommandSender(), "&7Progress will be reported in the console every 30 seconds.");
         Logger.sendMessage(commandData.getCommandSender(), "&7Use &2/betterstructures cancelPregenerate &7to cancel if needed.");
 
-        ChunkPregenerator pregenerator = new ChunkPregenerator(world, center, shape, radius, setWorldBorder);
+        ChunkPregenerator pregenerator = new ChunkPregenerator(world, center, shape, radiusInBlocks, radiusInChunks, setWorldBorder);
         pregenerator.start();
     }
 }
