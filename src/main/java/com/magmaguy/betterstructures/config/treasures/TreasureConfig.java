@@ -11,6 +11,7 @@ public class TreasureConfig extends CustomConfig {
 
     public TreasureConfig() {
         super("treasures", "com.magmaguy.betterstructures.config.treasures.premade", TreasureConfigFields.class);
+        treasureConfigurations.clear();
         for (String key : super.getCustomConfigFieldsHashMap().keySet()) {
             treasureConfigurations.put(key, (TreasureConfigFields) super.getCustomConfigFieldsHashMap().get(key));
         }

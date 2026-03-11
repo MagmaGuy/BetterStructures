@@ -13,5 +13,6 @@ public class EchoesOfThePast extends ContentPackageConfigFields {
                 "https://nightbreak.io/plugin/betterstructures/#echoes-of-the-past",
                 "echoes");
         setContentPackageType(ContentPackageType.STRUCTURE);
+        setNightbreakSlug("echoes-of-the-past");
     }
 }

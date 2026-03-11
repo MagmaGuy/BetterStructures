@@ -13,5 +13,6 @@ public class ExplorationPack extends ContentPackageConfigFields {
                 "https://nightbreak.io/plugin/betterstructures/#exploration-pack",
                 "exploration");
         setContentPackageType(ContentPackageType.STRUCTURE);
+        setNightbreakSlug("exploration-pack");
     }
 }

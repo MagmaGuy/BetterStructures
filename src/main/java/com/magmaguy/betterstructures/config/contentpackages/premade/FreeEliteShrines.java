@@ -13,5 +13,6 @@ public class FreeEliteShrines extends ContentPackageConfigFields {
                 "https://nightbreak.io/plugin/betterstructures/#free-elite-shrines",
                 "BetterStructures Free Elite Shrines");
         setContentPackageType(ContentPackageType.STRUCTURE);
+        setNightbreakSlug("free-elite-shrines");
     }
 }

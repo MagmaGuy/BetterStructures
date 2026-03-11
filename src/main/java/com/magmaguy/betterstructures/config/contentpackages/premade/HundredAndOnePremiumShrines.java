@@ -13,5 +13,6 @@ public class HundredAndOnePremiumShrines extends ContentPackageConfigFields {
                 "https://nightbreak.io/plugin/betterstructures/#101-premium-shrines",
                 "bs_em_premium_Elite_Shrines");
         setContentPackageType(ContentPackageType.STRUCTURE);
+        setNightbreakSlug("premium-shrines");
     }
 }

@@ -1,24 +1,30 @@
 package com.magmaguy.betterstructures.menus;
 
+import com.magmaguy.betterstructures.MetadataHandler;
+import com.magmaguy.betterstructures.commands.ReloadCommand;
 import com.magmaguy.betterstructures.config.DefaultConfig;
 import com.magmaguy.betterstructures.config.schematics.SchematicConfig;
+import com.magmaguy.magmacore.menus.FirstTimeSetupMenu;
 import com.magmaguy.magmacore.menus.MenuButton;
 import com.magmaguy.magmacore.util.ItemStackGenerator;
 import com.magmaguy.magmacore.util.Logger;
+import com.magmaguy.magmacore.util.SpigotMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.List;
 
 public class BetterStructuresFirstTimeSetupMenu {
     public static void createMenu(Player player) {
-        new com.magmaguy.magmacore.menus.FirstTimeSetupMenu(
+        new FirstTimeSetupMenu(
+                (JavaPlugin) MetadataHandler.PLUGIN,
                 player,
                 "&2BetterStructures",
-                "&6Add custom structures to your server!",
+                "&6Nightbreak-powered content setup",
                 createInfoItem(),
-                List.of(createGettingStartedItem()));
+                List.of(createRecommendedItem(), createManualItem(), createSkipItem()));
     }
 
     private static MenuButton createInfoItem() {
@@ -26,76 +32,132 @@ public class BetterStructuresFirstTimeSetupMenu {
                 "magmaguy",
                 "&2Welcome to BetterStructures!",
                 List.of(
-                        "&9Click to get a link to the full setup guide!",
-                        "&2You can find a basic checklist below to get started!"))) {
+                        "&7Link your Nightbreak account,",
+                        "&7download content in-game,",
+                        "&7and start generating structures quickly."))) {
             @Override
             public void onClick(Player player) {
                 player.closeInventory();
                 Logger.sendSimpleMessage(player, "&8&m-----------------------------------------------------");
-                Logger.sendSimpleMessage(player, "&2See the full setup here: &9&nhttps://nightbreak.io/plugin/betterstructures/#setup");
-                Logger.sendSimpleMessage(player, "&2Check the available content through &6/bs setup &2!");
-                Logger.sendSimpleMessage(player, "&2Support & discussion Discord: &9&nhttps://discord.gg/eSxvPbWYy4");
+                sendLink(player, "&2Setup guide: ", "&9&nhttps://nightbreak.io/plugin/betterstructures/#setup",
+                        "&7Click to open the BetterStructures setup guide.",
+                        "https://nightbreak.io/plugin/betterstructures/#setup");
+                sendLink(player, "&2Nightbreak account: ", "&9&nhttps://nightbreak.io/account/",
+                        "&7Click to open your Nightbreak account page.",
+                        "https://nightbreak.io/account/");
+                sendCommand(player, "&2Content browser: ", "&a/bs setup",
+                        "&7Click to open the BetterStructures setup menu.",
+                        "/bs setup");
+                sendCommand(player, "&2Bulk download: ", "&a/bs downloadall",
+                        "&7Click to download all available BetterStructures content.",
+                        "/bs downloadall");
+                sendLink(player, "&2Support Discord: ", "&9&nhttps://discord.gg/eSxvPbWYy4",
+                        "&7Click to open the BetterStructures support Discord.",
+                        "https://discord.gg/eSxvPbWYy4");
                 Logger.sendSimpleMessage(player, "&8&m-----------------------------------------------------");
             }
         };
     }
 
-    private static MenuButton createGettingStartedItem() {
+    private static MenuButton createRecommendedItem() {
+        return new MenuButton(ItemStackGenerator.generateItemStack(
+                Material.GREEN_STAINED_GLASS_PANE,
+                "&2Recommended Setup",
+                List.of("&aMarks setup complete.", "&aGuides you to Nightbreak login and content install."))) {
+            @Override
+            public void onClick(Player player) {
+                player.closeInventory();
+                DefaultConfig.toggleSetupDone(true);
+                Logger.sendSimpleMessage(player, "&8&m-----------------------------------------------------");
+                Logger.sendSimpleMessage(player, "&aBetterStructures setup is now marked as complete.");
+                sendLink(player, "&7Step 1: get your Nightbreak token at ",
+                        "&9&nhttps://nightbreak.io/account/",
+                        "&7Click to open your Nightbreak account page.",
+                        "https://nightbreak.io/account/");
+                sendCommand(player, "&7Step 2: link it in-game with ", "&a/nightbreaklogin <token>",
+                        "&7Click to run the Nightbreak login command.",
+                        "/nightbreaklogin ");
+                player.spigot().sendMessage(
+                        SpigotMessage.simpleMessage("&7Step 3: install content with "),
+                        SpigotMessage.commandHoverMessage("&a/bs downloadall",
+                                "&7Click to download all available BetterStructures content.",
+                                "/bs downloadall"),
+                        SpigotMessage.simpleMessage(" &7or browse it with "),
+                        SpigotMessage.commandHoverMessage("&a/bs setup",
+                                "&7Click to open the BetterStructures setup menu.",
+                                "/bs setup"));
+                Logger.sendSimpleMessage(player, "&8&m-----------------------------------------------------");
+            }
+        };
+    }
+
+    private static MenuButton createManualItem() {
+        return new MenuButton(ItemStackGenerator.generateItemStack(
+                Material.YELLOW_STAINED_GLASS_PANE,
+                "&6Manual Setup",
+                List.of("&eMarks setup complete.", "&eLeaves content management up to you."))) {
+            @Override
+            public void onClick(Player player) {
+                player.closeInventory();
+                DefaultConfig.toggleSetupDone(true);
+                Logger.sendSimpleMessage(player, "&8&m-----------------------------------------------------");
+                Logger.sendSimpleMessage(player, "&6Setup complete. You can manage content manually through &a/bs setup&6.");
+                Logger.sendSimpleMessage(player, "&7If you already dropped new files into &8plugins/BetterStructures/imports&7, run &a/bs reload&7.");
+                Logger.sendSimpleMessage(player, "&8&m-----------------------------------------------------");
+            }
+        };
+    }
+
+    private static MenuButton createSkipItem() {
         if (!Bukkit.getPluginManager().isPluginEnabled("WorldEdit") &&
                 !Bukkit.getPluginManager().isPluginEnabled("FastAsyncWorldEdit")) {
             return new MenuButton(ItemStackGenerator.generateItemStack(
                     Material.RED_STAINED_GLASS_PANE,
-                    "&cWorldEdit not installed!",
-                    List.of("&cYou must install WorldEdit for",
-                            "&cBetterStructures to work!"))) {
+                    "&cWorldEdit not installed",
+                    List.of("&cBetterStructures needs WorldEdit or FAWE installed."))) {
                 @Override
                 public void onClick(Player player) {
                     player.closeInventory();
                     Logger.sendSimpleMessage(player, "&8&m-----------------------------------------------------");
-                    Logger.sendSimpleMessage(player, "&c&lYou must install WorldEdit for BetterStructures to work!");
-                    Logger.sendSimpleMessage(player, "&c&You can download it here: &9&nhttps://dev.bukkit.org/projects/worldedit");
-                    Logger.sendSimpleMessage(player, "&4&lMake sure you get the right WorldEdit version for your Minecraft version!");
-                    Logger.sendSimpleMessage(player, "&8&m-----------------------------------------------------");
-                }
-            };
-        }
-
-        if (SchematicConfig.getSchematicConfigurations().isEmpty()) {
-            return new MenuButton(ItemStackGenerator.generateItemStack(
-                    Material.YELLOW_STAINED_GLASS_PANE,
-                    "&cNo content installed!",
-                    List.of("&cCould not detect any structures installed",
-                            "&cfor BetterStructures! Click for more",
-                            "&cinformation!"))) {
-                @Override
-                public void onClick(Player player) {
-                    player.closeInventory();
-                    Logger.sendSimpleMessage(player, "&8&m-----------------------------------------------------");
-                    Logger.sendSimpleMessage(player, "&c&lBetterStructures requires either downloading or creating builds to work!");
-                    Logger.sendSimpleMessage(player, "&cYou can download builds here: &9&nhttps://nightbreak.io/plugin/betterstructures/#content");
-                    Logger.sendSimpleMessage(player, "&cOnce downloaded, just drag and drop it into the imports folder of BetterStructures and &4/bs reload&c. Setup video: &9&https://www.youtube.com/watch?v=1z47lSxmyq0");
-                    Logger.sendSimpleMessage(player, "&4You can also just make your own content! Check the wiki for more information! &9&nhttps://magmaguy.com/wiki.html");
+                    Logger.sendSimpleMessage(player, "&cInstall WorldEdit or FAWE before using BetterStructures.");
                     Logger.sendSimpleMessage(player, "&8&m-----------------------------------------------------");
                 }
             };
         }
 
         return new MenuButton(ItemStackGenerator.generateItemStack(
-                Material.GREEN_STAINED_GLASS_PANE,
-                "&2Seems like everything is ready to go!",
-                List.of("&aClick here to complete the first time setup!"))) {
+                Material.RED_STAINED_GLASS_PANE,
+                "&cUse Current Content",
+                List.of("&cDismisses the setup prompt and keeps your current content state."))) {
             @Override
             public void onClick(Player player) {
-                DefaultConfig.toggleSetupDone();
                 player.closeInventory();
-                Logger.sendSimpleMessage(player, "&8&m-----------------------------------------------------");
-                Logger.sendSimpleMessage(player, "&2Congratulations! Seems like your server is ready to start generating better structures!");
-                Logger.sendSimpleMessage(player, "&aTo see the content currently installed, run the command &a/betterstructures setup");
-                Logger.sendSimpleMessage(player, "&aTo generate structures, move to new chunks in your server! These must be completely new, never previously generated chunks. BetterStructures will never generate structures in already explored chunks!");
-                Logger.sendSimpleMessage(player, "&aThat's it! Have fun exploring! The first time setup message will never show up again.");
-                Logger.sendSimpleMessage(player, "&8&m-----------------------------------------------------");
+                DefaultConfig.toggleSetupDone(true);
+                if (SchematicConfig.getSchematicConfigurations().isEmpty()) {
+                    Logger.sendSimpleMessage(player, "&8&m-----------------------------------------------------");
+                    Logger.sendSimpleMessage(player, "&eSetup dismissed, but no BetterStructures content is currently installed.");
+                    Logger.sendSimpleMessage(player, "&7Use &a/bs setup &7when you're ready to install content.");
+                    Logger.sendSimpleMessage(player, "&8&m-----------------------------------------------------");
+                } else {
+                    Logger.sendSimpleMessage(player, "&8&m-----------------------------------------------------");
+                    Logger.sendSimpleMessage(player, "&aSetup complete. BetterStructures will keep using your current installed content.");
+                    Logger.sendSimpleMessage(player, "&7Run &a/bs reload &7if you import new content later.");
+                    Logger.sendSimpleMessage(player, "&8&m-----------------------------------------------------");
+                    ReloadCommand.reload(player);
+                }
             }
         };
     }
 
+    private static void sendLink(Player player, String prefix, String display, String hover, String url) {
+        player.spigot().sendMessage(
+                SpigotMessage.simpleMessage(prefix),
+                SpigotMessage.hoverLinkMessage(display, hover, url));
+    }
+
+    private static void sendCommand(Player player, String prefix, String display, String hover, String command) {
+        player.spigot().sendMessage(
+                SpigotMessage.simpleMessage(prefix),
+                SpigotMessage.commandHoverMessage(display, hover, command));
+    }
 }

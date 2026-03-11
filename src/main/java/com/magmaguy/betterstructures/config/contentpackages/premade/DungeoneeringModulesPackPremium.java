@@ -13,5 +13,6 @@ public class DungeoneeringModulesPackPremium extends ContentPackageConfigFields 
                 "https://nightbreak.io/plugin/betterstructures/#dungeoneering-modules-premium",
                 "dungeoneering_modules_premium");
         setContentPackageType(ContentPackageType.MODULAR);
+        setNightbreakSlug("dungeoneering-modules-premium");
     }
 }

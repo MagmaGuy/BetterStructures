@@ -13,5 +13,6 @@ public class DungeoneeringModulesPackFree extends ContentPackageConfigFields {
                 "https://nightbreak.io/plugin/betterstructures/#dungeoneering-modules-free",
                 "dungeoneering_modules_free");
         setContentPackageType(ContentPackageType.MODULAR);
+        setNightbreakSlug("dungeoneering-modules-free");
     }
 }
