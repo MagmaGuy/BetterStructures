@@ -123,7 +123,7 @@ public class DefaultConfig extends ConfigurationFile {
                 List.of(
                         "Sets the distance between structures in the surface of a world.",
                         "Shorter distances between structures will result in more structures overall."),
-                fileConfiguration, "distanceSurface", 31);
+                fileConfiguration, "distanceSurface", 27);
         distanceShallow = ConfigurationEngine.setInt(
                 List.of(
                         "Sets the distance between structures in shallow underground structure generation.",
@@ -137,12 +137,12 @@ public class DefaultConfig extends ConfigurationFile {
                 List.of(
                         "Sets the distance between structures in placed in the air.",
                         "Shorter distances between structures will result in more structures overall."),
-                fileConfiguration, "distanceSky", 95);
+                fileConfiguration, "distanceSky", 90);
         distanceLiquid = ConfigurationEngine.setInt(
                 List.of(
                         "Sets the distance between structures liquid surfaces such as oceans.",
                         "Shorter distances between structures will result in more structures overall."),
-                fileConfiguration, "distanceLiquid", 65);
+                fileConfiguration, "distanceLiquid", 60);
         distanceDungeon = ConfigurationEngine.setInt(
                 List.of(
                         "Sets the distance between dungeons.",

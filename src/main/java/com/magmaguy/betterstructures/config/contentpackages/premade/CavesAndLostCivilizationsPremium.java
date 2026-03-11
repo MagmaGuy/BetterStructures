@@ -13,6 +13,7 @@ public class CavesAndLostCivilizationsPremium extends ContentPackageConfigFields
                 "https://nightbreak.io/plugin/betterstructures/#caves-and-lost-civilizations-premium",
                 "caves_and_lost_civilizations_premium");
         setContentPackageType(ContentPackageType.STRUCTURE);
+        setNightbreakSlug("caves-and-lost-civilizations-premium");
     }
 }
 

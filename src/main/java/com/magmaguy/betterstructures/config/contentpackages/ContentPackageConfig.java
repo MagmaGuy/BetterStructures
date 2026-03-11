@@ -13,6 +13,7 @@ public class ContentPackageConfig extends CustomConfig {
 
     public ContentPackageConfig() {
         super("content_packages","com.magmaguy.betterstructures.config.contentpackages.premade", ContentPackageConfigFields.class);
+        contentPackages.clear();
         for (String key : super.getCustomConfigFieldsHashMap().keySet()) {
             contentPackages.put(key, (ContentPackageConfigFields) super.getCustomConfigFieldsHashMap().get(key));
             new BSPackage((ContentPackageConfigFields) super.getCustomConfigFieldsHashMap().get(key));

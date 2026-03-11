@@ -20,6 +20,9 @@ public class ContentPackageConfigFields extends CustomConfigFields {
     @Getter
     @Setter
     private ContentPackageType contentPackageType;
+    @Getter
+    @Setter
+    private String nightbreakSlug;
 
     public enum ContentPackageType {
         STRUCTURE,
@@ -52,5 +55,6 @@ public class ContentPackageConfigFields extends CustomConfigFields {
         this.version = processInt("version", version, 0, true);
         this.folderName = processString("folderNameV2", folderName, null, true);
         this.contentPackageType = processEnum("contentPackageType", contentPackageType, ContentPackageType.STRUCTURE, ContentPackageType.class, false);
+        this.nightbreakSlug = processString("nightbreakSlug", nightbreakSlug, null, false);
     }
 }

@@ -13,5 +13,6 @@ public class AdventurePack extends ContentPackageConfigFields {
                 "https://nightbreak.io/plugin/betterstructures/#adventure-pack",
                 "adventure");
         setContentPackageType(ContentPackageType.STRUCTURE);
+        setNightbreakSlug("adventure-pack");
     }
 }
