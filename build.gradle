@@ -27,14 +27,11 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok:1.18.30'
     compileOnly 'org.projectlombok:lombok:1.18.30'
 
-    implementation (group: 'com.magmaguy', name: 'MagmaCore', version: '1.29-SNAPSHOT'){
+    implementation (group: 'com.magmaguy', name: 'MagmaCore', version: '2.0.0-SNAPSHOT'){
         changing = true
     }
     implementation group: 'org.bstats', name: 'bstats-bukkit', version: '2.2.1'
     implementation group: 'org.joml', name: 'joml', version: '1.10.8'
-    implementation (group: 'com.magmaguy', name: 'EasyMinecraftGoals-dist', version: '1.19.26') {
-        changing = true
-    }
     compileOnly group: 'com.magmaguy', name: 'EliteMobs', version: '9.3.3-SNAPSHOT'
     compileOnly group: 'io.lumine', name: 'Mythic-Dist', version: '5.2.1'
     compileOnly group: 'io.lumine', name: 'MythicLib-dist', version: '1.5.2-SNAPSHOT'
@@ -63,10 +60,6 @@ String packagePath = 'com.magmaguy.shaded'
 shadowJar {
     dependencies {
         relocate('org.bstats', packagePath + '.bstats')
-        relocate('com.magmaguy.easyminecraftgoals', 'com.magmaguy.betterstructures.easyminecraftgoals')
-    }
-    minimize {
-        exclude(dependency('com.magmaguy:EasyMinecraftGoals-dist:.*'))
     }
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     archiveClassifier.set(null)
