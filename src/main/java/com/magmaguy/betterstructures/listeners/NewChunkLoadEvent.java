@@ -66,6 +66,17 @@ public class NewChunkLoadEvent implements Listener {
                                              int gridDistance, int maxOffset) {
         int x = chunk.getX();
         int z = chunk.getZ();
+
+        // Check spawn protection radius (2D distance from 0,0 in blocks)
+        int spawnProtectionRadius = DefaultConfig.getSpawnProtectionRadius();
+        if (spawnProtectionRadius > 0) {
+            int blockX = x * 16 + 8;
+            int blockZ = z * 16 + 8;
+            if ((long) blockX * blockX + (long) blockZ * blockZ < (long) spawnProtectionRadius * spawnProtectionRadius) {
+                return false;
+            }
+        }
+
         long worldSeed = chunk.getWorld().getSeed();
 
         // Create a unique seed for each structure type

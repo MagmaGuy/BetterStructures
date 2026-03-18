@@ -74,6 +74,9 @@ public class DefaultConfig extends ConfigurationFile {
     @Getter
     private static int maxOffsetDungeon;
 
+    @Getter
+    private static int spawnProtectionRadius;
+
     public DefaultConfig() {
         super("config.yml");
         instance = this;
@@ -181,6 +184,12 @@ public class DefaultConfig extends ConfigurationFile {
                         "Used to tweak the randomization of the distance between dungeons.",
                         "Smaller values will result in dungeons being more on a grid, and larger values will result in them being less predictably placed."),
                 fileConfiguration, "maxOffsetDungeonV2", 18);
+
+        spawnProtectionRadius = ConfigurationEngine.setInt(
+                List.of(
+                        "Sets the minimum distance (in blocks) from world spawn (coordinates 0, 0) within which no structures will be placed.",
+                        "This applies to all worlds. Set to 0 to disable spawn protection."),
+                fileConfiguration, "spawnProtectionRadius", 100);
 
         ConfigurationEngine.fileSaverOnlyDefaults(fileConfiguration, file);
     }
