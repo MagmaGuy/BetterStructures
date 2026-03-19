@@ -61,6 +61,7 @@ shadowJar {
     dependencies {
         relocate('org.bstats', packagePath + '.bstats')
     }
+    relocate 'com.magmaguy.easyminecraftgoals', 'com.magmaguy.betterstructures.easyminecraftgoals'
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     archiveClassifier.set(null)
     archiveFileName.set(project.name + ".jar")
