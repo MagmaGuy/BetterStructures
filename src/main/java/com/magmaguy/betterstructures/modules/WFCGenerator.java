@@ -3,6 +3,7 @@ package com.magmaguy.betterstructures.modules;
 import com.magmaguy.betterstructures.MetadataHandler;
 import com.magmaguy.betterstructures.config.modulegenerators.ModuleGeneratorsConfigFields;
 import com.magmaguy.magmacore.util.Logger;
+import com.magmaguy.magmacore.util.WorldFolderResolver;
 import lombok.Getter;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -63,18 +64,15 @@ public class WFCGenerator {
             public void run() {
                 if (generatorsConfigFields.isWorldGeneration()) {
                     String baseWorldName = generatorsConfigFields.getFilename().replace(".yml", "");
-                    File worldContainer = Bukkit.getWorldContainer();
                     int i = 0;
 
                     // Increment until a unique world name is found
+                    // (checks both legacy and Paper-26.1+ modern world layouts).
                     String worldName;
-                    worldName = baseWorldName + "_" + i;
-                    File worldFolder = new File(worldContainer, worldName);
-                    while (worldFolder.exists()) {
+                    do {
                         worldName = baseWorldName + "_" + i;
                         i++;
-                        worldFolder = new File(worldContainer, worldName);
-                    }
+                    } while (WorldFolderResolver.folderExists(worldName));
 
                 } else {
                     new WFCGenerator(generatorsConfigFields, player);
@@ -133,18 +131,15 @@ public class WFCGenerator {
 
         if (moduleGeneratorsConfigFields.isWorldGeneration()) {
             String baseWorldName = moduleGeneratorsConfigFields.getFilename().replace(".yml", "");
-            File worldContainer = Bukkit.getWorldContainer();
             int i = 0;
 
             // Increment until a unique world name is found
+            // (checks both legacy and Paper-26.1+ modern world layouts).
             String worldName;
-            worldName = baseWorldName + "_" + i;
-            File worldFolder = new File(worldContainer, worldName);
-            while (worldFolder.exists()) {
+            do {
                 worldName = baseWorldName + "_" + i;
                 i++;
-                worldFolder = new File(worldContainer, worldName);
-            }
+            } while (WorldFolderResolver.folderExists(worldName));
         }
 
         initializeProgressBar();

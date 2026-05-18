@@ -1,7 +1,7 @@
 name: BetterStructures
-version: '2.3.0'
+version: '2.3.1'
 main: com.magmaguy.betterstructures.BetterStructures
-api-version: 1.14
+api-version: '1.21.4'
 depend: [ WorldEdit ]
 softdepend:
   - EliteMobs
