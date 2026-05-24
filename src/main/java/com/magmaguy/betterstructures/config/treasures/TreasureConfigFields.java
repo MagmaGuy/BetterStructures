@@ -51,8 +51,8 @@ public class TreasureConfigFields extends CustomConfigFields {
         this.isEnabled = processBoolean("isEnabled", isEnabled, true, true);
         this.rawLoot = processMapWithKey("items", rawLoot);
         this.rawEnchantmentSettings = processMapWithKey("procedurallyGeneratedItemSettings", DefaultChestContents.generateProcedurallyGeneratedItems());
-        this.mean = processDouble("mean", mean, 4, true);
-        this.standardDeviation = processDouble("standardDeviation", standardDeviation, 3, true);
+        this.mean = processDouble("mean", mean, mean, true);
+        this.standardDeviation = processDouble("standardDeviation", standardDeviation, standardDeviation, true);
         this.vanillaTreasure = parseVanillaTreasure(processString("vanillaTreasure", null, null, false));
         chestContents = new ChestContents(this);
         parseEnchantmentSettings();
