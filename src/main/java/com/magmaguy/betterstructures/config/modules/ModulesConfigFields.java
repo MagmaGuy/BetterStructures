@@ -23,8 +23,6 @@ public class ModulesConfigFields extends CustomConfigFields {
     @Setter
     private String barrelTreasureFilename = "treasure_barrel_food";
     @Setter
-    private ChestContents barrelContents = null;
-    @Setter
     private boolean generateLootInBarrels = true;
     private Map<String, Object> borderMap = new HashMap<>();
     private Integer minY = -4;
@@ -81,10 +79,6 @@ public class ModulesConfigFields extends CustomConfigFields {
 
     public String getBarrelTreasureFilename() {
         return clonedConfig == null ? barrelTreasureFilename : clonedConfig.getBarrelTreasureFilename();
-    }
-
-    public ChestContents getBarrelContents() {
-        return clonedConfig == null ? barrelContents : clonedConfig.getBarrelContents();
     }
 
     public boolean isGenerateLootInBarrels() {
@@ -165,14 +159,6 @@ public class ModulesConfigFields extends CustomConfigFields {
         }
         this.generateLootInBarrels = processBoolean("generateLootInBarrels", generateLootInBarrels, true, true);
         this.barrelTreasureFilename = processString("barrelTreasureFilename", barrelTreasureFilename, "treasure_barrel_food", true);
-        if (generateLootInBarrels && barrelTreasureFilename != null && !barrelTreasureFilename.isEmpty()) {
-            TreasureConfigFields barrelTreasureConfigFields = TreasureConfig.getConfigFields(barrelTreasureFilename);
-            if (barrelTreasureConfigFields == null) {
-                Logger.warn("Failed to get barrel treasure config file " + barrelTreasureFilename + " for module configuration " + filename + " ! Barrels will be empty.");
-            } else {
-                this.barrelContents = barrelTreasureConfigFields.getChestContents();
-            }
-        }
         this.borderMap = processMap("borders", new HashMap<>());
         this.minY = processInt("minY", minY, minY, true);
         this.maxY = processInt("maxY", maxY, maxY, true);
