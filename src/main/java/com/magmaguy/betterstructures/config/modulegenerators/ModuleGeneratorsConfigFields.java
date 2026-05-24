@@ -37,7 +37,7 @@ public class ModuleGeneratorsConfigFields extends CustomConfigFields {
     @Getter
     protected boolean generateLootInBarrels = true;
     @Getter
-    protected String barrelTreasureFilename = "treasure_barrel_food";
+    protected String barrelTreasureFilename = "treasure_barrel_food.yml";
     @Getter
     @Setter
     private List<String> validWorlds = null;
@@ -85,7 +85,7 @@ public class ModuleGeneratorsConfigFields extends CustomConfigFields {
         this.isWorldGeneration = processBoolean("isWorldGeneration", isWorldGeneration, isWorldGeneration, true);
         this.treasureFile = processString("treasureFile", treasureFile, null, false);
         this.generateLootInBarrels = processBoolean("generateLootInBarrels", generateLootInBarrels, true, false);
-        this.barrelTreasureFilename = processString("barrelTreasureFilename", barrelTreasureFilename, "treasure_barrel_food", false);
+        this.barrelTreasureFilename = processString("barrelTreasureFilename", barrelTreasureFilename, "treasure_barrel_food.yml", false);
         this.validWorlds = processStringList("validWorlds", validWorlds, new ArrayList<>(), false);
         this.validWorldEnvironments = processEnumList("validWorldEnvironments", validWorldEnvironments, null, World.Environment.class, false);
         this.centerModuleAltitude = processInt("centerModuleAltitude", centerModuleAltitude, 0, false);
