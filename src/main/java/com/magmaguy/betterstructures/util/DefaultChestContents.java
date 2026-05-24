@@ -222,6 +222,70 @@ public class DefaultChestContents {
         return items;
     }
 
+    public static Map<String, Object> barrelFoodContents() {
+        Map<String, Object> items = new HashMap<>();
+        Map<String, Object> commonItems = new HashMap<>();
+        Map<String, Object> rareItems = new HashMap<>();
+        Map<String, Object> epicItems = new HashMap<>();
+        List<Map<String, Object>> commonList = new ArrayList<>();
+        List<Map<String, Object>> rareList = new ArrayList<>();
+        List<Map<String, Object>> epicList = new ArrayList<>();
+
+        // Common — staples and raw foods (peasant's pantry)
+        commonList.add(generateEntry(Material.BREAD, 1, 3, normalWeight));
+        commonList.add(generateEntry(Material.APPLE, 1, 3, normalWeight));
+        commonList.add(generateEntry(Material.CARROT, 1, 3, normalWeight));
+        commonList.add(generateEntry(Material.POTATO, 1, 3, normalWeight));
+        commonList.add(generateEntry(Material.BEETROOT, 1, 3, normalWeight));
+        commonList.add(generateEntry(Material.SWEET_BERRIES, 1, 4, normalWeight));
+        commonList.add(generateEntry(Material.GLOW_BERRIES, 1, 4, normalWeight));
+        commonList.add(generateEntry(Material.MELON_SLICE, 1, 4, normalWeight));
+        commonList.add(generateEntry(Material.DRIED_KELP, 2, 6, normalWeight));
+        commonList.add(generateEntry(Material.COOKIE, 2, 6, normalWeight));
+        commonList.add(generateEntry(Material.BEEF, 1, 3, normalWeight));
+        commonList.add(generateEntry(Material.PORKCHOP, 1, 3, normalWeight));
+        commonList.add(generateEntry(Material.MUTTON, 1, 3, normalWeight));
+        commonList.add(generateEntry(Material.COD, 1, 4, normalWeight));
+        commonList.add(generateEntry(Material.SALMON, 1, 4, normalWeight));
+        commonList.add(generateEntry(Material.CHICKEN, 1, 3, rareWeight));
+        commonList.add(generateEntry(Material.RABBIT, 1, 3, rareWeight));
+        commonList.add(generateEntry(Material.TROPICAL_FISH, 1, 2, extraRareWeight));
+        commonList.add(generateEntry(Material.CHORUS_FRUIT, 1, 3, extraRareWeight));
+
+        // Rare — cooked / processed (someone actually fed the fire)
+        rareList.add(generateEntry(Material.COOKED_BEEF, 1, 3, normalWeight));
+        rareList.add(generateEntry(Material.COOKED_PORKCHOP, 1, 3, normalWeight));
+        rareList.add(generateEntry(Material.COOKED_MUTTON, 1, 3, normalWeight));
+        rareList.add(generateEntry(Material.COOKED_CHICKEN, 1, 3, normalWeight));
+        rareList.add(generateEntry(Material.COOKED_COD, 1, 3, normalWeight));
+        rareList.add(generateEntry(Material.COOKED_SALMON, 1, 3, normalWeight));
+        rareList.add(generateEntry(Material.COOKED_RABBIT, 1, 2, normalWeight));
+        rareList.add(generateEntry(Material.BAKED_POTATO, 1, 3, normalWeight));
+        rareList.add(generateEntry(Material.PUMPKIN_PIE, 1, 2, rareWeight));
+        rareList.add(generateEntry(Material.HONEY_BOTTLE, 1, 2, rareWeight));
+        rareList.add(generateEntry(Material.MUSHROOM_STEW, 1, 1, rareWeight));
+        rareList.add(generateEntry(Material.BEETROOT_SOUP, 1, 1, rareWeight));
+        rareList.add(generateEntry(Material.SUSPICIOUS_STEW, 1, 1, extraRareWeight));
+        rareList.add(generateEntry(Material.RABBIT_STEW, 1, 1, extraRareWeight));
+
+        // Epic — premium (the lord's larder)
+        epicList.add(generateEntry(Material.GOLDEN_CARROT, 1, 3, normalWeight));
+        epicList.add(generateEntry(Material.GOLDEN_APPLE, 1, 2, rareWeight));
+        epicList.add(generateEntry(Material.ENCHANTED_GOLDEN_APPLE, 1, 1, extraRareWeight));
+        epicList.add(generateEntry(Material.CAKE, 1, 1, extraRareWeight));
+
+        commonItems.put("weight", 60);
+        commonItems.put("items", commonList);
+        rareItems.put("weight", 30);
+        rareItems.put("items", rareList);
+        epicItems.put("weight", 10);
+        epicItems.put("items", epicList);
+        items.put("common", commonItems);
+        items.put("rare", rareItems);
+        items.put("epic", epicItems);
+        return items;
+    }
+
     public static Map<String, Object> overworldUndergroundContents() {
         //Clones the list from above ground
         Map<String, Object> items = new HashMap<>(overworldContents());
