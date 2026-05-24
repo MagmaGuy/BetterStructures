@@ -41,8 +41,10 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public final class ModulePasting {
     private final List<InterpretedSign> interpretedSigns = new ArrayList<>();
@@ -416,7 +418,7 @@ public final class ModulePasting {
 
         if (moduleGeneratorsConfigFields.isGenerateLootInBarrels() && !barrelsToFill.isEmpty()) {
             Map<String, ChestContents> contentsByTreasure = new HashMap<>();
-            java.util.Set<String> warnedMissingTreasures = new java.util.HashSet<>();
+            Set<String> warnedMissingTreasures = new HashSet<>();
             for (BarrelPlacement bp : barrelsToFill) {
                 ModulesConfigFields modConfig = bp.modulesConfigFields();
                 if (modConfig != null && !modConfig.isGenerateLootInBarrels()) continue;
