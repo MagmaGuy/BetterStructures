@@ -138,22 +138,22 @@ public class SchematicContainer {
                     }
                 }
         chestContents = generatorConfigFields.getChestContents();
-        if (schematicConfigField.getTreasureFile() != null && !schematicConfigField.getTreasureFile().isEmpty()) {
-            TreasureConfigFields treasureConfigFields = TreasureConfig.getConfigFields(schematicConfigField.getFilename());
-            if (treasureConfigFields == null) {
-                Logger.warn("Failed to get treasure configuration " + schematicConfigField.getTreasureFile());
-                return;
-            }
-            chestContents = schematicConfigField.getChestContents();
-        }
         barrelContents = generatorConfigFields.getBarrelContents();
+        if (schematicConfigField.getTreasureFile() != null && !schematicConfigField.getTreasureFile().isEmpty()) {
+            TreasureConfigFields treasureConfigFields = TreasureConfig.getConfigFields(schematicConfigField.getTreasureFile());
+            if (treasureConfigFields == null) {
+                Logger.warn("Failed to get treasure configuration " + schematicConfigField.getTreasureFile() + " for schematic " + schematicConfigField.getFilename() + " ! Defaulting to the generator chest treasure.");
+            } else {
+                chestContents = schematicConfigField.getChestContents();
+            }
+        }
         if (schematicConfigField.getBarrelTreasureFilename() != null && !schematicConfigField.getBarrelTreasureFilename().isEmpty()) {
             TreasureConfigFields barrelTreasureConfigFields = TreasureConfig.getConfigFields(schematicConfigField.getBarrelTreasureFilename());
             if (barrelTreasureConfigFields == null) {
-                Logger.warn("Failed to get barrel treasure configuration " + schematicConfigField.getBarrelTreasureFilename());
-                return;
+                Logger.warn("Failed to get barrel treasure configuration " + schematicConfigField.getBarrelTreasureFilename() + " for schematic " + schematicConfigField.getFilename() + " ! Defaulting to the generator barrel treasure.");
+            } else {
+                barrelContents = schematicConfigField.getBarrelContents();
             }
-            barrelContents = schematicConfigField.getBarrelContents();
         }
         if (valid)
             generatorConfigFields.getStructureTypes().forEach(structureType -> schematics.put(structureType, this));
