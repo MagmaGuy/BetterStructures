@@ -33,6 +33,12 @@ public class SchematicConfigField extends CustomConfigFields {
     @Getter
     @Setter
     private ChestContents chestContents = null;
+    @Getter
+    @Setter
+    private String barrelTreasureFilename = null;
+    @Getter
+    @Setter
+    private ChestContents barrelContents = null;
 
 
     /**
@@ -53,18 +59,31 @@ public class SchematicConfigField extends CustomConfigFields {
         this.generatorConfigFilename = processString("generatorConfigFilename", generatorConfigFilename, generatorConfigFilename, true);
         this.generatorConfigFields = GeneratorConfig.getConfigFields(generatorConfigFilename);
         this.treasureFile = processString("treasureFile", treasureFile, null, false);
+        this.barrelTreasureFilename = processString("barrelTreasureFilename", barrelTreasureFilename, null, false);
         if (generatorConfigFields == null) {
             Logger.warn("Failed to assign a valid generator to " + filename + "! This will not spawn. Generator config name: " + generatorConfigFilename);
             return;
         }
+        // Inherit defaults from the generator
         this.chestContents = generatorConfigFields.getChestContents();
+        this.barrelContents = generatorConfigFields.getBarrelContents();
+        // Per-schematic chest treasure override
         if (treasureFile != null && !treasureFile.isEmpty()) {
             TreasureConfigFields treasureConfigFields = TreasureConfig.getConfigFields(treasureFile);
             if (treasureConfigFields == null) {
                 Logger.warn("Failed to get treasure config file " + treasureFile + " for schematic configuration " + filename + " ! Defaulting to the generator treasure.");
-                return;
+            } else {
+                this.chestContents = treasureConfigFields.getChestContents();
             }
-            this.chestContents = treasureConfigFields.getChestContents();
+        }
+        // Per-schematic barrel treasure override
+        if (barrelTreasureFilename != null && !barrelTreasureFilename.isEmpty()) {
+            TreasureConfigFields barrelTreasureConfigFields = TreasureConfig.getConfigFields(barrelTreasureFilename);
+            if (barrelTreasureConfigFields == null) {
+                Logger.warn("Failed to get barrel treasure config file " + barrelTreasureFilename + " for schematic configuration " + filename + " ! Defaulting to the generator barrel treasure.");
+            } else {
+                this.barrelContents = barrelTreasureConfigFields.getChestContents();
+            }
         }
     }
 
