@@ -44,6 +44,7 @@ import java.util.List;
 public final class ModulePasting {
     private final List<InterpretedSign> interpretedSigns = new ArrayList<>();
     private final List<ChestPlacement> chestsToPlace = new ArrayList<>();
+    private final List<Location> barrelsToFill = new ArrayList<>();
     private final List<EntitySpawn> entitiesToSpawn = new ArrayList<>();
     private final String spawnPoolSuffix;
     private final Location startLocation;
@@ -88,7 +89,7 @@ public final class ModulePasting {
     }
 
     private static boolean isNbtRichMaterial(Material m) {
-        if (m == Material.CHEST || m == Material.TRAPPED_CHEST) return false;
+        if (m == Material.CHEST || m == Material.TRAPPED_CHEST || m == Material.BARREL) return false;
         if (m.name().endsWith("_SIGN") || m.name().endsWith("_WALL_SIGN") || m.name().endsWith("_HANGING_SIGN"))
             return false;
 
@@ -257,6 +258,10 @@ public final class ModulePasting {
                 return; // do NOT add to normal paste list
             }
 
+            if (blockData.getMaterial() == Material.BARREL) {
+                barrelsToFill.add(pasteLocation);
+            }
+
             // Normal placement path
             pasteableList.add(new Pasteable(pasteLocation, blockData));
         });
@@ -401,6 +406,28 @@ public final class ModulePasting {
                     if (!chestFillEvent.isCancelled())
                         container.update(true);
                 }
+            }
+        }
+
+        if (moduleGeneratorsConfigFields.isGenerateLootInBarrels()) {
+            String barrelTreasureFilename = moduleGeneratorsConfigFields.getBarrelTreasureFilename();
+            TreasureConfigFields barrelTreasureFields = TreasureConfig.getConfigFields(barrelTreasureFilename);
+            if (barrelTreasureFields != null) {
+                ChestContents barrelContents = new ChestContents(barrelTreasureFields);
+                for (Location barrelLocation : barrelsToFill) {
+                    Block block = barrelLocation.getBlock();
+                    if (block.getType() != Material.BARREL) continue;
+                    if (!(block.getState() instanceof Container container)) continue;
+
+                    barrelContents.rollChestContents(container);
+                    ChestFillEvent chestFillEvent = new ChestFillEvent(container, barrelTreasureFilename);
+                    Bukkit.getServer().getPluginManager().callEvent(chestFillEvent);
+                    if (!chestFillEvent.isCancelled()) {
+                        container.update(true);
+                    }
+                }
+            } else if (!barrelsToFill.isEmpty()) {
+                Logger.warn("Module generator " + moduleGeneratorsConfigFields.getFilename() + " has barrels in its modules but barrelTreasureFilename '" + barrelTreasureFilename + "' did not resolve to a valid treasure config. Barrels will be empty.");
             }
         }
 
