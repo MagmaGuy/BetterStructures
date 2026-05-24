@@ -5,6 +5,7 @@ import com.magmaguy.betterstructures.api.ChestFillEvent;
 import com.magmaguy.betterstructures.buildingfitter.util.FitUndergroundDeepBuilding;
 import com.magmaguy.betterstructures.buildingfitter.util.LocationProjector;
 import com.magmaguy.betterstructures.buildingfitter.util.SchematicPicker;
+import com.magmaguy.betterstructures.chests.ChestContents;
 import com.magmaguy.betterstructures.config.DefaultConfig;
 import com.magmaguy.betterstructures.config.generators.GeneratorConfigFields;
 import com.magmaguy.betterstructures.schematics.SchematicContainer;
@@ -288,30 +289,49 @@ public class FitAnything {
     }
 
     private void fillChests() {
-        if (schematicContainer.getGeneratorConfigFields().getChestContents() != null)
-            for (Vector chestPosition : schematicContainer.getChestLocations()) {
-                Location chestLocation = LocationProjector.project(location, schematicOffset, chestPosition);
-                if (!(chestLocation.getBlock().getState() instanceof Container container)) {
-                    Logger.warn("Expected a container for " + chestLocation.getBlock().getType() + " but didn't get it. Skipping this loot!");
-                    continue;
-                }
+        GeneratorConfigFields gen = schematicContainer.getGeneratorConfigFields();
+        boolean barrelsEnabled = gen.isGenerateLootInBarrels() && gen.getBarrelContents() != null;
+        boolean chestsEnabled = gen.getChestContents() != null;
+        if (!barrelsEnabled && !chestsEnabled) return;
 
-                String treasureFilename;
-                if (schematicContainer.getChestContents() != null) {
-                    schematicContainer.getChestContents().rollChestContents(container);
-                    treasureFilename = schematicContainer.getSchematicConfigField().getTreasureFile();
-                } else {
-                    schematicContainer.getGeneratorConfigFields().getChestContents().rollChestContents(container);
-                    treasureFilename = schematicContainer.getGeneratorConfigFields().getTreasureFilename();
-                }
-
-                ChestFillEvent chestFillEvent = new ChestFillEvent(container, treasureFilename);
-                Bukkit.getServer().getPluginManager().callEvent(chestFillEvent);
-                if (!chestFillEvent.isCancelled()) {
-                    container.update(true);
-
-                }
+        for (Vector chestPosition : schematicContainer.getChestLocations()) {
+            Location chestLocation = LocationProjector.project(location, schematicOffset, chestPosition);
+            if (!(chestLocation.getBlock().getState() instanceof Container container)) {
+                Logger.warn("Expected a container for " + chestLocation.getBlock().getType() + " but didn't get it. Skipping this loot!");
+                continue;
             }
+
+            boolean isBarrel = container.getBlock().getType() == Material.BARREL;
+            if (isBarrel && !barrelsEnabled) continue;
+            if (!isBarrel && !chestsEnabled) continue;
+
+            ChestContents contents;
+            String treasureFilename;
+            if (isBarrel) {
+                contents = schematicContainer.getBarrelContents() != null
+                        ? schematicContainer.getBarrelContents()
+                        : gen.getBarrelContents();
+                treasureFilename = schematicContainer.getSchematicConfigField().getBarrelTreasureFilename() != null
+                        ? schematicContainer.getSchematicConfigField().getBarrelTreasureFilename()
+                        : gen.getBarrelTreasureFilename();
+            } else {
+                contents = schematicContainer.getChestContents() != null
+                        ? schematicContainer.getChestContents()
+                        : gen.getChestContents();
+                treasureFilename = schematicContainer.getChestContents() != null
+                        ? schematicContainer.getSchematicConfigField().getTreasureFile()
+                        : gen.getTreasureFilename();
+            }
+
+            if (contents == null) continue;
+            contents.rollChestContents(container);
+
+            ChestFillEvent chestFillEvent = new ChestFillEvent(container, treasureFilename);
+            Bukkit.getServer().getPluginManager().callEvent(chestFillEvent);
+            if (!chestFillEvent.isCancelled()) {
+                container.update(true);
+            }
+        }
     }
 
     private void spawnEntities() {
