@@ -308,18 +308,16 @@ public class FitAnything {
             ChestContents contents;
             String treasureFilename;
             if (isBarrel) {
-                contents = schematicContainer.getBarrelContents() != null
-                        ? schematicContainer.getBarrelContents()
-                        : gen.getBarrelContents();
-                treasureFilename = schematicContainer.getSchematicConfigField().getBarrelTreasureFilename() != null
-                        ? schematicContainer.getSchematicConfigField().getBarrelTreasureFilename()
+                contents = schematicContainer.getBarrelContents();
+                String schematicBarrelFile = schematicContainer.getSchematicConfigField().getBarrelTreasureFilename();
+                treasureFilename = (schematicBarrelFile != null && !schematicBarrelFile.isEmpty())
+                        ? schematicBarrelFile
                         : gen.getBarrelTreasureFilename();
             } else {
-                contents = schematicContainer.getChestContents() != null
-                        ? schematicContainer.getChestContents()
-                        : gen.getChestContents();
-                treasureFilename = schematicContainer.getChestContents() != null
-                        ? schematicContainer.getSchematicConfigField().getTreasureFile()
+                contents = schematicContainer.getChestContents();
+                String schematicTreasureFile = schematicContainer.getSchematicConfigField().getTreasureFile();
+                treasureFilename = (schematicTreasureFile != null && !schematicTreasureFile.isEmpty())
+                        ? schematicTreasureFile
                         : gen.getTreasureFilename();
             }
 
