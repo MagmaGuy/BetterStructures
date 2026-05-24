@@ -41,6 +41,14 @@ public class GeneratorConfigFields extends CustomConfigFields {
     private String treasureFilename = null;
     @Getter
     private ChestContents chestContents = null;
+    @Getter
+    @Setter
+    private String barrelTreasureFilename = "treasure_barrel_food";
+    @Getter
+    private ChestContents barrelContents = null;
+    @Getter
+    @Setter
+    private boolean generateLootInBarrels = true;
 
     /**
      * Used by plugin-generated files (defaults)
@@ -83,6 +91,20 @@ public class GeneratorConfigFields extends CustomConfigFields {
             this.chestContents = new ChestContents(treasureConfig);
         } else {
             Logger.warn("No valid treasure config file found for generator " + filename + " ! This will not spawn loot in chests until fixed.");
+        }
+
+        // Per-generator barrel loot toggle (default ON)
+        this.generateLootInBarrels = processBoolean("generateLootInBarrels", generateLootInBarrels, true, false);
+
+        // Load barrel treasure config (defaults to the food premade)
+        this.barrelTreasureFilename = processString("barrelTreasureFilename", barrelTreasureFilename, "treasure_barrel_food", false);
+        if (generateLootInBarrels) {
+            TreasureConfigFields barrelTreasureConfig = TreasureConfig.getConfigFields(barrelTreasureFilename);
+            if (barrelTreasureConfig != null) {
+                this.barrelContents = new ChestContents(barrelTreasureConfig);
+            } else {
+                Logger.warn("No valid barrel treasure config found for generator " + filename + " (looked for: " + barrelTreasureFilename + "). Barrels in this generator will be left empty until fixed.");
+            }
         }
     }
 
