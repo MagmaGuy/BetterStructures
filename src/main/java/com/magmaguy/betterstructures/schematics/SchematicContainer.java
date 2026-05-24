@@ -51,6 +51,8 @@ public class SchematicContainer {
     @Getter
     private ChestContents chestContents = null;
     @Getter
+    private ChestContents barrelContents = null;
+    @Getter
     private boolean valid = true;
 
     public SchematicContainer(Clipboard clipboard, String clipboardFilename, SchematicConfigField schematicConfigField, String configFilename) {
@@ -73,7 +75,8 @@ public class SchematicContainer {
                     //register chest location
                     if (minecraftMaterial.equals(Material.CHEST) ||
                             minecraftMaterial.equals(Material.TRAPPED_CHEST) ||
-                            minecraftMaterial.equals(Material.SHULKER_BOX)) {
+                            minecraftMaterial.equals(Material.SHULKER_BOX) ||
+                            minecraftMaterial.equals(Material.BARREL)) {
                         chestLocations.add(new Vector(x, y, z));
                     }
                     if (minecraftMaterial.equals(Material.ACACIA_SIGN) ||
@@ -142,6 +145,15 @@ public class SchematicContainer {
                 return;
             }
             chestContents = schematicConfigField.getChestContents();
+        }
+        barrelContents = generatorConfigFields.getBarrelContents();
+        if (schematicConfigField.getBarrelTreasureFilename() != null && !schematicConfigField.getBarrelTreasureFilename().isEmpty()) {
+            TreasureConfigFields barrelTreasureConfigFields = TreasureConfig.getConfigFields(schematicConfigField.getBarrelTreasureFilename());
+            if (barrelTreasureConfigFields == null) {
+                Logger.warn("Failed to get barrel treasure configuration " + schematicConfigField.getBarrelTreasureFilename());
+                return;
+            }
+            barrelContents = schematicConfigField.getBarrelContents();
         }
         if (valid)
             generatorConfigFields.getStructureTypes().forEach(structureType -> schematics.put(structureType, this));
