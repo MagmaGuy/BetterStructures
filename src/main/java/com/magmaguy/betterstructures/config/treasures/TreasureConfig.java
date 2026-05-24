@@ -18,6 +18,8 @@ public class TreasureConfig extends CustomConfig {
     }
 
     public static TreasureConfigFields getConfigFields(String configurationFilename) {
-        return treasureConfigurations.get(configurationFilename);
+        if (configurationFilename == null) return null;
+        String key = configurationFilename.endsWith(".yml") ? configurationFilename : configurationFilename + ".yml";
+        return treasureConfigurations.get(key);
     }
 }

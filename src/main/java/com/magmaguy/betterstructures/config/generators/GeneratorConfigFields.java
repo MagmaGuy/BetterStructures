@@ -43,7 +43,7 @@ public class GeneratorConfigFields extends CustomConfigFields {
     private ChestContents chestContents = null;
     @Getter
     @Setter
-    private String barrelTreasureFilename = "treasure_barrel_food";
+    private String barrelTreasureFilename = "treasure_barrel_food.yml";
     @Getter
     private ChestContents barrelContents = null;
     @Getter
@@ -97,7 +97,7 @@ public class GeneratorConfigFields extends CustomConfigFields {
         this.generateLootInBarrels = processBoolean("generateLootInBarrels", generateLootInBarrels, true, false);
 
         // Load barrel treasure config (defaults to the food premade)
-        this.barrelTreasureFilename = processString("barrelTreasureFilename", barrelTreasureFilename, "treasure_barrel_food", false);
+        this.barrelTreasureFilename = processString("barrelTreasureFilename", barrelTreasureFilename, "treasure_barrel_food.yml", false);
         if (generateLootInBarrels) {
             TreasureConfigFields barrelTreasureConfig = TreasureConfig.getConfigFields(barrelTreasureFilename);
             if (barrelTreasureConfig != null) {

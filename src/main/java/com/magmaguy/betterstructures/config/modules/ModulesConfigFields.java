@@ -21,7 +21,7 @@ public class ModulesConfigFields extends CustomConfigFields {
     @Setter
     private ChestContents chestContents = null;
     @Setter
-    private String barrelTreasureFilename = "treasure_barrel_food";
+    private String barrelTreasureFilename = "treasure_barrel_food.yml";
     @Setter
     private boolean generateLootInBarrels = true;
     private Map<String, Object> borderMap = new HashMap<>();
@@ -158,7 +158,7 @@ public class ModulesConfigFields extends CustomConfigFields {
             this.chestContents = treasureConfigFields.getChestContents();
         }
         this.generateLootInBarrels = processBoolean("generateLootInBarrels", generateLootInBarrels, true, true);
-        this.barrelTreasureFilename = processString("barrelTreasureFilename", barrelTreasureFilename, "treasure_barrel_food", true);
+        this.barrelTreasureFilename = processString("barrelTreasureFilename", barrelTreasureFilename, "treasure_barrel_food.yml", true);
         this.borderMap = processMap("borders", new HashMap<>());
         this.minY = processInt("minY", minY, minY, true);
         this.maxY = processInt("maxY", maxY, maxY, true);
