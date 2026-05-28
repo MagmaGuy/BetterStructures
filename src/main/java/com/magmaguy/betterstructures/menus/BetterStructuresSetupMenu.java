@@ -1,12 +1,13 @@
 package com.magmaguy.betterstructures.menus;
 
 import com.magmaguy.betterstructures.MetadataHandler;
+import com.magmaguy.betterstructures.config.contentpackages.ContentPackageConfigFields;
 import com.magmaguy.betterstructures.content.BSPackage;
 import com.magmaguy.betterstructures.content.BSPackageRefresher;
 import com.magmaguy.magmacore.menus.MenuButton;
-import com.magmaguy.magmacore.menus.SetupMenu;
-import com.magmaguy.magmacore.nightbreak.NightbreakAccount;
+import com.magmaguy.magmacore.menus.SetupMenuBuilder;
 import com.magmaguy.magmacore.nightbreak.DownloadAllContentPackage;
+import com.magmaguy.magmacore.nightbreak.NightbreakAccount;
 import com.magmaguy.magmacore.util.ChatColorConverter;
 import com.magmaguy.magmacore.util.ItemStackGenerator;
 import com.magmaguy.magmacore.util.Logger;
@@ -82,27 +83,29 @@ public class BetterStructuresSetupMenu {
             }
         };
 
-        List<com.magmaguy.magmacore.menus.ContentPackage> allPackages = new ArrayList<>(bsPackages);
-        allPackages.add(new DownloadAllContentPackage<>(() -> new ArrayList<>(BSPackage.getBsPackages().values()),
-                "BetterStructures",
-                "https://nightbreak.io/plugin/betterstructures/",
-                "bs downloadall"));
-
-        new SetupMenu((JavaPlugin) MetadataHandler.PLUGIN, player, infoButton, allPackages,
-                List.of(
-                        createFilter(bsPackages, Material.GRASS_BLOCK, "Structure Packs", bspPackage ->
-                                bspPackage.getContentPackageConfigFields().getContentPackageType() == com.magmaguy.betterstructures.config.contentpackages.ContentPackageConfigFields.ContentPackageType.STRUCTURE),
-                        createFilter(bsPackages, Material.DEEPSLATE_BRICKS, "Module Packs", bspPackage ->
-                                bspPackage.getContentPackageConfigFields().getContentPackageType() == com.magmaguy.betterstructures.config.contentpackages.ContentPackageConfigFields.ContentPackageType.MODULAR)),
-                "Setup menu");
+        new SetupMenuBuilder((JavaPlugin) MetadataHandler.PLUGIN, player)
+                .title("Setup menu")
+                .titleIconPrefix(null)
+                .infoButton(infoButton)
+                .packages(bsPackages)
+                .appendPackage(new DownloadAllContentPackage<>(() -> new ArrayList<>(BSPackage.getBsPackages().values()),
+                        "BetterStructures",
+                        "https://nightbreak.io/plugin/betterstructures/",
+                        "bs downloadall"))
+                .addFilter(Material.GRASS_BLOCK, "Structure Packs",
+                        (Predicate<BSPackage>) BetterStructuresSetupMenu::filterStructures)
+                .addFilter(Material.DEEPSLATE_BRICKS, "Module Packs",
+                        (Predicate<BSPackage>) BetterStructuresSetupMenu::filterModules)
+                .open();
     }
 
-    private static SetupMenu.SetupMenuFilter createFilter(List<BSPackage> orderedPackages,
-                                                          Material material,
-                                                          String name,
-                                                          Predicate<BSPackage> predicate) {
-        return new SetupMenu.SetupMenuFilter(
-                ItemStackGenerator.generateItemStack(material, name),
-                orderedPackages.stream().filter(predicate).toList());
+    private static boolean filterStructures(BSPackage bsPackage) {
+        return bsPackage.getContentPackageConfigFields().getContentPackageType() ==
+                ContentPackageConfigFields.ContentPackageType.STRUCTURE;
+    }
+
+    private static boolean filterModules(BSPackage bsPackage) {
+        return bsPackage.getContentPackageConfigFields().getContentPackageType() ==
+                ContentPackageConfigFields.ContentPackageType.MODULAR;
     }
 }
