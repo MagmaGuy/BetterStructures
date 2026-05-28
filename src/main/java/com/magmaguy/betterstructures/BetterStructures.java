@@ -51,6 +51,7 @@ public final class BetterStructures extends JavaPlugin {
             throw new RuntimeException(e);
         }
         MagmaCore.onEnable(this);
+        MagmaCore.exportSharedAssets(this);
         MagmaCore.startInitialization(this,
                 new PluginInitializationConfig("BetterStructures", "betterstructures.*", 16),
                 this::asyncInitialization,
