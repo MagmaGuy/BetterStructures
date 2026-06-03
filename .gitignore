@@ -17,3 +17,5 @@ Thumbs.db
 codex-build.log
 .claude/
 Get
+# Local design docs and plan notes - not tracked
+docs/
