@@ -1,6 +1,7 @@
 package com.magmaguy.betterstructures.menus;
 
 import com.magmaguy.betterstructures.MetadataHandler;
+import com.magmaguy.betterstructures.BetterStructures;
 import com.magmaguy.betterstructures.config.contentpackages.ContentPackageConfigFields;
 import com.magmaguy.betterstructures.content.BSPackage;
 import com.magmaguy.betterstructures.content.BSPackageRefresher;
@@ -8,6 +9,7 @@ import com.magmaguy.magmacore.menus.MenuButton;
 import com.magmaguy.magmacore.menus.SetupMenuBuilder;
 import com.magmaguy.magmacore.nightbreak.DownloadAllContentPackage;
 import com.magmaguy.magmacore.nightbreak.NightbreakAccount;
+import com.magmaguy.magmacore.nightbreak.NightbreakSetupControls;
 import com.magmaguy.magmacore.util.ChatColorConverter;
 import com.magmaguy.magmacore.util.ItemStackGenerator;
 import com.magmaguy.magmacore.util.Logger;
@@ -35,57 +37,12 @@ public class BetterStructuresSetupMenu {
                 .collect(Collectors.toList());
         BSPackageRefresher.refreshContentAndAccess();
 
-        MenuButton infoButton = new MenuButton(ItemStackGenerator.generateSkullItemStack("magmaguy",
-                "&2Installation instructions:",
-                List.of(
-                        "&2To setup the optional/recommended content for BetterStructures:",
-                        "&61) &fLink your Nightbreak account: &a/nightbreaklogin",
-                        "&62) &fDownload all content: &a/bs downloadall",
-                        "&63) &fOr browse and manage content: &a/bs setup",
-                        "&2That's it!",
-                        "&6Click for more info and links!"))) {
-            @Override
-            public void onClick(Player p) {
-                p.closeInventory();
-                Logger.sendSimpleMessage(p, "<g:#8B0000:#CC4400:#DAA520>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬</g>");
-                Logger.sendSimpleMessage(p, "&6&lBetterStructures installation resources:");
-                p.spigot().sendMessage(
-                        SpigotMessage.simpleMessage("&2&lNightbreak account: "),
-                        SpigotMessage.hoverLinkMessage("&ahttps://nightbreak.io/account/",
-                                "&7Click to open the Nightbreak account page.",
-                                "https://nightbreak.io/account/"));
-                p.spigot().sendMessage(
-                        SpigotMessage.simpleMessage("&2&lWiki page: "),
-                        SpigotMessage.hoverLinkMessage("&ahttps://nightbreak.io/plugin/betterstructures/#setup",
-                                "&7Click to open the BetterStructures setup page.",
-                                "https://nightbreak.io/plugin/betterstructures/#setup"));
-                p.spigot().sendMessage(
-                        SpigotMessage.simpleMessage("&2&lContent: "),
-                        SpigotMessage.hoverLinkMessage("&ahttps://nightbreak.io/plugin/betterstructures/",
-                                "&7Click to browse BetterStructures content.",
-                                "https://nightbreak.io/plugin/betterstructures/"));
-                p.spigot().sendMessage(
-                        SpigotMessage.simpleMessage("&2&lDiscord support: "),
-                        SpigotMessage.hoverLinkMessage("&ahttps://discord.gg/9f5QSka",
-                                "&7Click to open Discord.",
-                                "https://discord.gg/9f5QSka"));
-                if (NightbreakAccount.hasToken()) {
-                    p.spigot().sendMessage(
-                            SpigotMessage.commandHoverMessage("&2&lQuick install: &a/bs downloadall",
-                                    "&7Click to run the bulk BetterStructures download.",
-                                    "/bs downloadall"));
-                    p.spigot().sendMessage(
-                            SpigotMessage.commandHoverMessage("&2&lQuick update: &a/bs updatecontent",
-                                    "&7Click to update all outdated BetterStructures content.",
-                                    "/bs updatecontent"));
-                }
-                Logger.sendSimpleMessage(p, "<g:#8B0000:#CC4400:#DAA520>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬</g>");
-            }
-        };
+        MenuButton infoButton = NightbreakSetupControls.setupInfoButton(
+                BetterStructures.NIGHTBREAK_PLUGIN_SPEC,
+                "https://nightbreak.io/plugin/betterstructures/#setup");
 
-        new SetupMenuBuilder((JavaPlugin) MetadataHandler.PLUGIN, player)
+        SetupMenuBuilder builder = new SetupMenuBuilder((JavaPlugin) MetadataHandler.PLUGIN, player)
                 .title("Setup menu")
-                .titleIconPrefix(null)
                 .infoButton(infoButton)
                 .packages(bsPackages)
                 .appendPackage(new DownloadAllContentPackage<>(() -> new ArrayList<>(BSPackage.getBsPackages().values()),
@@ -95,7 +52,8 @@ public class BetterStructuresSetupMenu {
                 .addFilter(Material.GRASS_BLOCK, "Structure Packs",
                         (Predicate<BSPackage>) BetterStructuresSetupMenu::filterStructures)
                 .addFilter(Material.DEEPSLATE_BRICKS, "Module Packs",
-                        (Predicate<BSPackage>) BetterStructuresSetupMenu::filterModules)
+                        (Predicate<BSPackage>) BetterStructuresSetupMenu::filterModules);
+        NightbreakSetupControls.prependStandardControls(builder, (JavaPlugin) MetadataHandler.PLUGIN, BetterStructures.NIGHTBREAK_PLUGIN_SPEC)
                 .open();
     }
 

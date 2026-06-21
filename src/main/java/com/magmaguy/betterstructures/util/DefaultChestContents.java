@@ -2,6 +2,7 @@ package com.magmaguy.betterstructures.util;
 
 import com.magmaguy.magmacore.util.VersionChecker;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.ItemStack;
 
@@ -886,6 +887,7 @@ public class DefaultChestContents {
         for (Material enchantableItem : enchantableItems) {
             Map<String, Map<String, Object>> enchantmentMap = new HashMap<>();
             for (Enchantment enchantment : Enchantment.values()) {
+                if (!NamespacedKey.MINECRAFT.equals(enchantment.getKey().getNamespace())) continue;
                 if (!enchantment.canEnchantItem(new ItemStack(enchantableItem))) continue;
                 Map<String, Object> enchantmentSettingsMap = new HashMap<>();
                 int minLevel = enchantment.getStartLevel();

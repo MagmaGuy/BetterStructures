@@ -22,7 +22,7 @@ public class BetterStructuresFirstTimeSetupMenu {
                 (JavaPlugin) MetadataHandler.PLUGIN,
                 player,
                 "&2BetterStructures",
-                "&6Nightbreak-powered content setup",
+                "&6Guided content setup",
                 createInfoItem(),
                 List.of(createRecommendedItem(), createManualItem(), createSkipItem()));
     }
@@ -32,8 +32,8 @@ public class BetterStructuresFirstTimeSetupMenu {
                 "magmaguy",
                 "&2Welcome to BetterStructures!",
                 List.of(
-                        "&7Link your Nightbreak account,",
-                        "&7download content in-game,",
+                        "&7Connect this server,",
+                        "&7open the setup menu,",
                         "&7and start generating structures quickly."))) {
             @Override
             public void onClick(Player player) {
@@ -42,15 +42,15 @@ public class BetterStructuresFirstTimeSetupMenu {
                 sendLink(player, "&2Setup guide: ", "&9&nhttps://nightbreak.io/plugin/betterstructures/#setup",
                         "&7Click to open the BetterStructures setup guide.",
                         "https://nightbreak.io/plugin/betterstructures/#setup");
-                sendLink(player, "&2Nightbreak account: ", "&9&nhttps://nightbreak.io/account/",
-                        "&7Click to open your Nightbreak account page.",
+                sendLink(player, "&2Account token: ", "&9&nhttps://nightbreak.io/account/",
+                        "&7Click to open the account token page.",
                         "https://nightbreak.io/account/");
-                sendCommand(player, "&2Content browser: ", "&a/bs setup",
+                sendCommand(player, "&2Setup menu: ", "&a/bs setup",
                         "&7Click to open the BetterStructures setup menu.",
                         "/bs setup");
-                sendCommand(player, "&2Bulk download: ", "&a/bs downloadall",
-                        "&7Click to download all available BetterStructures content.",
-                        "/bs downloadall");
+                sendCommand(player, "&2Recommended plugins: ", "&a/bs recommendedplugins",
+                        "&7Click to see plugins that work well with BetterStructures.",
+                        "/bs recommendedplugins");
                 sendLink(player, "&2Support Discord: ", "&9&nhttps://discord.gg/eSxvPbWYy4",
                         "&7Click to open the BetterStructures support Discord.",
                         "https://discord.gg/eSxvPbWYy4");
@@ -63,29 +63,29 @@ public class BetterStructuresFirstTimeSetupMenu {
         return new MenuButton(ItemStackGenerator.generateItemStack(
                 Material.GREEN_STAINED_GLASS_PANE,
                 "&2Recommended Setup",
-                List.of("&aMarks setup complete.", "&aGuides you to Nightbreak login and content install."))) {
+                List.of("&aMarks setup complete.", "&aGuides you to setup and recommended plugins."))) {
             @Override
             public void onClick(Player player) {
                 player.closeInventory();
                 DefaultConfig.toggleSetupDone(true);
                 Logger.sendSimpleMessage(player, "&8&m-----------------------------------------------------");
                 Logger.sendSimpleMessage(player, "&aBetterStructures setup is now marked as complete.");
-                sendLink(player, "&7Step 1: get your Nightbreak token at ",
+                Logger.sendSimpleMessage(player, "&7Connect this server so BetterStructures can install content and download plugin updates from in-game.");
+                sendLink(player, "&7Step 1: get your account token at ",
                         "&9&nhttps://nightbreak.io/account/",
-                        "&7Click to open your Nightbreak account page.",
+                        "&7Click to open the account token page.",
                         "https://nightbreak.io/account/");
                 sendCommand(player, "&7Step 2: link it in-game with ", "&a/nightbreaklogin <token>",
-                        "&7Click to run the Nightbreak login command.",
+                        "&7Click to prepare the token command.",
                         "/nightbreaklogin ");
                 player.spigot().sendMessage(
-                        SpigotMessage.simpleMessage("&7Step 3: install content with "),
-                        SpigotMessage.commandHoverMessage("&a/bs downloadall",
-                                "&7Click to download all available BetterStructures content.",
-                                "/bs downloadall"),
-                        SpigotMessage.simpleMessage(" &7or browse it with "),
+                        SpigotMessage.simpleMessage("&7Step 3: open the setup menu with "),
                         SpigotMessage.commandHoverMessage("&a/bs setup",
                                 "&7Click to open the BetterStructures setup menu.",
                                 "/bs setup"));
+                sendCommand(player, "&7Recommended plugins: ", "&a/bs recommendedplugins",
+                        "&7Click to see plugins that work well with BetterStructures.",
+                        "/bs recommendedplugins");
                 Logger.sendSimpleMessage(player, "&8&m-----------------------------------------------------");
             }
         };

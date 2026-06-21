@@ -7,10 +7,10 @@ import java.util.List;
 
 public class UpdateContentCommand extends AdvancedCommand {
     public UpdateContentCommand() {
-        super(List.of("updatecontent", "updateall"));
+        super(List.of("updatecontent", "updateallcontent"));
         setPermission("betterstructures.setup");
         setSenderType(SenderType.ANY);
-        setDescription("Downloads updates for outdated BetterStructures Nightbreak content.");
+        setDescription("Downloads updates for outdated BetterStructures content.");
         setUsage("/bs updatecontent");
     }
 

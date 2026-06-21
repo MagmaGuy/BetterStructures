@@ -23,7 +23,6 @@ public class TreasureConfigFields extends CustomConfigFields {
 
     @Getter
     private final Map<Material, List<ConfigurationEnchantment>> enchantmentSettings = new HashMap<>();
-    private final List<String> seenInvalidKeys = new ArrayList<>();
     @Getter
     @Setter
     private Map<String, Object> rawLoot = new HashMap();
@@ -79,12 +78,10 @@ public class TreasureConfigFields extends CustomConfigFields {
             List<ConfigurationEnchantment> configurationEnchantments = new ArrayList<>();
             Map<String, Object> enchantments = ((MemorySection) stringObjectEntry.getValue()).getValues(false);
             for (Map.Entry<String, Object> enchantmentsEntry : enchantments.entrySet()) {
-                Enchantment enchantment = Enchantment.getByKey(NamespacedKey.minecraft(enchantmentsEntry.getKey()));
-                if (enchantment == null && !seenInvalidKeys.contains(enchantmentsEntry.getKey())) {
-                    Logger.info("Failed to get valid enchantment from key " + enchantmentsEntry.getKey() + " in configuration file " + filename + " ! This is almost certainly because another plugin " + "is using enchantments that are pretending to be vanilla Minecraft enchantments, when they aren't, " + "and doing so in a way that doesn't allow items to be enchanted via normal means. This enchantment " + "will be ignored for generating items, you can ignore this warning if you didn't plan to use this " + "enchantment in the first place. Warnings about this specific enchantment will now be suppressed.");
-                    seenInvalidKeys.add(enchantmentsEntry.getKey());
-                    continue;
-                }
+                NamespacedKey enchantmentKey = NamespacedKey.fromString(enchantmentsEntry.getKey());
+                if (enchantmentKey == null || !NamespacedKey.MINECRAFT.equals(enchantmentKey.getNamespace())) continue;
+                Enchantment enchantment = Enchantment.getByKey(enchantmentKey);
+                if (enchantment == null) continue;
                 int minLevel = 1;
                 int maxLevel = 1;
                 double chance = 0;
