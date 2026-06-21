@@ -7,6 +7,7 @@ import com.magmaguy.magmacore.command.CommandData;
 import com.magmaguy.magmacore.command.SenderType;
 import com.magmaguy.magmacore.nightbreak.NightbreakAccount;
 import com.magmaguy.magmacore.nightbreak.NightbreakContentManager;
+import com.magmaguy.magmacore.nightbreak.NightbreakSetupMenuHelper;
 import com.magmaguy.magmacore.util.Logger;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
@@ -25,11 +26,11 @@ public class DownloadAllContentCommand extends AdvancedCommand {
     static final AtomicBoolean IS_BULK_DOWNLOADING = new AtomicBoolean(false);
 
     public DownloadAllContentCommand() {
-        super(List.of("downloadall"));
+        super(List.of("downloadallcontent"));
         setPermission("betterstructures.setup");
         setSenderType(SenderType.ANY);
-        setDescription("Downloads all BetterStructures content available through Nightbreak.");
-        setUsage("/bs downloadall");
+        setDescription("Downloads all available BetterStructures content.");
+        setUsage("/bs downloadallcontent");
     }
 
     @Override
@@ -39,7 +40,11 @@ public class DownloadAllContentCommand extends AdvancedCommand {
 
     public static void execute(CommandSender sender, boolean updatesOnly) {
         if (!NightbreakAccount.hasToken()) {
-            Logger.sendSimpleMessage(sender, "&cLink your Nightbreak account first with &a/nightbreaklogin <token>&c.");
+            Logger.sendSimpleMessage(sender, "&cConnect this server first with &a/nightbreaklogin <token>&c.");
+            return;
+        }
+        if (NightbreakAccount.hasAuthFailure()) {
+            NightbreakSetupMenuHelper.sendTokenUpdatePrompt(sender, "BetterStructures");
             return;
         }
 
@@ -54,7 +59,7 @@ public class DownloadAllContentCommand extends AdvancedCommand {
             IS_BULK_DOWNLOADING.set(false);
             Logger.sendSimpleMessage(sender, updatesOnly
                     ? "&aAll BetterStructures content is already up to date."
-                    : "&aAll BetterStructures Nightbreak content is already downloaded and up to date.");
+                    : "&aAll BetterStructures content is already downloaded and up to date.");
             return;
         }
 
@@ -112,6 +117,7 @@ public class DownloadAllContentCommand extends AdvancedCommand {
                 if (success) {
                     completed.incrementAndGet();
                 } else {
+                    if (abortIfAuthFailure(sender, player)) return;
                     failed.incrementAndGet();
                     failedNames.add(bsPackage.getDisplayName());
                 }
@@ -149,6 +155,7 @@ public class DownloadAllContentCommand extends AdvancedCommand {
                             : "&aDownloaded " + bsPackage.getDisplayName() + "&a.");
                 }
             } else {
+                if (abortIfAuthFailure(sender, player)) return;
                 failed.incrementAndGet();
                 failedNames.add(bsPackage.getDisplayName());
                 if (player == null || player.isOnline()) {
@@ -157,5 +164,13 @@ public class DownloadAllContentCommand extends AdvancedCommand {
             }
             downloadNext(plugin, packages, index + 1, importsFolder, sender, player, completed, failed, failedNames, updatesOnly);
         });
+    }
+
+    private static boolean abortIfAuthFailure(CommandSender sender, Player player) {
+        if (!NightbreakAccount.hasAuthFailure()) return false;
+        IS_BULK_DOWNLOADING.set(false);
+        CommandSender target = player != null && !player.isOnline() ? Bukkit.getConsoleSender() : sender;
+        NightbreakSetupMenuHelper.sendTokenUpdatePrompt(target, "BetterStructures");
+        return true;
     }
 }

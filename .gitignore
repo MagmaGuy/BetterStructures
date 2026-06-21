@@ -4,6 +4,7 @@ build/
 
 # IDE
 .idea/
+.run/
 *.iml
 
 # Test server
@@ -19,3 +20,12 @@ codex-build.log
 Get
 # Local design docs and plan notes - not tracked
 docs/
+
+# Local IDE/tooling and generated debris
+.vscode/
+.classpath
+.project
+.settings/
+target/
+out/
+dependency-reduced-pom.xml

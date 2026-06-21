@@ -6,7 +6,7 @@ plugins {
 }
 
 group = 'com.magmaguy'
-version = '2.4.0'
+version = '2.5.0'
 
 repositories {
     mavenCentral()
@@ -65,7 +65,20 @@ shadowJar {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     archiveClassifier.set(null)
     archiveFileName.set(project.name + ".jar")
-    destinationDirectory.set(new File("testbed/plugins"))
+}
+
+// --- Shared dist mirror -----------------------------------------------------
+// Copy the finished shaded jar into the top-level dist/ folder so the testbeds
+// and the release tool pick every build up from one place. Gated on MC_DIST_DIR
+// (or -PmcDistDir) so clones/CI that don't set it just build to build/libs and
+// no machine-specific path is ever committed.
+def mcDistDir = System.getenv('MC_DIST_DIR') ?: project.findProperty('mcDistDir')
+if (mcDistDir) {
+    tasks.register('mirrorToDist', Copy) {
+        from tasks.named('shadowJar')
+        into mcDistDir
+    }
+    tasks.named('shadowJar') { finalizedBy('mirrorToDist') }
 }
 
 tasks.withType(JavaCompile) {

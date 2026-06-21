@@ -19,8 +19,9 @@ public class BetterStructuresCommand extends AdvancedCommand {
     @Override
     public void execute(CommandData commandData) {
         Logger.sendMessage(commandData.getCommandSender(), "BetterStructures is a plugin that adds random structures to your Minecraft world!");
-        Logger.sendMessage(commandData.getCommandSender(), "You can check installed content and download structure packs in the &2/betterstructures setup &fcommand.");
-        Logger.sendMessage(commandData.getCommandSender(), "If your Nightbreak account is linked, you can install everything with &2/betterstructures downloadall&f.");
+        Logger.sendMessage(commandData.getCommandSender(), "Use &2/bs setup &fto manage structure packs, plugin updates, and update settings.");
+        Logger.sendMessage(commandData.getCommandSender(), "Use &2/bs recommendedplugins &fto see plugins that work well with BetterStructures.");
+        Logger.sendMessage(commandData.getCommandSender(), "Use &2/bs downloadall &fto check plugin and content updates from one command.");
         Logger.sendMessage(commandData.getCommandSender(), "Once a pack is installed, structures will automatically generate in freshly generated chunks. You do not have to run any commands for this to happen.");
         Logger.sendMessage(commandData.getCommandSender(), "By default, OPs will get notified about new structures generating until they disable these messages.");
     }

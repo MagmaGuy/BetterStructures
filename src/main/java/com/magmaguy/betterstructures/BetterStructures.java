@@ -24,6 +24,13 @@ import com.magmaguy.magmacore.command.CommandManager;
 import com.magmaguy.magmacore.initialization.PluginInitializationConfig;
 import com.magmaguy.magmacore.initialization.PluginInitializationContext;
 import com.magmaguy.magmacore.initialization.PluginInitializationState;
+import com.magmaguy.magmacore.nightbreak.NightbreakDownloadContentCommand;
+import com.magmaguy.magmacore.nightbreak.NightbreakDownloadEverythingCommand;
+import com.magmaguy.magmacore.nightbreak.NightbreakDownloadPluginUpdateCommand;
+import com.magmaguy.magmacore.nightbreak.NightbreakPluginSpec;
+import com.magmaguy.magmacore.nightbreak.NightbreakPluginUpdater;
+import com.magmaguy.magmacore.nightbreak.NightbreakPluginStateRegistry;
+import com.magmaguy.magmacore.nightbreak.NightbreakRecommendedPluginsCommand;
 import com.magmaguy.magmacore.util.Logger;
 import org.bstats.bukkit.Metrics;
 import org.bukkit.Bukkit;
@@ -32,8 +39,17 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.IOException;
+import java.util.ArrayList;
 
 public final class BetterStructures extends JavaPlugin {
+    public static final NightbreakPluginSpec NIGHTBREAK_PLUGIN_SPEC = new NightbreakPluginSpec(
+            "BetterStructures",
+            "bs",
+            "betterstructures.*",
+            "betterstructures.setup",
+            "betterstructures.initialize",
+            "https://nightbreak.io/plugin/betterstructures/",
+            "Reloaded BetterStructures.");
 
     @Override
     public void onEnable() {
@@ -58,8 +74,13 @@ public final class BetterStructures extends JavaPlugin {
                 this::syncInitialization,
                 () -> {
                     Logger.info("BetterStructures fully initialized!");
-                    if (MetadataHandler.pendingReloadSender != null) {
-                        Logger.sendMessage(MetadataHandler.pendingReloadSender, "Reloaded BetterStructures.");
+                    NightbreakPluginUpdater.autoDownloadPluginUpdateIfEnabled(this, NIGHTBREAK_PLUGIN_SPEC);
+                    CommandSender pendingReloadSender = NightbreakPluginStateRegistry.consumePendingReloadSender(this);
+                    if (pendingReloadSender == null) {
+                        pendingReloadSender = MetadataHandler.pendingReloadSender;
+                    }
+                    if (pendingReloadSender != null) {
+                        Logger.sendMessage(pendingReloadSender, NIGHTBREAK_PLUGIN_SPEC.reloadSuccessMessage());
                         MetadataHandler.pendingReloadSender = null;
                     }
                 },
@@ -151,8 +172,22 @@ public final class BetterStructures extends JavaPlugin {
         commandManager.registerCommand(new VersionCommand());
         commandManager.registerCommand(new SetupCommand());
         commandManager.registerCommand(new FirstTimeSetupCommand());
-        commandManager.registerCommand(new DownloadAllContentCommand());
-        commandManager.registerCommand(new UpdateContentCommand());
+        commandManager.registerCommand(new NightbreakRecommendedPluginsCommand(this, NIGHTBREAK_PLUGIN_SPEC));
+        commandManager.registerCommand(new NightbreakDownloadPluginUpdateCommand(this, NIGHTBREAK_PLUGIN_SPEC));
+        commandManager.registerCommand(new NightbreakDownloadEverythingCommand<>(this,
+                NIGHTBREAK_PLUGIN_SPEC,
+                () -> new ArrayList<>(BSPackage.getBsPackages().values()),
+                ReloadCommand::reload));
+        commandManager.registerCommand(new NightbreakDownloadContentCommand<>(this,
+                NIGHTBREAK_PLUGIN_SPEC,
+                () -> new ArrayList<>(BSPackage.getBsPackages().values()),
+                ReloadCommand::reload,
+                false));
+        commandManager.registerCommand(new NightbreakDownloadContentCommand<>(this,
+                NIGHTBREAK_PLUGIN_SPEC,
+                () -> new ArrayList<>(BSPackage.getBsPackages().values()),
+                ReloadCommand::reload,
+                true));
         commandManager.registerCommand(new GenerateModulesCommand());
         commandManager.registerCommand(new BetterStructuresCommand());
 
