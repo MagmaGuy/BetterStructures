@@ -94,6 +94,25 @@ public class Schematic {
     }
 
     /**
+     * Determines whether a block at the given clipboard position is solid.
+     * Tries to resolve the Bukkit material first; if WorldEdit's BukkitAdapter
+     * can't map the block to a Bukkit Material (returns null - e.g. for newer
+     * or otherwise unmapped block types), falls back to asking WorldEdit's
+     * own BlockType/BlockState whether it considers the block solid.
+     *
+     * @param schematicClipboard The clipboard containing the schematic
+     * @param clipboardPosition  The position within the clipboard to check
+     * @return true if the block at that position is solid
+     */
+    private static boolean isSolidBlock(Clipboard schematicClipboard, BlockVector3 clipboardPosition) {
+        BaseBlock baseBlock = schematicClipboard.getFullBlock(clipboardPosition);
+        BlockState blockState = baseBlock.toImmutableState();
+        Material material = BukkitAdapter.adapt(blockState.getBlockType());
+        if (material == null) return blockState.getBlockType().getMaterial().isSolid();
+        return material.isSolid();
+    }
+
+    /**
      * Creates a list of paste blocks from a schematic
      *
      * @param schematicClipboard The clipboard containing the schematic
@@ -124,11 +143,24 @@ public class Schematic {
                     BlockData blockData = Bukkit.createBlockData(baseBlock.toImmutableState().getAsString());
                     Material material = BukkitAdapter.adapt(baseBlock.getBlockType());
                     Block worldBlock = adjustedLocation.clone().add(new Vector(x, y, z)).getBlock();
+                    boolean isGround = !isSolidBlock(schematicClipboard, BlockVector3.at(
+                            adjustedClipboardLocation.x(),
+                            adjustedClipboardLocation.y() + 1,
+                            adjustedClipboardLocation.z()));
+
+                    if (material == null) {
+                        // WorldEdit couldn't map this block to a Bukkit Material (e.g. unmapped/newer block type).
+                        // Fall back to WorldEdit's own BlockType to decide if it's solid, and handle it via
+                        // WorldEdit's paste path instead of relying on Bukkit's Material/BlockData APIs.
+                        boolean solid = blockState.getBlockType().getMaterial().isSolid();
+                        if (solid) {
+                            pasteBlocks.add(new PasteBlock(worldBlock, null,
+                                    WorldEditUtils.createSingleBlockClipboard(adjustedLocation, baseBlock, blockState)));
+                        }
+                        continue;
+                    }
+
                     String materialString = material.toString().toUpperCase(Locale.ROOT);
-                    boolean isGround = !BukkitAdapter.adapt(schematicClipboard.getBlock(
-                            BlockVector3.at(adjustedClipboardLocation.x(),
-                                    adjustedClipboardLocation.y() + 1,
-                                    adjustedClipboardLocation.z())).getBlockType()).isSolid();
 
                     if (material == Material.BARRIER) {
                         // special behavior: do not replace barriers, so do nothing
