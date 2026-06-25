@@ -1,9 +1,10 @@
 package com.magmaguy.betterstructures.buildingfitter.util;
 
 import com.magmaguy.betterstructures.util.SurfaceMaterials;
-import com.sk89q.worldedit.bukkit.BukkitAdapter;
+import com.magmaguy.betterstructures.util.WorldEditUtils;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
 import com.sk89q.worldedit.math.BlockVector3;
+import com.sk89q.worldedit.world.block.BlockState;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.util.Vector;
@@ -27,9 +28,12 @@ public class TerrainAdequacy {
         for (int x = 0; x < width; x += scanStep) {
             for (int y = 0; y < height; y += scanStep) {
                 for (int z = 0; z < depth; z += scanStep) {
-                    Material schematicMaterialAtPosition = BukkitAdapter.adapt(schematicClipboard.getBlock(BlockVector3.at(x, y, z)).getBlockType());
+                    BlockState schematicBlockStateAtPosition = schematicClipboard.getBlock(BlockVector3.at(x, y, z));
+                    Material schematicMaterialAtPosition = WorldEditUtils.adaptMaterial(schematicBlockStateAtPosition);
+                    boolean schematicBlockIsAir = WorldEditUtils.isAir(schematicBlockStateAtPosition);
+                    boolean schematicBlockIsLiquid = schematicMaterialAtPosition == Material.WATER || schematicMaterialAtPosition == Material.LAVA;
                     Location projectedLocation = LocationProjector.project(iteratedLocation, new Vector(x, y, z), schematicOffset);
-                    if (!isBlockAdequate(projectedLocation, schematicMaterialAtPosition, iteratedLocation.getBlockY() - 1, scanType))
+                    if (!isBlockAdequate(projectedLocation, schematicBlockIsAir, schematicBlockIsLiquid, iteratedLocation.getBlockY() - 1, scanType))
                         negativeCount++;
                     totalCount++;
                 }
@@ -41,14 +45,14 @@ public class TerrainAdequacy {
         return score;
     }
 
-    private static boolean isBlockAdequate(Location projectedWorldLocation, Material schematicBlockMaterial, int floorHeight, ScanType scanType) {
+    private static boolean isBlockAdequate(Location projectedWorldLocation, boolean schematicBlockIsAir, boolean schematicBlockIsLiquid, int floorHeight, ScanType scanType) {
         int floorYValue = projectedWorldLocation.getBlockY();
         if (projectedWorldLocation.getBlock().getType().equals(Material.VOID_AIR)) return false;
         switch (scanType) {
             case SURFACE:
                 if (floorYValue > floorHeight)
                     //for air level
-                    return SurfaceMaterials.ignorable(projectedWorldLocation.getBlock().getType()) || !schematicBlockMaterial.isAir();
+                    return SurfaceMaterials.ignorable(projectedWorldLocation.getBlock().getType()) || !schematicBlockIsAir;
                 else
                     //for underground level
                     return !projectedWorldLocation.getBlock().getType().isAir();
@@ -62,7 +66,7 @@ public class TerrainAdequacy {
                     return projectedWorldLocation.getBlock().getType().isAir();
                 } else {
                     //for underwater level
-                    if (schematicBlockMaterial == Material.WATER || schematicBlockMaterial == Material.LAVA)
+                    if (schematicBlockIsLiquid)
                         return projectedWorldLocation.getBlock().isLiquid();
                     else
                         return true;

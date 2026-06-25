@@ -15,6 +15,7 @@ public class DefaultChestContents {
     public static double normalWeight = 6;
     public static double rareWeight = 3;
     public static double extraRareWeight = 1;
+    private static final Material CHAIN_MATERIAL = resolveChainMaterial();
 
     public static Map<String, Object> overworldContents() {
         Map<String, Object> items = new HashMap<>();
@@ -47,7 +48,7 @@ public class DefaultChestContents {
         commonList.add(generateEntry(Material.CANDLE, 1, 5, normalWeight));
         commonList.add(generateEntry(Material.CARROT, 8, 16, normalWeight));
         commonList.add(generateEntry(Material.CARROT_ON_A_STICK, 1, 1, rareWeight));
-        commonList.add(generateEntry(Material.CHAIN, 1, 8, normalWeight));
+        commonList.add(generateEntry(CHAIN_MATERIAL, 1, 8, normalWeight));
         commonList.add(generateEntry(Material.CHEST, 1, 6, normalWeight));
         commonList.add(generateEntry(Material.CLAY_BALL, 1, 16, normalWeight));
         commonList.add(generateEntry(Material.CLOCK, 1, 1, rareWeight));
@@ -308,7 +309,7 @@ public class DefaultChestContents {
         commonList.add(generateEntry(Material.IRON_BLOCK, 1, 3, rareWeight));
         commonList.add(generateEntry(Material.ARROW, 16, 32, normalWeight));
         commonList.add(generateEntry(Material.BREAD, 8, 16, normalWeight));
-        commonList.add(generateEntry(Material.CHAIN, 1, 8, normalWeight));
+        commonList.add(generateEntry(CHAIN_MATERIAL, 1, 8, normalWeight));
         commonList.add(generateEntry(Material.CHEST, 1, 6, normalWeight));
         commonList.add(generateEntry(Material.CLAY_BALL, 1, 16, normalWeight));
         commonList.add(generateEntry(Material.COOKED_BEEF, 8, 16, normalWeight));
@@ -484,7 +485,7 @@ public class DefaultChestContents {
         commonList.add(generateEntry(Material.GOLDEN_SWORD, 1, 1, extraRareWeight, true));
         commonList.add(generateEntry(Material.ARROW, 16, 32, normalWeight));
         commonList.add(generateEntry(Material.BREAD, 8, 16, normalWeight));
-        commonList.add(generateEntry(Material.CHAIN, 1, 8, normalWeight));
+        commonList.add(generateEntry(CHAIN_MATERIAL, 1, 8, normalWeight));
         commonList.add(generateEntry(Material.CHEST, 1, 6, normalWeight));
         commonList.add(generateEntry(Material.CLAY_BALL, 1, 16, normalWeight));
         commonList.add(generateEntry(Material.COOKED_BEEF, 8, 16, normalWeight));
@@ -659,7 +660,7 @@ public class DefaultChestContents {
         commonList.add(generateEntry(Material.CRYING_OBSIDIAN, 1, 4, normalWeight));
         commonList.add(generateEntry(Material.ARROW, 16, 32, normalWeight));
         commonList.add(generateEntry(Material.BREAD, 8, 16, normalWeight));
-        commonList.add(generateEntry(Material.CHAIN, 1, 8, normalWeight));
+        commonList.add(generateEntry(CHAIN_MATERIAL, 1, 8, normalWeight));
         commonList.add(generateEntry(Material.CHEST, 1, 6, normalWeight));
         commonList.add(generateEntry(Material.CLAY_BALL, 1, 16, normalWeight));
         commonList.add(generateEntry(Material.COOKED_BEEF, 8, 16, normalWeight));
@@ -901,6 +902,14 @@ public class DefaultChestContents {
             procedurallyGeneratedEnchantments.put(enchantableItem.getKey().getKey(), enchantmentMap);
         }
         return procedurallyGeneratedEnchantments;
+    }
+
+    private static Material resolveChainMaterial() {
+        Material material = Material.getMaterial("IRON_CHAIN");
+        if (material != null) return material;
+        material = Material.getMaterial("CHAIN");
+        if (material != null) return material;
+        return Material.IRON_BARS;
     }
 
 }

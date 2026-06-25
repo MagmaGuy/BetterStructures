@@ -12,6 +12,7 @@ import lombok.Setter;
 import org.bukkit.Material;
 
 import java.io.IOException;
+import java.util.List;
 
 public class SchematicConfigField extends CustomConfigFields {
 
@@ -61,7 +62,7 @@ public class SchematicConfigField extends CustomConfigFields {
         this.treasureFile = processString("treasureFile", treasureFile, null, false);
         this.barrelTreasureFilename = processString("barrelTreasureFilename", barrelTreasureFilename, null, false);
         if (generatorConfigFields == null) {
-            Logger.warn("Failed to assign a valid generator to " + filename + "! This will not spawn. Generator config name: " + generatorConfigFilename);
+            logInvalidGeneratorConfiguration();
             return;
         }
         // Inherit defaults from the generator
@@ -85,6 +86,31 @@ public class SchematicConfigField extends CustomConfigFields {
                 this.barrelContents = barrelTreasureConfigFields.getChestContents();
             }
         }
+    }
+
+    private void logInvalidGeneratorConfiguration() {
+        String configPath = file == null ? filename : file.getPath();
+        String configuredGenerator = generatorConfigFilename == null ? "" : generatorConfigFilename.trim();
+        List<String> generatorExamples = GeneratorConfig.getGeneratorConfigurations().keySet().stream()
+                .sorted()
+                .limit(8)
+                .toList();
+
+        Logger.warn("============================================================");
+        Logger.warn("BetterStructures could not load schematic config " + filename + ".");
+        Logger.warn("Config file: " + configPath);
+        if (configuredGenerator.isEmpty()) {
+            Logger.warn("Problem: generatorConfigFilename is empty.");
+            Logger.warn("New schematic configs are generated with this field blank until an admin chooses a generator.");
+        } else {
+            Logger.warn("Problem: generatorConfigFilename '" + generatorConfigFilename + "' does not match any loaded generator config.");
+        }
+        Logger.warn("Fix: set generatorConfigFilename to a file from plugins/BetterStructures/generators, for example generator_surface_global.yml.");
+        if (!generatorExamples.isEmpty()) {
+            Logger.warn("Loaded generator examples: " + String.join(", ", generatorExamples));
+        }
+        Logger.warn("This schematic was scanned, but it will not spawn or appear in /bs place until the generator is valid. Run /bs reload after editing it.");
+        Logger.warn("============================================================");
     }
 
     public void toggleEnabled(boolean enabled) {

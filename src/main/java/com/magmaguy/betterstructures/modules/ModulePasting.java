@@ -22,6 +22,7 @@ import com.sk89q.worldedit.math.BlockVector3;
 import com.sk89q.worldedit.math.transform.AffineTransform;
 import com.sk89q.worldedit.util.SideEffectSet;
 import com.sk89q.worldedit.world.block.BaseBlock;
+import com.sk89q.worldedit.world.block.BlockState;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -215,10 +216,8 @@ public final class ModulePasting {
         // Process each block in the transformed clipboard
         transformedClipboard.getRegion().forEach(blockPos -> {
             BaseBlock baseBlock = transformedClipboard.getFullBlock(blockPos);
-            BlockData blockData = Bukkit.createBlockData(baseBlock.toImmutableState().getAsString());
-
-            // Skip barriers
-            if (blockData.getMaterial().equals(Material.BARRIER)) return;
+            BlockState blockState = baseBlock.toImmutableState();
+            if (WorldEditUtils.isAir(blockState)) return;
 
             // Calculate world coordinates relative to the minimum point
             int worldX = baseX + (blockPos.x() - minPoint.x());
@@ -226,6 +225,16 @@ public final class ModulePasting {
             int worldZ = baseZ + (blockPos.z() - minPoint.z());
 
             Location pasteLocation = new Location(world, worldX, worldY, worldZ);
+            Material material = WorldEditUtils.adaptMaterial(blockState);
+
+            // Skip barriers
+            if (material == Material.BARRIER) return;
+
+            BlockData blockData = material == null ? null : WorldEditUtils.createBlockDataOrNull(baseBlock);
+            if (blockData == null) {
+                nbtToPlace.add(new NbtPlacement(pasteLocation, baseBlock));
+                return;
+            }
 
             // Handle signs - collect instructions then turn into AIR
             if (blockData.getMaterial().toString().toLowerCase().contains("sign")) {

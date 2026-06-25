@@ -93,6 +93,10 @@ public class Schematic {
         }
     }
 
+    private static boolean isSolidBlock(Clipboard schematicClipboard, BlockVector3 clipboardPosition) {
+        return WorldEditUtils.isSolid(schematicClipboard.getBlock(clipboardPosition));
+    }
+
     /**
      * Creates a list of paste blocks from a schematic
      *
@@ -121,18 +125,29 @@ public class Schematic {
                             z + schematicClipboard.getMinimumPoint().z());
                     BaseBlock baseBlock = schematicClipboard.getFullBlock(adjustedClipboardLocation);
                     BlockState blockState = baseBlock.toImmutableState();
-                    BlockData blockData = Bukkit.createBlockData(baseBlock.toImmutableState().getAsString());
-                    Material material = BukkitAdapter.adapt(baseBlock.getBlockType());
+                    Material material = WorldEditUtils.adaptMaterial(blockState);
                     Block worldBlock = adjustedLocation.clone().add(new Vector(x, y, z)).getBlock();
-                    String materialString = material.toString().toUpperCase(Locale.ROOT);
-                    boolean isGround = !BukkitAdapter.adapt(schematicClipboard.getBlock(
-                            BlockVector3.at(adjustedClipboardLocation.x(),
-                                    adjustedClipboardLocation.y() + 1,
-                                    adjustedClipboardLocation.z())).getBlockType()).isSolid();
+                    boolean isGround = !isSolidBlock(schematicClipboard, BlockVector3.at(
+                            adjustedClipboardLocation.x(),
+                            adjustedClipboardLocation.y() + 1,
+                            adjustedClipboardLocation.z()));
 
                     if (material == Material.BARRIER) {
                         // special behavior: do not replace barriers, so do nothing
-                    } else if (materialString.endsWith("SIGN") ||
+                        continue;
+                    }
+
+                    BlockData blockData = material == null ? null : WorldEditUtils.createBlockDataOrNull(baseBlock);
+                    if (blockData == null) {
+                        if (!WorldEditUtils.isAir(blockState)) {
+                            pasteBlocks.add(new PasteBlock(worldBlock, null,
+                                    WorldEditUtils.createSingleBlockClipboard(adjustedLocation, baseBlock, blockState)));
+                        }
+                        continue;
+                    }
+
+                    String materialString = material.toString().toUpperCase(Locale.ROOT);
+                    if (materialString.endsWith("SIGN") ||
                             materialString.endsWith("STAIRS") ||
                             materialString.endsWith("BOX") ||
                             materialString.endsWith("CHEST_BOAT") ||

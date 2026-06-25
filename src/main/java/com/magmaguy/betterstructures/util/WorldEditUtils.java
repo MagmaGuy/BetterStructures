@@ -25,6 +25,8 @@ import com.sk89q.worldedit.world.block.BlockStateHolder;
 import com.sk89q.worldedit.world.block.BlockType;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.block.data.BlockData;
 import org.bukkit.util.Vector;
 import org.checkerframework.checker.index.qual.Positive;
 import org.jetbrains.annotations.NotNull;
@@ -41,6 +43,37 @@ public class WorldEditUtils {
 
     public static Vector getSchematicOffset(Clipboard clipboard) {
         return new Vector(clipboard.getMinimumPoint().x() - clipboard.getOrigin().x(), clipboard.getMinimumPoint().y() - clipboard.getOrigin().y(), clipboard.getMinimumPoint().z() - clipboard.getOrigin().z());
+    }
+
+    @Nullable
+    public static Material adaptMaterial(@NotNull BlockState blockState) {
+        return BukkitAdapter.adapt(blockState.getBlockType());
+    }
+
+    @Nullable
+    public static Material adaptMaterial(@NotNull BaseBlock baseBlock) {
+        return adaptMaterial(baseBlock.toImmutableState());
+    }
+
+    @Nullable
+    public static BlockData createBlockDataOrNull(@NotNull BaseBlock baseBlock) {
+        try {
+            return Bukkit.createBlockData(baseBlock.toImmutableState().getAsString());
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    public static boolean isAir(@NotNull BlockState blockState) {
+        Material material = adaptMaterial(blockState);
+        if (material != null) return material.isAir();
+        return blockState.getBlockType().getMaterial().isAir();
+    }
+
+    public static boolean isSolid(@NotNull BlockState blockState) {
+        Material material = adaptMaterial(blockState);
+        if (material != null) return material.isSolid();
+        return blockState.getBlockType().getMaterial().isSolid();
     }
 
     public static List<String> getLines(@NotNull BaseBlock baseBlock) {
