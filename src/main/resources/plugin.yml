@@ -1,5 +1,5 @@
 name: BetterStructures
-version: '2.6.1'
+version: '2.6.2'
 main: com.magmaguy.betterstructures.BetterStructures
 api-version: '1.21.4'
 depend: [ WorldEdit ]
