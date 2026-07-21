@@ -139,7 +139,10 @@ public class Schematic {
 
                     BlockData blockData = material == null ? null : WorldEditUtils.createBlockDataOrNull(baseBlock);
                     if (blockData == null) {
-                        if (!WorldEditUtils.isAir(blockState)) {
+                        if (WorldEditUtils.isAir(blockState)) {
+                            // Air still carves interiors out of existing terrain - place plain air
+                            pasteBlocks.add(new PasteBlock(worldBlock, Material.AIR.createBlockData(), null));
+                        } else {
                             pasteBlocks.add(new PasteBlock(worldBlock, null,
                                     WorldEditUtils.createSingleBlockClipboard(adjustedLocation, baseBlock, blockState)));
                         }

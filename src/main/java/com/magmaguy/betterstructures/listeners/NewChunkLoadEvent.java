@@ -162,7 +162,7 @@ public class NewChunkLoadEvent implements Listener {
             validatedGenerators.add(moduleGeneratorsConfigFields);
         }
         if (validatedGenerators.isEmpty()) return;
-        ModuleGeneratorsConfigFields moduleGeneratorsConfigFields = validatedGenerators.get(ThreadLocalRandom.current().nextInt(0, ModuleGeneratorsConfig.getModuleGenerators().size()));
+        ModuleGeneratorsConfigFields moduleGeneratorsConfigFields = validatedGenerators.get(ThreadLocalRandom.current().nextInt(0, validatedGenerators.size()));
         new WFCGenerator(moduleGeneratorsConfigFields, chunk.getBlock(8,moduleGeneratorsConfigFields.getCenterModuleAltitude(),8).getLocation());
     }
 }

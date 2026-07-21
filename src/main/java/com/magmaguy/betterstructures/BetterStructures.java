@@ -17,10 +17,12 @@ import com.magmaguy.betterstructures.listeners.NewChunkLoadEvent;
 import com.magmaguy.betterstructures.modules.ModulesContainer;
 import com.magmaguy.betterstructures.modules.WFCGenerator;
 import com.magmaguy.betterstructures.schematics.SchematicContainer;
+import com.magmaguy.betterstructures.thirdparty.EliteMobs;
 import com.magmaguy.betterstructures.thirdparty.WorldGuard;
 import com.magmaguy.easyminecraftgoals.NMSManager;
 import com.magmaguy.magmacore.MagmaCore;
 import com.magmaguy.magmacore.command.CommandManager;
+import com.magmaguy.magmacore.dlc.ConfigurationImporter;
 import com.magmaguy.magmacore.initialization.PluginInitializationConfig;
 import com.magmaguy.magmacore.initialization.PluginInitializationContext;
 import com.magmaguy.magmacore.initialization.PluginInitializationState;
@@ -130,7 +132,9 @@ public final class BetterStructures extends JavaPlugin {
         new ValidWorldsConfig();
 
         initializationContext.step("Content Importer");
-        MagmaCore.initializeImporter(this);
+        ConfigurationImporter importer = MagmaCore.initializeImporter(this);
+        if (importer != null && importer.isEliteMobsContentImported())
+            EliteMobs.reloadAfterContentImport();
 
         initializationContext.step("Treasure Config");
         new TreasureConfig();
@@ -213,7 +217,9 @@ public final class BetterStructures extends JavaPlugin {
 
         Bukkit.getScheduler().runTaskAsynchronously(this, () -> {
             try {
-                MagmaCore.initializeImporter(this);
+                ConfigurationImporter importer = MagmaCore.initializeImporter(this);
+                if (importer != null && importer.isEliteMobsContentImported())
+                    EliteMobs.reloadAfterContentImport();
                 new TreasureConfig();
                 new GeneratorConfig();
                 new ModuleGeneratorsConfig();

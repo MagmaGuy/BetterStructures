@@ -1,5 +1,6 @@
 package com.magmaguy.betterstructures.thirdparty;
 
+import com.magmaguy.betterstructures.MetadataHandler;
 import com.magmaguy.elitemobs.commands.ReloadCommand;
 import com.magmaguy.elitemobs.mobconstructor.custombosses.RegionalBossEntity;
 import com.magmaguy.magmacore.util.Logger;
@@ -33,7 +34,18 @@ public class EliteMobs {
         }
     }
 
-    public static void Reload() {
-        ReloadCommand.reload(Bukkit.getConsoleSender());
+    /**
+     * Reloads EliteMobs after a content import deposited files into its data folder.
+     * EliteMobs only reads its config folders on boot/reload, so without this the
+     * imported shrine bosses stay unregistered until a manual /em reload and shrines
+     * paste without bosses.
+     */
+    public static void reloadAfterContentImport() {
+        if (Bukkit.getPluginManager().getPlugin("EliteMobs") == null) return;
+        Bukkit.getScheduler().runTask(MetadataHandler.PLUGIN, () -> {
+            if (!Bukkit.getPluginManager().isPluginEnabled("EliteMobs")) return;
+            Logger.info("EliteMobs content was imported - reloading EliteMobs so the new content registers.");
+            ReloadCommand.reload(Bukkit.getConsoleSender());
+        });
     }
 }

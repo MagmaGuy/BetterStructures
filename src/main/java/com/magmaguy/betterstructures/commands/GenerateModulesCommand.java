@@ -6,7 +6,7 @@ import com.magmaguy.betterstructures.modules.WFCGenerator;
 import com.magmaguy.magmacore.command.AdvancedCommand;
 import com.magmaguy.magmacore.command.CommandData;
 import com.magmaguy.magmacore.command.SenderType;
-import com.magmaguy.magmacore.command.arguments.ListStringCommandArgument;
+import com.magmaguy.magmacore.command.arguments.DynamicListStringCommandArgument;
 import com.magmaguy.magmacore.util.Logger;
 
 import java.util.List;
@@ -15,7 +15,7 @@ public class GenerateModulesCommand extends AdvancedCommand {
     public GenerateModulesCommand() {
         super(List.of("generateModules"));
         setUsage("/bs generateModules <ModuleGeneratorsConfigFile.yml>");
-        addArgument("moduleGeneratorsConfigFile", new ListStringCommandArgument(ModuleGeneratorsConfig.getModuleGenerators().keySet().stream().toList(), "<module.yml>"));
+        addArgument("moduleGeneratorsConfigFile", new DynamicListStringCommandArgument(() -> ModuleGeneratorsConfig.getModuleGenerators().keySet().stream().toList(), "<module.yml>"));
         setPermission("betterstructures.generatemodules");
         setDescription("Generates modular builds in a dedicated world, based on the generator's configuration file.");
         setSenderType(SenderType.PLAYER);

@@ -217,7 +217,9 @@ public final class ModulePasting {
         transformedClipboard.getRegion().forEach(blockPos -> {
             BaseBlock baseBlock = transformedClipboard.getFullBlock(blockPos);
             BlockState blockState = baseBlock.toImmutableState();
-            if (WorldEditUtils.isAir(blockState)) return;
+            // Air must still be pasted when generating into an existing world, as it is what
+            // carves the walkable interiors out of the terrain. Only void worlds can skip it.
+            if (createModularWorld && WorldEditUtils.isAir(blockState)) return;
 
             // Calculate world coordinates relative to the minimum point
             int worldX = baseX + (blockPos.x() - minPoint.x());
