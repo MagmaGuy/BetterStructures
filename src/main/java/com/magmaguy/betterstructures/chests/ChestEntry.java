@@ -1,6 +1,7 @@
 package com.magmaguy.betterstructures.chests;
 
 import com.magmaguy.betterstructures.config.treasures.TreasureConfigFields;
+import com.magmaguy.magmacore.util.Logger;
 import lombok.Getter;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
@@ -22,6 +23,15 @@ public class ChestEntry {
     public ChestEntry(Material material, double chance, int minAmount, int maxAmount, ItemStack itemStack, boolean procedurallyGeneratedEnchantments, TreasureConfigFields treasureConfigFields) {
         this.material = material;
         this.weight = chance;
+        //A missing or invalid "amount" key used to silently produce ItemStacks with amount -1
+        if (minAmount < 1 || maxAmount < minAmount) {
+            Logger.warn("Missing or invalid amount for loot entry"
+                    + (material != null ? " " + material : "")
+                    + " in treasure file " + (treasureConfigFields != null ? treasureConfigFields.getFilename() : "unknown")
+                    + " ! Defaulting the amount to 1.");
+            minAmount = Math.max(minAmount, 1);
+            maxAmount = Math.max(maxAmount, minAmount);
+        }
         this.minAmount = minAmount;
         this.maxAmount = maxAmount;
         this.itemStack = itemStack;

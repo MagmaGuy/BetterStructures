@@ -39,8 +39,6 @@ import java.util.regex.Pattern;
 
 public class WorldEditUtils {
 
-    private static final ArrayList<String> values = new ArrayList<>();
-
     public static Vector getSchematicOffset(Clipboard clipboard) {
         return new Vector(clipboard.getMinimumPoint().x() - clipboard.getOrigin().x(), clipboard.getMinimumPoint().y() - clipboard.getOrigin().y(), clipboard.getMinimumPoint().z() - clipboard.getOrigin().z());
     }
@@ -77,7 +75,6 @@ public class WorldEditUtils {
     }
 
     public static List<String> getLines(@NotNull BaseBlock baseBlock) {
-        values.clear();
         List<String> lines = new ArrayList<>();
         if (baseBlock.getNbtData() == null) {
             return lines;
@@ -98,7 +95,6 @@ public class WorldEditUtils {
      * Tested with <b>WorldEdit and FastAsyncWorldEdit</b> NBT format.</p>
      */
     public static String getLine(@NotNull BaseBlock baseBlock, @Positive int line) {
-        values.clear();
         if (baseBlock.getNbtData() == null) {
             return "";
         }
@@ -125,12 +121,13 @@ public class WorldEditUtils {
         return "";
     }
 
+    private static final Pattern OLD_WE_TEXT_PATTERN = Pattern.compile("\\{\"text\":\"(.*?)\"\\}");
+
     private static String getOldWEFormat(@NotNull CompoundTag data, @Positive int line) {
         try {
             String text = ((StringTag) data.getValue().get("Text" + line)).getValue();
 
-            Pattern pattern = Pattern.compile("\\{\"text\":\"(.*?)\"\\}");
-            Matcher matcher = pattern.matcher(text);
+            Matcher matcher = OLD_WE_TEXT_PATTERN.matcher(text);
 
             if (matcher.find()) {
                 String extractedText = matcher.group(1);
@@ -155,8 +152,6 @@ public class WorldEditUtils {
 
             if (text.contains("\"text\":")) text = text.split("text\":\"")[1].split("\"")[0];
             text = text.replaceAll("\"", "");
-            if (text.contains("test")) Bukkit.getLogger().warning("boss name:" + text);
-
             return text;
 
         } catch (Exception ex) {
@@ -165,7 +160,7 @@ public class WorldEditUtils {
         return null;
     }
 
-    public static Clipboard createSingleBlockClipboard(Location location, BaseBlock baseBlock, BlockState blockState) {
+    public static Clipboard createSingleBlockClipboard(BaseBlock baseBlock, BlockState blockState) {
         return new Clipboard() {
             @Override
             public <T extends BlockStateHolder<T>> boolean setBlock(BlockVector3 position, T block) throws WorldEditException {

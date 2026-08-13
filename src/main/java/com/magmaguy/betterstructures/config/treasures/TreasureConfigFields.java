@@ -1,7 +1,7 @@
 package com.magmaguy.betterstructures.config.treasures;
 
-import com.magmaguy.betterstructures.MetadataHandler;
 import com.magmaguy.betterstructures.chests.ChestContents;
+import com.magmaguy.betterstructures.commands.ReloadCommand;
 import com.magmaguy.betterstructures.util.DefaultChestContents;
 import com.magmaguy.magmacore.config.CustomConfigFields;
 import com.magmaguy.magmacore.util.Logger;
@@ -116,10 +116,8 @@ public class TreasureConfigFields extends CustomConfigFields {
             player.sendMessage("[BetterStructures] Failed to save entry to file! Report this to the developer.");
             return;
         }
-        MetadataHandler.PLUGIN.onDisable();
-        MetadataHandler.PLUGIN.onLoad();
-        MetadataHandler.PLUGIN.onEnable();
-        player.sendMessage("[BetterStructures] Reloaded plugin to add chest entry! It should now be live.");
+        ReloadCommand.reload(player);
+        player.sendMessage("[BetterStructures] Saved the chest entry and started a safe reload.");
     }
 
     public class ConfigurationEnchantment {

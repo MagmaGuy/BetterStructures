@@ -69,7 +69,6 @@ public class FitLiquidBuilding extends FitAnything {
             }
 
         if (location == null) {
-            //Bukkit.broadcastMessage("Yo your locations are whack!");
             return;
         }
 
@@ -79,7 +78,7 @@ public class FitLiquidBuilding extends FitAnything {
     private void chunkScan(Location originalLocation, int chunkX, int chunkZ) {
         Location iteratedLocation = originalLocation.clone().add(new Vector(chunkX * 16, 1, chunkZ * 16));
         double newScore = TerrainAdequacy.scan(scanStep, schematicClipboard, iteratedLocation, schematicOffset, TerrainAdequacy.ScanType.LIQUID);
-        if (newScore < 90) return;
+        //Only a perfect score places liquid buildings, which subsumes the old < 90 early return
         if (newScore == startingScore) {
             highestScore = newScore;
             location = iteratedLocation;

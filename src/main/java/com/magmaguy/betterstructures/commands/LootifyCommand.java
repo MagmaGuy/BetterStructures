@@ -1,16 +1,17 @@
 package com.magmaguy.betterstructures.commands;
 
+import com.magmaguy.betterstructures.BetterStructures;
 import com.magmaguy.betterstructures.config.treasures.TreasureConfig;
 import com.magmaguy.betterstructures.config.treasures.TreasureConfigFields;
 import com.magmaguy.betterstructures.util.ItemStackSerialization;
 import com.magmaguy.magmacore.command.AdvancedCommand;
 import com.magmaguy.magmacore.command.CommandData;
 import com.magmaguy.magmacore.command.arguments.IntegerCommandArgument;
+import com.magmaguy.magmacore.command.arguments.DynamicListStringCommandArgument;
 import com.magmaguy.magmacore.command.arguments.ListStringCommandArgument;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,8 +19,17 @@ import java.util.Map;
 public class LootifyCommand extends AdvancedCommand {
     public LootifyCommand() {
         super(List.of("lootify"));
-        ArrayList<String> treasures = new ArrayList<>(TreasureConfig.getTreasureConfigurations().keySet());
-        addArgument("generator", new ListStringCommandArgument(treasures,"<treasures>"));
+        addArgument(
+                "generator",
+                new DynamicListStringCommandArgument(
+                        () -> BetterStructures.isReloading()
+                                ? List.of()
+                                : TreasureConfig.getTreasureConfigurations()
+                                .keySet()
+                                .stream()
+                                .sorted()
+                                .toList(),
+                        "<treasures>"));
         addArgument("rarity", new ListStringCommandArgument("<rarity>"));
         addArgument("minAmount", new IntegerCommandArgument("<minAmount>"));
         addArgument("maxAmount", new IntegerCommandArgument("<maxAmount>"));
@@ -31,6 +41,8 @@ public class LootifyCommand extends AdvancedCommand {
 
     @Override
     public void execute(CommandData commandData) {
+        if (BetterStructures.rejectContentCommandDuringReload(
+                commandData.getCommandSender())) return;
         lootify(commandData.getStringArgument("generator"),
                 commandData.getStringArgument("rarity"),
                 commandData.getStringArgument("minAmount"),
@@ -91,7 +103,7 @@ public class LootifyCommand extends AdvancedCommand {
         else
             info = itemStack.getType().toString();
         Map<String, Object> configMap = new HashMap<>();
-        configMap.put("serialized", ItemStackSerialization.deserializeItem(itemStack));
+        configMap.put("serialized", ItemStackSerialization.serializeItem(itemStack));
         configMap.put("amount", minAmount +"-"+maxAmount);
         configMap.put("weight", weightDouble);
         configMap.put("info", info);

@@ -12,14 +12,14 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class BSPackage extends AbstractNightbreakContentPackage {
     @Getter
-    private static final Map<String, BSPackage> bsPackages = new HashMap<>();
+    private static final Map<String, BSPackage> bsPackages = new ConcurrentHashMap<>();
     @Getter
     private final ContentPackageConfigFields contentPackageConfigFields;
 

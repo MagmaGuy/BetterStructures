@@ -19,9 +19,13 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public class ChestContents {
 
-    @Getter
     private final List<ChestRarity> chestRarities = new ArrayList<>();
     private final TreasureConfigFields treasureConfigFields;
+    //Rarities and their weights never change after construction, so the weight map is built once
+    //instead of being rebuilt for every chest roll
+    private final HashMap<Integer, Double> rarityWeights = new HashMap<>();
+    private static boolean warnedNullRarityPick = false;
+    private static boolean warnedNullEntryPick = false;
 
     /*
     Entry format:
@@ -36,6 +40,8 @@ public class ChestContents {
         this.treasureConfigFields = treasureConfigFields;
         if (treasureConfigFields.getRawLoot() == null) return;
         processRarities(treasureConfigFields.getRawLoot());
+        for (int i = chestRarities.size() - 1; i >= 0; i--)
+            rarityWeights.put(i, chestRarities.get(i).chestWeight);
     }
 
     private Material getMaterial(String string) {
@@ -73,7 +79,7 @@ public class ChestContents {
 
     private ItemStack getSerializedItemStack(Map<String, Object> deserializedItemStack, String string) {
         try {
-            return ItemStackSerialization.serializeItem(deserializedItemStack);
+            return ItemStackSerialization.deserializeItem(deserializedItemStack);
         } catch (Exception ex) {
             Logger.warn("Invalid serialized value detected! Problematic entry: " + string + " for configuration file " + treasureConfigFields.getFilename());
             ex.printStackTrace();
@@ -166,12 +172,18 @@ public class ChestContents {
         int amount = (int) Math.max(Math.ceil(ThreadLocalRandom.current().nextGaussian(treasureConfigFields.getMean(), treasureConfigFields.getStandardDeviation())), 0);
         //Guarantee that at least one item will drop
         amount++;
-        HashMap<Integer, Double> weightsMap = new HashMap<>();
-        for (int i = chestRarities.size() - 1; i >= 0; i--)
-            weightsMap.put(i, chestRarities.get(i).chestWeight);
 
         for (int i = 0; i < amount; i++) {
-            ItemStack itemStack = chestRarities.get(WeighedProbability.pickWeightedProbability(weightsMap)).rollLoot();
+            Integer rarityIndex = WeighedProbability.pickWeightedProbability(rarityWeights);
+            if (rarityIndex == null) {
+                //Only possible with broken weights (all zero/negative); guard instead of NPE-ing
+                if (!warnedNullRarityPick) {
+                    warnedNullRarityPick = true;
+                    Logger.warn("Could not pick a loot rarity for treasure file " + treasureConfigFields.getFilename() + " ! Check that its rarity weights are positive numbers. This will only be warned about once.");
+                }
+                return;
+            }
+            ItemStack itemStack = chestRarities.get(rarityIndex).rollLoot();
             if (itemStack != null) {
                 placeItemInChest(chest, itemStack);
             }
@@ -203,17 +215,27 @@ public class ChestContents {
     private class ChestRarity {
         private final double chestWeight;
         private final List<ChestEntry> chestEntries;
+        //Entries and their weights never change after construction, so build the map once
+        private final HashMap<Integer, Double> entryWeights = new HashMap<>();
 
         public ChestRarity(double chestWeight, List<ChestEntry> chestEntries) {
             this.chestEntries = chestEntries;
             this.chestWeight = chestWeight;
+            for (int i = chestEntries.size() - 1; i >= 0; i--)
+                entryWeights.put(i, chestEntries.get(i).getWeight());
         }
 
         public ItemStack rollLoot() {
-            HashMap<Integer, Double> weightsMap = new HashMap<>();
-            for (int i = chestEntries.size() - 1; i >= 0; i--)
-                weightsMap.put(i, chestEntries.get(i).getWeight());
-            return chestEntries.get(WeighedProbability.pickWeightedProbability(weightsMap)).rollEntry();
+            Integer entryIndex = WeighedProbability.pickWeightedProbability(entryWeights);
+            if (entryIndex == null) {
+                //Only possible with broken weights (all zero/negative); guard instead of NPE-ing
+                if (!warnedNullEntryPick) {
+                    warnedNullEntryPick = true;
+                    Logger.warn("Could not pick a loot entry for treasure file " + treasureConfigFields.getFilename() + " ! Check that its item weights are positive numbers. This will only be warned about once.");
+                }
+                return null;
+            }
+            return chestEntries.get(entryIndex).rollEntry();
         }
     }
 }

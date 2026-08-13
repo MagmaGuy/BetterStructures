@@ -15,8 +15,6 @@ public class WorldGenerationFinishEvent extends Event {
 
     public WorldGenerationFinishEvent(ModularWorld modularWorld) {
         this.modularWorld = modularWorld;
-//        Vector3i vector3i = modularWorld.getSpawnLocations().get(ThreadLocalRandom.current().nextInt(0, modularWorld.getSpawnLocations().size()));
-//        modularWorld.getModularGenerationStatus().getGeneratingPlayer().teleport(new Location(modularWorld.getWorld(), vector3i.x, vector3i.y, vector3i.z));
     }
 
     public static HandlerList getHandlerList() {

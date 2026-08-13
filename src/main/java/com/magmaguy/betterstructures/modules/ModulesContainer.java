@@ -58,22 +58,21 @@ public class ModulesContainer {
                 Direction direction = buildBorderListEntry.getKey();
                 List<NeighborTag> borderTags = buildBorderListEntry.getValue();
 
-                for (ModulesContainer neighborContainer : modulesContainers.values()) {
-                    List<NeighborTag> neighborTags = neighborContainer.borderTags.neighborMap.get(direction.getOpposite());
-                    for (NeighborTag borderTag : borderTags) {
+                for (NeighborTag borderTag : borderTags) {
+                    // "nothing" and "world_border" both face the pre-collapsed
+                    // sentinel outside the placeable lattice. Register both sides
+                    // explicitly so compatibility remains reciprocal.
+                    if (borderTag.getTag().equalsIgnoreCase("nothing") || borderTag.isWorldBorder()) {
+                        modulesContainer.validBorders.computeIfAbsent(direction, k -> new HashSet<>()).add(nothingContainer);
+                        nothingContainer.validBorders.computeIfAbsent(direction.getOpposite(), k -> new HashSet<>()).add(modulesContainer);
+                        if (borderTag.isWorldBorder()) modulesContainer.horizontalEdge = true;
+                        continue;
+                    }
+
+                    for (ModulesContainer neighborContainer : modulesContainers.values()) {
+                        List<NeighborTag> neighborTags = neighborContainer.borderTags.neighborMap.get(direction.getOpposite());
+                        if (neighborTags == null) continue;
                         for (NeighborTag neighborTag : neighborTags) {
-                            //"nothing" is a special module, borders that share "nothing" should not be joined and instead they should only join with empty space
-                            if (borderTag.getTag().equalsIgnoreCase("nothing")) {
-                                modulesContainer.validBorders.computeIfAbsent(direction, k -> new HashSet<>()).add(modulesContainers.get("nothing"));
-                                nothingContainer.validBorders.computeIfAbsent(direction.getOpposite(), k -> new HashSet<>()).add(modulesContainer);
-                                continue;
-                            }
-                            //"world_border" is a special module, borders that share "world_border" should not be joined and the only thing they should join with is spaces beyond the radius of the grid
-                            if (borderTag.getTag().equalsIgnoreCase(WORLD_BORDER)) {
-                                modulesContainer.validBorders.computeIfAbsent(direction, k -> new HashSet<>()).add(neighborContainer);
-                                modulesContainer.horizontalEdge = true;
-                                continue;
-                            }
                             if (borderTag.getTag().equals(neighborTag.getTag()) && (borderTag.isCanMirror() || neighborTag.isCanMirror())) {
                                 modulesContainer.validBorders.computeIfAbsent(direction, k -> new HashSet<>()).add(neighborContainer);
                                 break;
@@ -109,7 +108,11 @@ public class ModulesContainer {
 
     public static HashSet<ModulesContainer> getValidModulesFromSurroundings(WFCNode WFCNode) {
         HashSet<ModulesContainer> validModules = null;
-        boolean isGridBorder = WFCNode.getWfcGenerator().getSpatialGrid().isBoundary(WFCNode.getCellLocation());
+        //getCellLocation() copies defensively, so grab it once per call instead of per candidate
+        Vector3i cellLocation = WFCNode.getCellLocation();
+        int placeableEdgeRadius = WFCNode.getWfcGenerator().getSpatialGrid().getLatticeRadius() - 1;
+        boolean isPlaceableEdge = Math.abs(cellLocation.x) == placeableEdgeRadius ||
+                Math.abs(cellLocation.z) == placeableEdgeRadius;
 
         for (Map.Entry<Direction, WFCNode> buildBorderChunkDataEntry : WFCNode.getOrientedNeighbors().entrySet()) {
             Direction direction = buildBorderChunkDataEntry.getKey();
@@ -119,16 +122,19 @@ public class ModulesContainer {
 
             HashSet<ModulesContainer> validBorderSpecificModules = new HashSet<>();
 
-            for (ModulesContainer modulesContainer : buildBorderChunkDataEntry.getValue().getModulesContainer().validBorders.get(direction.getOpposite())) {
+            Set<ModulesContainer> neighborCompatibleModules = buildBorderChunkDataEntry.getValue()
+                    .getModulesContainer().validBorders.get(direction.getOpposite());
+            if (neighborCompatibleModules == null) neighborCompatibleModules = Collections.emptySet();
+            for (ModulesContainer modulesContainer : neighborCompatibleModules) {
                 if (modulesContainer == null) {
                     continue;
                 }
 
                 if (!modulesContainer.getModulesConfigField().isAutomaticallyPlaced()) continue;
 
-                if (modulesContainer.isHorizontalEdge() != isGridBorder)
+                if (modulesContainer.isHorizontalEdge() != isPlaceableEdge)
                     //'nothing' should be compatible anywhere
-                    if (!(isGridBorder && modulesContainer.nothing)) {
+                    if (!(isPlaceableEdge && modulesContainer.nothing)) {
                         continue;
                     }
 
@@ -145,66 +151,46 @@ public class ModulesContainer {
 
                 if (repeatStop) continue;
 
-                boolean worldBorderFacesTheOutside = true;
-
-                //If it's on the border, check if world_border is facing towards the outside
-                if (isGridBorder) {
-                    for (Map.Entry<Direction, List<NeighborTag>> directionListEntry : modulesContainer.getBorderTags().entrySet()) {
-                        Direction checkDirection = directionListEntry.getKey();
-                        // We only need to check directions that point outward from the grid
-                        boolean isOutwardDirection = false;
-
-                        // Determine if this direction points outward based on cell position
-                        Vector3i pos = WFCNode.getCellLocation();
-                        if ((pos.x == -WFCNode.getWfcGenerator().getSpatialGrid().getLatticeRadius() && checkDirection == Direction.WEST) ||
-                                (pos.x == WFCNode.getWfcGenerator().getSpatialGrid().getLatticeRadius() && checkDirection == Direction.EAST) ||
-                                (pos.z == -WFCNode.getWfcGenerator().getSpatialGrid().getLatticeRadius() && checkDirection == Direction.NORTH) ||
-                                (pos.z == WFCNode.getWfcGenerator().getSpatialGrid().getLatticeRadius() && checkDirection == Direction.SOUTH)) {
-                            isOutwardDirection = true;
-                        }
-
-                        // Only validate world border tags for directions that point outward
-                        if (isOutwardDirection) {
-                            for (NeighborTag tag : directionListEntry.getValue()) {
-                                boolean isWorldBorderTag = tag.getTag().equalsIgnoreCase(WORLD_BORDER);
-                                // For outward directions, we expect world_border tags
-                                if (!isWorldBorderTag) {
-                                    worldBorderFacesTheOutside = false;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if (!worldBorderFacesTheOutside) continue;
+                if (isPlaceableEdge && !modulesContainer.nothing &&
+                        !hasRequiredWorldBorderFaces(modulesContainer, cellLocation, placeableEdgeRadius)) continue;
 
                 if (!checkVerticalRotationValidity(direction, buildBorderChunkDataEntry.getValue().getModulesContainer(), modulesContainer) ||
                         !checkHorizontalRotationValidity(direction, buildBorderChunkDataEntry.getValue().getModulesContainer(), modulesContainer)) {
                     continue;
                 }
 
-                Vector3i loc = WFCNode.getCellLocation();
-                if (loc.y < modulesContainer.modulesConfigField.getMinY() ||
-                        loc.y > modulesContainer.modulesConfigField.getMaxY()) {
+                if (cellLocation.y < modulesContainer.modulesConfigField.getMinY() ||
+                        cellLocation.y > modulesContainer.modulesConfigField.getMaxY()) {
                     continue;
                 }
 
                 validBorderSpecificModules.add(modulesContainer);
             }
 
-            if (validModules == null) {
-                validModules = new HashSet<>(validBorderSpecificModules);
-            } else {
-                if (!validBorderSpecificModules.isEmpty())
-                    validModules.retainAll(validBorderSpecificModules);
-            }
+            if (validModules == null) validModules = new HashSet<>(validBorderSpecificModules);
+            else validModules.retainAll(validBorderSpecificModules);
         }
 
         if (validModules == null || validModules.isEmpty()) {
             return new HashSet<>();
         }
         return validModules;
+    }
+
+    private static boolean hasRequiredWorldBorderFaces(ModulesContainer modulesContainer, Vector3i location,
+                                                        int placeableEdgeRadius) {
+        if (location.x == -placeableEdgeRadius && !hasOnlyWorldBorderTags(modulesContainer, Direction.WEST))
+            return false;
+        if (location.x == placeableEdgeRadius && !hasOnlyWorldBorderTags(modulesContainer, Direction.EAST))
+            return false;
+        if (location.z == -placeableEdgeRadius && !hasOnlyWorldBorderTags(modulesContainer, Direction.NORTH))
+            return false;
+        return location.z != placeableEdgeRadius || hasOnlyWorldBorderTags(modulesContainer, Direction.SOUTH);
+    }
+
+    private static boolean hasOnlyWorldBorderTags(ModulesContainer modulesContainer, Direction direction) {
+        List<NeighborTag> tags = modulesContainer.borderTags.neighborMap.get(direction);
+        return tags != null && !tags.isEmpty() && tags.stream().allMatch(NeighborTag::isWorldBorder);
     }
 
     private static boolean checkVerticalRotationValidity(Direction direction, ModulesContainer module, ModulesContainer neighbour) {
@@ -308,9 +294,7 @@ public class ModulesContainer {
                 canMirror = false;
                 this.tag = this.tag.replace("no-mirror_", "");
             }
-            if (tag.equalsIgnoreCase(WORLD_BORDER)) {
-                isWorldBorder = true;
-            }
+            isWorldBorder = this.tag.equalsIgnoreCase(WORLD_BORDER);
         }
     }
 

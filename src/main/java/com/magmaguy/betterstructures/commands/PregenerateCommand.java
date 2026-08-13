@@ -1,5 +1,6 @@
 package com.magmaguy.betterstructures.commands;
 
+import com.magmaguy.betterstructures.BetterStructures;
 import com.magmaguy.betterstructures.util.ChunkPregenerator;
 import com.magmaguy.magmacore.command.AdvancedCommand;
 import com.magmaguy.magmacore.command.CommandData;
@@ -27,6 +28,8 @@ public class PregenerateCommand extends AdvancedCommand {
 
     @Override
     public void execute(CommandData commandData) {
+        if (BetterStructures.rejectContentCommandDuringReload(
+                commandData.getCommandSender())) return;
         String centerArg = commandData.getStringArgument("center");
         String shape = commandData.getStringArgument("shape");
         int radius = commandData.getIntegerArgument("radius");

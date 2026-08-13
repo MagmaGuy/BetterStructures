@@ -19,7 +19,6 @@ public class SchematicConfigField extends CustomConfigFields {
     @Getter
     @Setter
     private double weight = 1;
-    @Getter
     @Setter
     private String generatorConfigFilename = "";
     @Getter

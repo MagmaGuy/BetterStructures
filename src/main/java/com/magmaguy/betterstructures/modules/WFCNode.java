@@ -21,7 +21,6 @@ import java.util.concurrent.ThreadLocalRandom;
 public class WFCNode {
     private final Vector3i nodePosition;
     private final WFCLattice lattice;
-    @Getter
     private final World world;
     private final Map<Vector3i, WFCNode> nodeMap;
     @Getter
@@ -30,7 +29,6 @@ public class WFCNode {
     private final WFCGenerator wfcGenerator;
     @Getter
     private ModulesContainer modulesContainer;
-    @Getter
     private HashSet<ModulesContainer> possibleStates = null;
     private List<TextDisplay> textDisplays;
     private Map<Direction, WFCNode> adjacentNodes = new EnumMap<>(Direction.class);
@@ -270,25 +268,6 @@ public class WFCNode {
     }
 
     /**
-     * Resets this cell's data.
-     *
-     */
-    public void resetState() {
-        if (isInitialNode() || isBoundary()) return;
-
-        setModulesContainer(null);
-        this.possibleStates = null;
-        if (wfcGenerator.getModuleGeneratorsConfigFields().isDebug()) {
-            debugPaste(Material.GRAY_STAINED_GLASS);
-        }
-    }
-
-
-    public boolean isInitialNode() {
-        return new Vector3i().equals(nodePosition);
-    }
-
-    /**
      * Clears generation data for this cell.
      */
     public void clearGenerationData() {
@@ -350,10 +329,5 @@ public class WFCNode {
                 ModulePasting.paste(modulesContainer.getClipboard(), startLocation, modulesContainer.getRotation());
             }
         }.runTask(MetadataHandler.PLUGIN);
-        try {
-            Thread.sleep(50);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
     }
 }

@@ -70,19 +70,18 @@ public class ModularWorld {
         }
     }
 
+    private static final Pattern POOL_TEXT_PATTERN = Pattern.compile("\\[pool:\\s*([^\\]]+)\\]");
+
     public static String extractPoolText(String input) {
-        Pattern pattern = Pattern.compile("\\[pool:\\s*([^\\]]+)\\]");
-        Matcher matcher = pattern.matcher(input);
+        Matcher matcher = POOL_TEXT_PATTERN.matcher(input);
         return matcher.find() ? matcher.group(1) : null;
     }
 
     private void processExitLocations(ModulePasting.InterpretedSign interpretedSign) {
-        String exitClipboardFilename = "";
-        for (int i = 1; i < interpretedSign.text().size(); i++) {
-            exitClipboardFilename += interpretedSign.text().get(i);
-        }
-        if (exitClipboardFilename.isEmpty()) {
-            Logger.warn("Failed to get exit clipboard filename from sign " + interpretedSign.location());
+        if (interpretedSign.text().size() < 3
+                || interpretedSign.text().get(1).isBlank()
+                || interpretedSign.text().get(2).isBlank()) {
+            Logger.warn("Failed to get both exit clipboard filenames from sign " + interpretedSign.location());
             exitLocations.add(new ExitLocation(new Location(world,
                     (int) interpretedSign.location().getX(),
                     (int) interpretedSign.location().getY(),
@@ -160,7 +159,17 @@ public class ModularWorld {
                                 Logger.warn("Could not find spawn pool " + parsedString);
                                 continue;
                             }
-                            CustomBossesConfigFields customBossesConfigFields = CustomBossesConfig.getCustomBoss(spawnPoolsConfigFields.getPoolStrings().get(ThreadLocalRandom.current().nextInt(0, spawnPoolsConfigFields.getPoolStrings().size())));
+                            if (spawnPoolsConfigFields.getPoolStrings() == null || spawnPoolsConfigFields.getPoolStrings().isEmpty()) {
+                                Logger.warn("Spawn pool " + parsedString + " has no entries");
+                                continue;
+                            }
+                            String bossFilename = spawnPoolsConfigFields.getPoolStrings().get(
+                                    ThreadLocalRandom.current().nextInt(spawnPoolsConfigFields.getPoolStrings().size()));
+                            CustomBossesConfigFields customBossesConfigFields = CustomBossesConfig.getCustomBoss(bossFilename);
+                            if (customBossesConfigFields == null) {
+                                Logger.warn("Spawn pool " + parsedString + " references missing boss " + bossFilename);
+                                continue;
+                            }
                             if (!customBossesConfigFields.isInstanced()) {
                                 CustomBossEntity customBossEntity = new CustomBossEntity(customBossesConfigFields);
                                 customBossEntity.spawn(otherLocation.location(), true);
@@ -186,7 +195,6 @@ public class ModularWorld {
             int level = (int) Math.round((1.0 - percentageDistance) * scheduledInstancedEntity.maxLevel + percentageDistance * scheduledInstancedEntity.minLevel);
 
             InstancedBossEntity instancedBossEntity = new InstancedBossEntity(scheduledInstancedEntity.configFields, scheduledInstancedEntity.location, matchInstance, level);
-//            InstancedBossEntity instancedBossEntity = new InstancedBossEntity(scheduledInstancedEntity.configFields, scheduledInstancedEntity.location, matchInstance, 10);//todo: level is just a placeholder for now
             instancedBossEntity.spawn(true);
             instancedBossEntity.addCustomData(new NamespacedKey("betterstructures", "spawnpool"), scheduledInstancedEntity.originalSpawnPool);
             instancedBossEntities.add(instancedBossEntity);

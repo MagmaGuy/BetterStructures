@@ -88,7 +88,9 @@ public class GeneratorConfigFields extends CustomConfigFields {
         this.treasureFilename = processString("treasureFilename", treasureFilename, null, false);
         TreasureConfigFields treasureConfig = TreasureConfig.getConfigFields(treasureFilename);
         if (treasureConfig != null) {
-            this.chestContents = new ChestContents(treasureConfig);
+            //Reuse the treasure config's own ChestContents (built once at treasure load) like the
+            //schematic config fields do; rolling never mutates the instance
+            this.chestContents = treasureConfig.getChestContents();
         } else {
             Logger.warn("No valid treasure config file found for generator " + filename + " ! This will not spawn loot in chests until fixed.");
         }
@@ -101,7 +103,7 @@ public class GeneratorConfigFields extends CustomConfigFields {
         if (generateLootInBarrels) {
             TreasureConfigFields barrelTreasureConfig = TreasureConfig.getConfigFields(barrelTreasureFilename);
             if (barrelTreasureConfig != null) {
-                this.barrelContents = new ChestContents(barrelTreasureConfig);
+                this.barrelContents = barrelTreasureConfig.getChestContents();
             } else {
                 Logger.warn("No valid barrel treasure config found for generator " + filename + " (looked for: " + barrelTreasureFilename + "). Barrels in this generator will be left empty until fixed.");
             }

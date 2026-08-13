@@ -34,12 +34,14 @@ public class MythicMobs {
             return false;
         }
 
-        double level;
-        try {
-            level = Double.parseDouble(args[1]);
-        } catch (Exception e) {
-            Logger.warn("Failed to parse level for mob " + filename + "!");
-            return false;
+        double level = 1D;
+        if (args.length > 1 && !args[1].isBlank()) {
+            try {
+                level = Double.parseDouble(args[1]);
+            } catch (NumberFormatException e) {
+                Logger.warn("Failed to parse level for mob " + filename + "!");
+                return false;
+            }
         }
         mob.spawn(BukkitAdapter.adapt(location), Math.max(1, level));
         return true;

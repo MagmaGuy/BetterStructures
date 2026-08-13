@@ -22,13 +22,11 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class ChunkPregenerator implements Listener {
-    public static HashSet<ChunkPregenerator> activePregenerators = new HashSet<>();
+    private static final Set<ChunkPregenerator> activePregenerators = new HashSet<>();
     
     @Getter
     private final World world;
-    @Getter
     private final Location center;
-    @Getter
     private final String shape;
     private final boolean setWorldBorder;
     private final double tickUsage;
@@ -36,6 +34,7 @@ public class ChunkPregenerator implements Listener {
     private final int maxRadiusChunks;
     private int actualMaxRadiusChunks = 0;
     private final Set<String> generatedChunks = new HashSet<>();
+    private final Set<String> queuedChunks = new HashSet<>();
     private final Set<String> loadedChunks = new HashSet<>(); // Track which chunks have been loaded (to avoid double counting)
     private int newlyGeneratedChunks = 0;
     private int chunksLoadedLast30s = 0;
@@ -48,6 +47,16 @@ public class ChunkPregenerator implements Listener {
     private BukkitTask currentWorkloadTask;
     private volatile boolean isCancelled = false;
     private volatile boolean isPaused = false;
+    private boolean isFinished = false;
+
+    public static Set<ChunkPregenerator> getActivePregenerators() {
+        return Set.copyOf(activePregenerators);
+    }
+
+    public static void shutdown() {
+        Set.copyOf(activePregenerators).forEach(ChunkPregenerator::cancel);
+        activePregenerators.clear();
+    }
 
     public ChunkPregenerator(World world, Location center, String shape, int maxRadiusBlocks, int maxRadiusChunks, boolean setWorldBorder) {
         this.world = world;
@@ -102,6 +111,7 @@ public class ChunkPregenerator implements Listener {
                 if (currentWorkloadTask != null) {
                     currentWorkloadTask.cancel();
                     currentWorkloadTask = null;
+                    queuedChunks.clear();
                 }
             }
         } else if (isPaused && currentTPS >= resumeThreshold) {
@@ -203,40 +213,56 @@ public class ChunkPregenerator implements Listener {
 
     private boolean generateCircleLayer(WorkloadRunnable workload, int radius) {
         boolean chunksAdded = false;
-        // Generate chunks in a circle pattern at this radius
-        int radiusSquared = radius * radius;
-        int nextRadiusSquared = (radius + 1) * (radius + 1);
-
-        // Use a bounding box approach for efficiency
-        for (int x = centerChunkX - radius - 1; x <= centerChunkX + radius + 1; x++) {
-            for (int z = centerChunkZ - radius - 1; z <= centerChunkZ + radius + 1; z++) {
-                int dx = x - centerChunkX;
-                int dz = z - centerChunkZ;
-                int distanceSquared = dx * dx + dz * dz;
-
-                // Include chunks at exactly this radius
-                if (distanceSquared >= radiusSquared && distanceSquared < nextRadiusSquared) {
-                    if (addChunkToWorkload(workload, x, z)) {
-                        chunksAdded = true;
-                    }
+        // Walk the ring directly instead of re-scanning the whole bounding box per layer (which made
+        // a full pregeneration O(r^3)). Ring membership is radius^2 <= dx^2 + dz^2 < (radius+1)^2,
+        // matching the closed-form count in calculateExpectedChunksTotal; for a fixed dx the
+        // members form the contiguous band minDz <= |dz| <= maxDz. |dx| > radius can never qualify
+        // because dx^2 alone then reaches (radius+1)^2.
+        long upperSquared = (long) (radius + 1) * (radius + 1) - 1;
+        long radiusSquared = (long) radius * radius;
+        for (int dx = -radius; dx <= radius; dx++) {
+            long dxSquared = (long) dx * dx;
+            int maxDz = floorSqrt(upperSquared - dxSquared);
+            long minDzSquared = radiusSquared - dxSquared;
+            int minDz = minDzSquared <= 0 ? 0 : ceilSqrt(minDzSquared);
+            for (int dz = minDz; dz <= maxDz; dz++) {
+                if (addChunkToWorkload(workload, centerChunkX + dx, centerChunkZ + dz)) {
+                    chunksAdded = true;
+                }
+                if (dz != 0 && addChunkToWorkload(workload, centerChunkX + dx, centerChunkZ - dz)) {
+                    chunksAdded = true;
                 }
             }
         }
         return chunksAdded;
     }
 
+    private static int floorSqrt(long value) {
+        int result = (int) Math.sqrt(value);
+        while ((long) (result + 1) * (result + 1) <= value) result++;
+        while ((long) result * result > value) result--;
+        return result;
+    }
+
+    private static int ceilSqrt(long value) {
+        int floor = floorSqrt(value);
+        return (long) floor * floor == value ? floor : floor + 1;
+    }
+
     private boolean addChunkToWorkload(WorkloadRunnable workload, int chunkX, int chunkZ) {
         String chunkKey = chunkX + "," + chunkZ;
-        if (generatedChunks.contains(chunkKey)) {
+        if (generatedChunks.contains(chunkKey) || !queuedChunks.add(chunkKey)) {
             return false; // Already generated or queued
         }
-
-        generatedChunks.add(chunkKey);
-        workload.addWorkload(() -> generateChunk(chunkX, chunkZ));
+        workload.addWorkload(() -> {
+            queuedChunks.remove(chunkKey);
+            generatedChunks.add(chunkKey);
+            generateChunk(chunkX, chunkZ, chunkKey);
+        });
         return true;
     }
 
-    private void generateChunk(int chunkX, int chunkZ) {
+    private void generateChunk(int chunkX, int chunkZ, String chunkKey) {
         try {
             Chunk chunk = world.getChunkAt(chunkX, chunkZ);
             if (!chunk.isLoaded()) {
@@ -244,11 +270,13 @@ public class ChunkPregenerator implements Listener {
             }
             // Chunk counting is now handled by ChunkLoadEvent listener
         } catch (Exception e) {
+            generatedChunks.remove(chunkKey);
             Logger.warn("Failed to generate chunk at (" + chunkX + ", " + chunkZ + "): " + e.getMessage());
         }
     }
 
     private void onComplete() {
+        if (!beginFinish()) return;
         cleanup();
         Logger.info("Chunk pregeneration completed. Processed " + generatedChunks.size() + " chunks, newly generated " + newlyGeneratedChunks + " chunks with max radius: " + maxRadiusBlocks + " blocks (" + actualMaxRadiusChunks + " chunks)");
 
@@ -258,6 +286,7 @@ public class ChunkPregenerator implements Listener {
     }
 
     private void onCancelled() {
+        if (!beginFinish()) return;
         cleanup();
         Logger.info("Chunk pregeneration cancelled. Processed " + generatedChunks.size() + " chunks, newly generated " + newlyGeneratedChunks + " chunks with max radius reached: " + (actualMaxRadiusChunks * 16) + " blocks (" + actualMaxRadiusChunks + " chunks)");
     }
@@ -280,6 +309,7 @@ public class ChunkPregenerator implements Listener {
             currentWorkloadTask.cancel();
             currentWorkloadTask = null;
         }
+        queuedChunks.clear();
 
         // Unregister event listener
         HandlerList.unregisterAll(this);
@@ -288,11 +318,20 @@ public class ChunkPregenerator implements Listener {
         activePregenerators.remove(this);
     }
 
+    private boolean beginFinish() {
+        if (isFinished) return false;
+        isFinished = true;
+        return true;
+    }
+
     /**
      * Cancels the pregeneration process.
      */
     public void cancel() {
+        if (isCancelled || isFinished) return;
         isCancelled = true;
+        if (Bukkit.isPrimaryThread()) onCancelled();
+        else Bukkit.getScheduler().runTask(MetadataHandler.PLUGIN, this::onCancelled);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -416,65 +455,47 @@ public class ChunkPregenerator implements Listener {
     }
     
     private int calculateExpectedChunksTotal() {
-        try {
-            // Calculate all chunks that will be generated within maxRadiusChunks
-            Set<String> chunksToGenerate = new HashSet<>();
-
-            if ("SQUARE".equalsIgnoreCase(shape)) {
-                // Square: match generateSquareLayer logic - edge chunks for each radius
-                for (int radius = 0; radius <= maxRadiusChunks; radius++) {
-                    // Top and bottom edges
-                    for (int x = centerChunkX - radius; x <= centerChunkX + radius; x++) {
-                        // Top edge
-                        chunksToGenerate.add(x + "," + (centerChunkZ - radius));
-                        // Bottom edge
-                        chunksToGenerate.add(x + "," + (centerChunkZ + radius));
-                    }
-                    // Left and right edges (excluding corners already processed)
-                    for (int z = centerChunkZ - radius + 1; z < centerChunkZ + radius; z++) {
-                        // Left edge
-                        chunksToGenerate.add((centerChunkX - radius) + "," + z);
-                        // Right edge
-                        chunksToGenerate.add((centerChunkX + radius) + "," + z);
-                    }
-                }
-            } else if ("CIRCLE".equalsIgnoreCase(shape)) {
-                // Circle: all chunks within maxRadiusChunks
-                for (int radius = 0; radius <= maxRadiusChunks; radius++) {
-                    int radiusSquared = radius * radius;
-                    int nextRadiusSquared = (radius + 1) * (radius + 1);
-                    for (int x = centerChunkX - radius - 1; x <= centerChunkX + radius + 1; x++) {
-                        for (int z = centerChunkZ - radius - 1; z <= centerChunkZ + radius + 1; z++) {
-                            int dx = x - centerChunkX;
-                            int dz = z - centerChunkZ;
-                            int distanceSquared = dx * dx + dz * dz;
-                            if (distanceSquared >= radiusSquared && distanceSquared < nextRadiusSquared) {
-                                chunksToGenerate.add(x + "," + z);
-                            }
-                        }
-                    }
-                }
+        if ("SQUARE".equalsIgnoreCase(shape)) {
+            long n = 2L * maxRadiusChunks + 1;
+            return (int) Math.min(Integer.MAX_VALUE, n * n);
+        } else if ("CIRCLE".equalsIgnoreCase(shape)) {
+            long lim = (long) (maxRadiusChunks + 1) * (maxRadiusChunks + 1);
+            long total = 0;
+            for (int dx = -maxRadiusChunks; dx <= maxRadiusChunks; dx++) {
+                long rem = lim - 1 - (long) dx * dx;
+                int s = (int) Math.sqrt(rem);
+                while ((long) (s + 1) * (s + 1) <= rem) s++;
+                while ((long) s * s > rem) s--;
+                total += 2L * s + 1;
             }
-
-            return chunksToGenerate.size();
-        } catch (Exception e) {
-            Logger.warn("Failed to calculate expected chunks total: " + e.getMessage());
-            return 0;
+            return (int) Math.min(Integer.MAX_VALUE, total);
         }
+        return 0;
     }
-    
+
+
+    private static final Method GET_TPS_METHOD;
+
+    static {
+        Method method = null;
+        try {
+            method = Bukkit.getServer().getClass().getMethod("getTPS");
+        } catch (Exception e) {
+            // Paper TPS API not available
+        }
+        GET_TPS_METHOD = method;
+    }
 
     private double getTPS() {
-        try {
-            // Try Paper TPS API using reflection
-            Object server = Bukkit.getServer();
-            Method getTPSMethod = server.getClass().getMethod("getTPS");
-            double[] tps = (double[]) getTPSMethod.invoke(server);
-            if (tps != null && tps.length > 0) {
-                return Math.min(20.0, Math.max(0.0, tps[0]));
+        if (GET_TPS_METHOD != null) {
+            try {
+                double[] tps = (double[]) GET_TPS_METHOD.invoke(Bukkit.getServer());
+                if (tps != null && tps.length > 0) {
+                    return Math.min(20.0, Math.max(0.0, tps[0]));
+                }
+            } catch (Exception e) {
+                // Fallback if Paper API not available or reflection fails
             }
-        } catch (Exception e) {
-            // Fallback if Paper API not available or reflection fails
         }
 
         // Fallback: return 20.0 if we can't get TPS

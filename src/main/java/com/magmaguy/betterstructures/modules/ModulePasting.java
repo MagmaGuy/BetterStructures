@@ -41,13 +41,23 @@ import org.bukkit.entity.Player;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
 public final class ModulePasting {
+    private static final EnumSet<Material> SIGN_MATERIALS = EnumSet.noneOf(Material.class);
+
+    static {
+        //Locale.ROOT: the default-locale lowercase turns "SIGN" into "sıgn" on Turkish locales
+        for (Material m : Material.values())
+            if (m.toString().toUpperCase(Locale.ROOT).contains("SIGN")) SIGN_MATERIALS.add(m);
+    }
+
     private final List<InterpretedSign> interpretedSigns = new ArrayList<>();
     private final List<ChestPlacement> chestsToPlace = new ArrayList<>();
     private final List<BarrelPlacement> barrelsToFill = new ArrayList<>();
@@ -74,8 +84,6 @@ public final class ModulePasting {
                 firstNode.getWfcGenerator().getModuleGeneratorsConfigFields().isWorldGeneration();
 
         batchPaste(WFCNodeDeque, interpretedSigns);
-
-        createModularWorld(world, worldFolder);
 
         // Send notification to players
         if (DefaultConfig.isNewBuildingWarn()) {
@@ -162,7 +170,8 @@ public final class ModulePasting {
                 }
             });
 
-            pasteArmorStands(transformedClipboard, location, rotation);
+            //The clipboard is already rotated; going through pasteArmorStands() would rotate it twice
+            WorldEditUtils.pasteArmorStandsOnlyFromTransformed(transformedClipboard, location);
 
         } catch (Exception e) {
             Logger.warn("Failed to paste structure: " + e.getMessage());
@@ -189,21 +198,11 @@ public final class ModulePasting {
         WorldEditUtils.pasteArmorStandsOnlyFromTransformed(transformedClipboard, location);
     }
 
-    private List<Pasteable> generatePasteMeList(Clipboard clipboard,
+    private List<Pasteable> generatePasteMeList(Clipboard transformedClipboard,
                                                 Location worldPasteOriginLocation,
-                                                Integer rotation,
                                                 List<InterpretedSign> interpretedSigns,
                                                 ModulesConfigFields modulesConfigFields) {
         List<Pasteable> pasteableList = new ArrayList<>();
-
-        // Apply rotation transformation
-        AffineTransform transform = new AffineTransform().rotateY(normalizeRotation(rotation));
-        Clipboard transformedClipboard;
-        try {
-            transformedClipboard = clipboard.transform(transform);
-        } catch (WorldEditException e) {
-            throw new RuntimeException(e);
-        }
 
         // Get the minimum point of the transformed clipboard to use as reference
         BlockVector3 minPoint = transformedClipboard.getMinimumPoint();
@@ -239,7 +238,7 @@ public final class ModulePasting {
             }
 
             // Handle signs - collect instructions then turn into AIR
-            if (blockData.getMaterial().toString().toLowerCase().contains("sign")) {
+            if (SIGN_MATERIALS.contains(blockData.getMaterial())) {
                 List<String> lines = getLines(baseBlock);
                 interpretedSigns.add(new InterpretedSign(pasteLocation, lines));
 
@@ -253,9 +252,9 @@ public final class ModulePasting {
                             Logger.warn("Invalid entity type in sign: " + lines.get(1));
                         }
                     } else if (line.contains("[chest]")) {
-                        chestsToPlace.add(new ChestPlacement(pasteLocation, Material.CHEST, rotation));
+                        chestsToPlace.add(new ChestPlacement(pasteLocation, Material.CHEST));
                     } else if (line.contains("[trapped_chest]")) {
-                        chestsToPlace.add(new ChestPlacement(pasteLocation, Material.TRAPPED_CHEST, rotation));
+                        chestsToPlace.add(new ChestPlacement(pasteLocation, Material.TRAPPED_CHEST));
                     }
                 }
 
@@ -296,7 +295,7 @@ public final class ModulePasting {
         return strings;
     }
 
-    public List<InterpretedSign> batchPaste(Deque<WFCNode> WFCNodeDeque, List<InterpretedSign> interpretedSigns) {
+    private void batchPaste(Deque<WFCNode> WFCNodeDeque, List<InterpretedSign> interpretedSigns) {
         List<Pasteable> pasteableList = new ArrayList<>();
 
         // Collect entity paste info while processing blocks
@@ -308,20 +307,22 @@ public final class ModulePasting {
             Clipboard clipboard = WFCNode.getModulesContainer().getClipboard();
             if (clipboard == null) continue;
 
+            // Rotate the clipboard once and reuse it for both the block paste list and the entity paste
+            AffineTransform transform = new AffineTransform().rotateY(normalizeRotation(WFCNode.getModulesContainer().getRotation()));
+            Clipboard transformedClipboard;
+            try {
+                transformedClipboard = clipboard.transform(transform);
+            } catch (WorldEditException e) {
+                throw new RuntimeException(e);
+            }
+
             // Process blocks
             ModulesConfigFields modulesConfigField = WFCNode.getModulesContainer().getModulesConfigField();
-            pasteableList.addAll(generatePasteMeList(clipboard, WFCNode.getRealLocation(startLocation),
-                    WFCNode.getModulesContainer().getRotation(), interpretedSigns, modulesConfigField));
+            pasteableList.addAll(generatePasteMeList(transformedClipboard, WFCNode.getRealLocation(startLocation),
+                    interpretedSigns, modulesConfigField));
 
             // Store entity paste info for later - WITH TRANSFORMED CLIPBOARD
-            AffineTransform transform = new AffineTransform().rotateY(normalizeRotation(WFCNode.getModulesContainer().getRotation()));
-            try {
-                Clipboard transformedClipboard = clipboard.transform(transform);
-                entityPasteInfos.add(new EntityPasteInfo(transformedClipboard, WFCNode.getRealLocation(startLocation),
-                        WFCNode.getModulesContainer().getRotation()));
-            } catch (WorldEditException e) {
-                Logger.warn("Failed to transform clipboard for entities: " + e.getMessage());
-            }
+            entityPasteInfos.add(new EntityPasteInfo(transformedClipboard, WFCNode.getRealLocation(startLocation)));
         }
 
         List<Pasteable> slowBlocks = new ArrayList<>();
@@ -336,8 +337,6 @@ public final class ModulePasting {
                 });
             vanillaPlacementRunnable.runTaskTimer(MetadataHandler.PLUGIN, 0, 1);
         });
-
-        List<InterpretedSign> freshlyInterpretedSigns = new ArrayList<>();
 
         // Enable fast path only for world-based generation
         final boolean fastPathEnabled = this.createModularWorld;
@@ -369,8 +368,6 @@ public final class ModulePasting {
         }
 
         pasteMeRunnable.runTaskTimer(MetadataHandler.PLUGIN, 0, 1);
-
-        return freshlyInterpretedSigns;
     }
 
     private void postPasteProcessing(List<EntityPasteInfo> entityPasteInfos) {
@@ -406,27 +403,33 @@ public final class ModulePasting {
         // 2) Paste entities from schematics (armor stands, etc.)
         pasteArmorStandsForBatch(entityPasteInfos);
 
-        for (ChestPlacement chestPlacement : chestsToPlace) {
-            Block block = chestPlacement.location.getBlock();
-            block.setType(chestPlacement.material);
+        // 3) Fill chests placed by [chest]/[trapped_chest] signs
+        if (!chestsToPlace.isEmpty()) {
+            // Loop-invariant: every chest here uses the generator's treasure file, so resolve it
+            // once (the barrel loop below already memoizes the same way)
+            String treasureFilename = moduleGeneratorsConfigFields.getTreasureFile();
+            TreasureConfigFields treasureConfigFields = TreasureConfig.getConfigFields(treasureFilename);
+            ChestContents chestContents = treasureConfigFields == null ? null : treasureConfigFields.getChestContents();
+            for (ChestPlacement chestPlacement : chestsToPlace) {
+                Block block = chestPlacement.location.getBlock();
+                block.setType(chestPlacement.material);
 
-            if (block.getBlockData() instanceof Chest chest) {
-                block.setBlockData(chest, false);
+                if (block.getBlockData() instanceof Chest chest) {
+                    block.setBlockData(chest, false);
 
-                String treasureFilename = moduleGeneratorsConfigFields.getTreasureFile();
-                TreasureConfigFields treasureConfigFields = TreasureConfig.getConfigFields(treasureFilename);
-                if (treasureConfigFields != null) {
-                    ChestContents chestContents = new ChestContents(treasureConfigFields);
-                    Container container = (Container) block.getState();
-                    chestContents.rollChestContents(container);
-                    ChestFillEvent chestFillEvent = new ChestFillEvent(container, treasureFilename);
-                    Bukkit.getServer().getPluginManager().callEvent(chestFillEvent);
-                    if (!chestFillEvent.isCancelled())
-                        container.update(true);
+                    if (chestContents != null) {
+                        Container container = (Container) block.getState();
+                        chestContents.rollChestContents(container);
+                        ChestFillEvent chestFillEvent = new ChestFillEvent(container, treasureFilename);
+                        Bukkit.getServer().getPluginManager().callEvent(chestFillEvent);
+                        if (!chestFillEvent.isCancelled())
+                            container.update(true);
+                    }
                 }
             }
         }
 
+        // 4) Fill barrels with loot
         if (moduleGeneratorsConfigFields.isGenerateLootInBarrels() && !barrelsToFill.isEmpty()) {
             Map<String, ChestContents> contentsByTreasure = new HashMap<>();
             Set<String> warnedMissingTreasures = new HashSet<>();
@@ -465,7 +468,7 @@ public final class ModulePasting {
             }
         }
 
-        // 4) Spawn entities last
+        // 5) Spawn entities last
         for (EntitySpawn entitySpawn : entitiesToSpawn) {
             try {
                 LivingEntity entity = (LivingEntity) world.spawnEntity(entitySpawn.location, entitySpawn.entityType);
@@ -496,10 +499,10 @@ public final class ModulePasting {
     }
 
     // Record to hold entity paste information - now with transformed clipboard
-    private record EntityPasteInfo(Clipboard clipboard, Location location, Integer rotation) {
+    private record EntityPasteInfo(Clipboard clipboard, Location location) {
     }
 
-    private record ChestPlacement(Location location, Material material, Integer rotation) {
+    private record ChestPlacement(Location location, Material material) {
     }
 
     private record BarrelPlacement(Location location, ModulesConfigFields modulesConfigFields) {

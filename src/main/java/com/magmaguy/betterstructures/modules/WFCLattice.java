@@ -15,14 +15,12 @@ public class WFCLattice {
     private static class CollapseDecision {
         final Vector3i nodePosition;
         final ModulesContainer chosenModule;
-        final Set<ModulesContainer> previousPossibleStates;
         final Set<Vector3i> affectedNeighbors;
-        
-        CollapseDecision(Vector3i nodePosition, ModulesContainer chosenModule, 
-                        Set<ModulesContainer> previousPossibleStates, Set<Vector3i> affectedNeighbors) {
+
+        CollapseDecision(Vector3i nodePosition, ModulesContainer chosenModule,
+                         Set<Vector3i> affectedNeighbors) {
             this.nodePosition = nodePosition;
             this.chosenModule = chosenModule;
-            this.previousPossibleStates = previousPossibleStates;
             this.affectedNeighbors = affectedNeighbors;
         }
     }
@@ -34,7 +32,7 @@ public class WFCLattice {
     @Getter private final int minYLevel;
     @Getter private final int maxYLevel;
     @Getter private final Map<Vector3i, WFCNode> nodeMap;
-    @Getter private final PriorityQueue<WFCNode> entropyQueue;
+    private final PriorityQueue<WFCNode> entropyQueue;
     
     // Backtracking system
     private final Deque<CollapseDecision> decisionStack = new ArrayDeque<>();
@@ -85,9 +83,6 @@ public class WFCLattice {
         return Comparator
                 .comparingInt(WFCNode::getValidOptionCount)
                 .thenComparingInt(WFCNode::getMagnitudeSquared);
-//        return Comparator
-//                .comparingInt(WFCNode::getMagnitudeSquared)
-//                .thenComparingInt(WFCNode::getValidOptionCount);
     }
 
     public static Vector3i getDirectionOffset(Direction direction) {
@@ -113,9 +108,6 @@ public class WFCLattice {
      * Records a collapse decision for potential backtracking
      */
     public void recordCollapseDecision(WFCNode node, ModulesContainer chosenModule) {
-        Set<ModulesContainer> previousStates = node.getValidOptions() != null ? 
-            new HashSet<>(node.getValidOptions()) : new HashSet<>();
-        
         Set<Vector3i> affectedNeighbors = new HashSet<>();
         for (WFCNode neighbor : node.getOrientedNeighbors().values()) {
             if (neighbor != null) {
@@ -126,7 +118,6 @@ public class WFCLattice {
         decisionStack.push(new CollapseDecision(
             node.getCellLocation(), 
             chosenModule, 
-            previousStates, 
             affectedNeighbors
         ));
     }
@@ -151,12 +142,7 @@ public class WFCLattice {
         // Restore the node's previous state
         node.setModulesContainer(null);
         node.updatePossibleStates();
-        
-        // Remove the chosen module from possible states if it was the only option
-        if (node.getValidOptions() != null && node.getValidOptions().contains(decision.chosenModule)) {
-            node.getValidOptions().remove(decision.chosenModule);
-        }
-        
+
         // Recalculate entropy for affected neighbors
         for (Vector3i neighborPos : decision.affectedNeighbors) {
             WFCNode neighbor = nodeMap.get(neighborPos);
@@ -164,9 +150,16 @@ public class WFCLattice {
                 updateNodeEntropy(neighbor);
             }
         }
-        
+
         updateNodeEntropy(node);
-        
+
+        // Remove the failed module from the possible states only AFTER the entropy updates:
+        // updateNodeEntropy() calls updatePossibleStates(), which reassigns the option set and
+        // would wipe this exclusion, letting the same dead-end module be picked again.
+        if (node.getValidOptions() != null) {
+            node.getValidOptions().remove(decision.chosenModule);
+        }
+
         return true;
     }
     
@@ -184,35 +177,13 @@ public class WFCLattice {
         decisionStack.clear();
     }
 
-    private boolean isEmpty(WFCNode node) {
-        return node.getModulesContainer() != null &&
-                node.getModulesContainer().isNothing();
-    }
-
-    private boolean isWorldBoundary(WFCNode node){
-        return node.getModulesContainer() != null &&
-                node.getModulesContainer().getClipboardFilename().equals("world_border");
-    }
-
-    public void clearGenerationData() {
-        nodeMap.values().forEach(WFCNode::clearGenerationData);
-        entropyQueue.clear();
-        clearBacktrackHistory();
-    }
-
     public void clearAllData() {
+        nodeMap.values().forEach(WFCNode::clearGenerationData);
         nodeMap.clear();
         entropyQueue.clear();
         clearBacktrackHistory();
     }
 
-
-    public boolean isWithinBounds(Vector3i location) {
-        return Math.abs(location.x) <= latticeRadius &&
-                location.y >= minYLevel &&
-                location.y <= maxYLevel &&
-                Math.abs(location.z) <= latticeRadius;
-    }
 
     public boolean isBoundary(Vector3i location) {
         return location.x == -latticeRadius
@@ -222,32 +193,10 @@ public class WFCLattice {
     }
 
     public WFCNode getLowestEntropyNode() {
-        WFCNode next = entropyQueue.poll();
-        // Skip empty nodes in the queue
-        while (next != null && isEmpty(next)) {
-            next = entropyQueue.poll();
-
-            if (next == null) {
-                return null;
-            }
-
-            for (WFCNode neighbor : next.getOrientedNeighbors().values()) {
-                if (neighbor != null && neighbor.isCollapsed()) {
-                    next = null;
-                    break;
-                }
-            }
-        }
-
-        return next;
-    }
-
-    public Vector3i worldToLattice(Vector3i worldCoord) {
-        return new Vector3i(
-                Math.floorDiv(worldCoord.x, nodeSizeXZ),
-                Math.floorDiv(worldCoord.y, nodeSizeY),
-                Math.floorDiv(worldCoord.z, nodeSizeXZ)
-        );
+        // The queue only ever contains un-collapsed, non-boundary nodes: updateNodeEntropy() is the
+        // sole insertion point and it rejects collapsed/boundary nodes, while collapses only happen
+        // to nodes already polled off the queue (or the never-queued origin).
+        return entropyQueue.poll();
     }
 
     public Vector3i latticeToWorld(Vector3i latticeCoord) {

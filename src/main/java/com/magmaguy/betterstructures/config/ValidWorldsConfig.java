@@ -21,9 +21,7 @@ import java.util.HashMap;
 public class ValidWorldsConfig extends ConfigurationFile {
     private static final String VALID_WORLDS_KEY = "Valid worlds";
     private static final long UNLOAD_PRUNE_DELAY_TICKS = 20L * 10L;
-    @Getter
-    private static HashMap<String, Boolean> validWorlds = new HashMap<>();
-    @Getter
+    private static final HashMap<String, Boolean> validWorlds = new HashMap<>();
     private static boolean whitelistNewWorlds;
     private static ValidWorldsConfig instance;
 
@@ -106,7 +104,7 @@ public class ValidWorldsConfig extends ConfigurationFile {
         pruneMissingWorldEntries();
 
         for (World world : Bukkit.getWorlds())
-            registerWorldName(world.getName(), true, false);
+            registerWorldName(world.getName(), whitelistNewWorlds, false);
 
         ConfigurationSection validWorldsSection = fileConfiguration.getConfigurationSection(VALID_WORLDS_KEY);
         if (validWorldsSection == null) return;

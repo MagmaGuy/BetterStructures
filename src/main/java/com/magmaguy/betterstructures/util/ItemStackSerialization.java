@@ -8,11 +8,11 @@ public class ItemStackSerialization {
     private ItemStackSerialization() {
     }
 
-    public static Map<String, Object> deserializeItem(ItemStack itemStack) throws IllegalStateException {
+    public static Map<String, Object> serializeItem(ItemStack itemStack) throws IllegalStateException {
         return itemStack.serialize();
     }
 
-    public static ItemStack serializeItem(Map<String, Object> deserializedItemStack) {
+    public static ItemStack deserializeItem(Map<String, Object> deserializedItemStack) {
         try {
             return ItemStack.deserialize(deserializedItemStack);
         }catch (Exception e) {

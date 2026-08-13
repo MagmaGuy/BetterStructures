@@ -68,7 +68,7 @@ public class WorldGuard implements Listener {
      */
     public static ProtectedRegion generateProtectedRegion(FitAnything fitAnything, String regionName){
         Location lowestCorner = fitAnything.getLocation().clone().add(fitAnything.getSchematicOffset());
-        Location highestCorner = lowestCorner.clone().add(new Vector(fitAnything.getSchematicClipboard().getRegion().getWidth() - 1, fitAnything.getSchematicClipboard().getRegion().getHeight(), fitAnything.getSchematicClipboard().getRegion().getLength() - 1));
+        Location highestCorner = lowestCorner.clone().add(new Vector(fitAnything.getSchematicClipboard().getRegion().getWidth() - 1, fitAnything.getSchematicClipboard().getRegion().getHeight() - 1, fitAnything.getSchematicClipboard().getRegion().getLength() - 1));
         BlockVector3 min =  BlockVector3.at(lowestCorner.getX(), lowestCorner.getY(), lowestCorner.getZ());
         BlockVector3 max = BlockVector3.at(highestCorner.getX(), highestCorner.getY(), highestCorner.getZ());
         return new ProtectedCuboidRegion(regionName, min, max);

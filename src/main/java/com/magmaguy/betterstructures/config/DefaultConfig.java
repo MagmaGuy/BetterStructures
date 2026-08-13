@@ -3,11 +3,22 @@ package com.magmaguy.betterstructures.config;
 import com.magmaguy.magmacore.config.ConfigurationEngine;
 import com.magmaguy.magmacore.config.ConfigurationFile;
 import com.magmaguy.magmacore.nightbreak.NightbreakPluginUpdater;
+import com.magmaguy.magmacore.util.Logger;
 import lombok.Getter;
 
 import java.util.List;
 
 public class DefaultConfig extends ConfigurationFile {
+    private static final int DEFAULT_DISTANCE_SURFACE = 27;
+    private static final int DEFAULT_DISTANCE_SHALLOW = 22;
+    private static final int DEFAULT_DISTANCE_DEEP = 22;
+    private static final int DEFAULT_DISTANCE_SKY = 90;
+    private static final int DEFAULT_DISTANCE_LIQUID = 60;
+    private static final int DEFAULT_DISTANCE_DUNGEON = 80;
+    private static final int DEFAULT_MAX_OFFSET = 5;
+    private static final int DEFAULT_MAX_OFFSET_DUNGEON = 18;
+    // nextInt requires a positive int bound for (2 * offset + 1).
+    private static final int MAX_SAFE_OFFSET = (Integer.MAX_VALUE - 1) / 2;
     @Getter
     private static int lowestYNormalCustom;
     @Getter
@@ -77,8 +88,6 @@ public class DefaultConfig extends ConfigurationFile {
 
     @Getter
     private static int spawnProtectionRadius;
-    @Getter
-    private static boolean autoDownloadPluginUpdates;
 
     public DefaultConfig() {
         super("config.yml");
@@ -123,71 +132,84 @@ public class DefaultConfig extends ConfigurationFile {
         percentageOfTickUsedForPregeneration = ConfigurationEngine.setDouble(List.of("Sets the maximum percentage of a tick that BetterStructures will use for world pregeneration when using the pregenerate command.", "Ranges from 0.01 to 1, where 0.01 is 1% and 1 is 100%.", "This controls how much of each server tick is dedicated to generating chunks, allowing you to balance generation speed with server performance.", "Lower values will generate chunks more slowly but reduce server lag, while higher values will generate faster but may impact server performance."), fileConfiguration, "percentageOfTickUsedForPregeneration", 0.1);
         pregenerationTPSPauseThreshold = ConfigurationEngine.setDouble(List.of("The TPS threshold at which chunk pregeneration will pause to protect server performance.", "When server TPS drops below this value, pregeneration will pause until TPS recovers.", "Default: 12.0"), fileConfiguration, "pregenerationTPSPauseThreshold", 12.0);
         pregenerationTPSResumeThreshold = ConfigurationEngine.setDouble(List.of("The TPS threshold at which chunk pregeneration will resume after being paused.", "Pregeneration will only resume when server TPS is at or above this value.", "Should be higher than the pause threshold to prevent rapid pause/resume cycles.", "Default: 14.0"), fileConfiguration, "pregenerationTPSResumeThreshold", 14.0);
-        autoDownloadPluginUpdates = NightbreakPluginUpdater.setAutoDownloadConfigDefault(fileConfiguration);
+        NightbreakPluginUpdater.setAutoDownloadConfigDefault(fileConfiguration);
 
         // Initialize the distances from configuration
-        distanceSurface = ConfigurationEngine.setInt(
+        distanceSurface = validatedDistance("distanceSurface", ConfigurationEngine.setInt(
                 List.of(
                         "Sets the distance between structures in the surface of a world.",
-                        "Shorter distances between structures will result in more structures overall."),
-                fileConfiguration, "distanceSurface", 27);
-        distanceShallow = ConfigurationEngine.setInt(
+                        "Shorter distances between structures will result in more structures overall.",
+                        "Must be at least 1. Invalid values use the default of " + DEFAULT_DISTANCE_SURFACE + "."),
+                fileConfiguration, "distanceSurface", DEFAULT_DISTANCE_SURFACE), DEFAULT_DISTANCE_SURFACE);
+        distanceShallow = validatedDistance("distanceShallow", ConfigurationEngine.setInt(
                 List.of(
                         "Sets the distance between structures in shallow underground structure generation.",
-                        "Shorter distances between structures will result in more structures overall."),fileConfiguration, "distanceShallow", 22);
-        distanceDeep = ConfigurationEngine.setInt(
+                        "Shorter distances between structures will result in more structures overall.",
+                        "Must be at least 1. Invalid values use the default of " + DEFAULT_DISTANCE_SHALLOW + "."),
+                fileConfiguration, "distanceShallow", DEFAULT_DISTANCE_SHALLOW), DEFAULT_DISTANCE_SHALLOW);
+        distanceDeep = validatedDistance("distanceDeep", ConfigurationEngine.setInt(
                 List.of(
                         "Sets the distance between structures in deep underground structure generation.",
-                        "Shorter distances between structures will result in more structures overall."),
-                fileConfiguration, "distanceDeep", 22);
-        distanceSky = ConfigurationEngine.setInt(
+                        "Shorter distances between structures will result in more structures overall.",
+                        "Must be at least 1. Invalid values use the default of " + DEFAULT_DISTANCE_DEEP + "."),
+                fileConfiguration, "distanceDeep", DEFAULT_DISTANCE_DEEP), DEFAULT_DISTANCE_DEEP);
+        distanceSky = validatedDistance("distanceSky", ConfigurationEngine.setInt(
                 List.of(
                         "Sets the distance between structures in placed in the air.",
-                        "Shorter distances between structures will result in more structures overall."),
-                fileConfiguration, "distanceSky", 90);
-        distanceLiquid = ConfigurationEngine.setInt(
+                        "Shorter distances between structures will result in more structures overall.",
+                        "Must be at least 1. Invalid values use the default of " + DEFAULT_DISTANCE_SKY + "."),
+                fileConfiguration, "distanceSky", DEFAULT_DISTANCE_SKY), DEFAULT_DISTANCE_SKY);
+        distanceLiquid = validatedDistance("distanceLiquid", ConfigurationEngine.setInt(
                 List.of(
                         "Sets the distance between structures liquid surfaces such as oceans.",
-                        "Shorter distances between structures will result in more structures overall."),
-                fileConfiguration, "distanceLiquid", 60);
-        distanceDungeon = ConfigurationEngine.setInt(
+                        "Shorter distances between structures will result in more structures overall.",
+                        "Must be at least 1. Invalid values use the default of " + DEFAULT_DISTANCE_LIQUID + "."),
+                fileConfiguration, "distanceLiquid", DEFAULT_DISTANCE_LIQUID), DEFAULT_DISTANCE_LIQUID);
+        distanceDungeon = validatedDistance("distanceDungeonV2", ConfigurationEngine.setInt(
                 List.of(
                         "Sets the distance between dungeons.",
-                        "Shorter distances between dungeons will result in more dungeons overall."
+                        "Shorter distances between dungeons will result in more dungeons overall.",
+                        "Must be at least 1. Invalid values use the default of " + DEFAULT_DISTANCE_DUNGEON + "."
                 ),
-                fileConfiguration, "distanceDungeonV2", 80);
+                fileConfiguration, "distanceDungeonV2", DEFAULT_DISTANCE_DUNGEON), DEFAULT_DISTANCE_DUNGEON);
 
         // Initialize the maximum offsets from configuration
-        maxOffsetSurface = ConfigurationEngine.setInt(
+        maxOffsetSurface = validatedOffset("maxOffsetSurface", ConfigurationEngine.setInt(
                 List.of(
                         "Used to tweak the randomization of the distance between structures in the surface of a world.",
-                        "Smaller values will result in structures being more on a grid, and larger values will result in them being less predictably placed."),
-                fileConfiguration, "maxOffsetSurface", 5);
-        maxOffsetShallow = ConfigurationEngine.setInt(
+                        "Smaller values will result in structures being more on a grid, and larger values will result in them being less predictably placed.",
+                        offsetValidationDescription(DEFAULT_MAX_OFFSET)),
+                fileConfiguration, "maxOffsetSurface", DEFAULT_MAX_OFFSET), DEFAULT_MAX_OFFSET);
+        maxOffsetShallow = validatedOffset("maxOffsetShallow", ConfigurationEngine.setInt(
                 List.of(
                         "Used to tweak the randomization of the distance between structures in the shallow underworld of a world.",
-                        "Smaller values will result in structures being more on a grid, and larger values will result in them being less predictably placed."),
-                fileConfiguration, "maxOffsetShallow", 5);
-        maxOffsetDeep = ConfigurationEngine.setInt(
+                        "Smaller values will result in structures being more on a grid, and larger values will result in them being less predictably placed.",
+                        offsetValidationDescription(DEFAULT_MAX_OFFSET)),
+                fileConfiguration, "maxOffsetShallow", DEFAULT_MAX_OFFSET), DEFAULT_MAX_OFFSET);
+        maxOffsetDeep = validatedOffset("maxOffsetDeep", ConfigurationEngine.setInt(
                 List.of(
                         "Used to tweak the randomization of the distance between structures in the deep underground of a world.",
-                        "Smaller values will result in structures being more on a grid, and larger values will result in them being less predictably placed."),
-                fileConfiguration, "maxOffsetDeep", 5);
-        maxOffsetSky = ConfigurationEngine.setInt(
+                        "Smaller values will result in structures being more on a grid, and larger values will result in them being less predictably placed.",
+                        offsetValidationDescription(DEFAULT_MAX_OFFSET)),
+                fileConfiguration, "maxOffsetDeep", DEFAULT_MAX_OFFSET), DEFAULT_MAX_OFFSET);
+        maxOffsetSky = validatedOffset("maxOffsetSky", ConfigurationEngine.setInt(
                 List.of(
                         "Used to tweak the randomization of the distance between structures in the sky.",
-                        "Smaller values will result in structures being more on a grid, and larger values will result in them being less predictably placed."),
-                fileConfiguration, "maxOffsetSky", 5);
-        maxOffsetLiquid = ConfigurationEngine.setInt(
+                        "Smaller values will result in structures being more on a grid, and larger values will result in them being less predictably placed.",
+                        offsetValidationDescription(DEFAULT_MAX_OFFSET)),
+                fileConfiguration, "maxOffsetSky", DEFAULT_MAX_OFFSET), DEFAULT_MAX_OFFSET);
+        maxOffsetLiquid = validatedOffset("maxOffsetLiquid", ConfigurationEngine.setInt(
                 List.of(
                         "Used to tweak the randomization of the distance between structures on oceans.",
-                        "Smaller values will result in structures being more on a grid, and larger values will result in them being less predictably placed."),
-                fileConfiguration, "maxOffsetLiquid", 5);
-        maxOffsetDungeon = ConfigurationEngine.setInt(
+                        "Smaller values will result in structures being more on a grid, and larger values will result in them being less predictably placed.",
+                        offsetValidationDescription(DEFAULT_MAX_OFFSET)),
+                fileConfiguration, "maxOffsetLiquid", DEFAULT_MAX_OFFSET), DEFAULT_MAX_OFFSET);
+        maxOffsetDungeon = validatedOffset("maxOffsetDungeonV2", ConfigurationEngine.setInt(
                 List.of(
                         "Used to tweak the randomization of the distance between dungeons.",
-                        "Smaller values will result in dungeons being more on a grid, and larger values will result in them being less predictably placed."),
-                fileConfiguration, "maxOffsetDungeonV2", 18);
+                        "Smaller values will result in dungeons being more on a grid, and larger values will result in them being less predictably placed.",
+                        offsetValidationDescription(DEFAULT_MAX_OFFSET_DUNGEON)),
+                fileConfiguration, "maxOffsetDungeonV2", DEFAULT_MAX_OFFSET_DUNGEON), DEFAULT_MAX_OFFSET_DUNGEON);
 
         spawnProtectionRadius = ConfigurationEngine.setInt(
                 List.of(
@@ -196,5 +218,24 @@ public class DefaultConfig extends ConfigurationFile {
                 fileConfiguration, "spawnProtectionRadius", 100);
 
         ConfigurationEngine.fileSaverOnlyDefaults(fileConfiguration, file);
+    }
+
+    private int validatedDistance(String configKey, int configuredValue, int defaultValue) {
+        if (configuredValue >= 1) return configuredValue;
+        Logger.warn("Invalid " + configKey + " value " + configuredValue + "; using default " + defaultValue + ". Distances must be at least 1.");
+        fileConfiguration.set(configKey, defaultValue);
+        return defaultValue;
+    }
+
+    private int validatedOffset(String configKey, int configuredValue, int defaultValue) {
+        if (configuredValue >= 0 && configuredValue <= MAX_SAFE_OFFSET) return configuredValue;
+        Logger.warn("Invalid " + configKey + " value " + configuredValue + "; using default " + defaultValue +
+                ". Offsets must be between 0 and " + MAX_SAFE_OFFSET + ".");
+        fileConfiguration.set(configKey, defaultValue);
+        return defaultValue;
+    }
+
+    private static String offsetValidationDescription(int defaultValue) {
+        return "Must be between 0 and " + MAX_SAFE_OFFSET + ". Invalid values use the default of " + defaultValue + ".";
     }
 }

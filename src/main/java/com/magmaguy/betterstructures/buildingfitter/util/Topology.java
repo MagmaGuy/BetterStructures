@@ -38,10 +38,12 @@ public class Topology {
     }
 
     private static double scanHighestLocations(int width, int depth, int scanStep, Location iteratedLocation, Vector schematicOffset, ArrayList<Integer> heights, double score) {
-        int totalPointAmount = (int) Math.floor(Math.floor(width / (double) scanStep) * Math.floor(depth / (double) scanStep));
+        //ceil, not floor: the loops below visit ceil(width/step) x ceil(depth/step) points, and
+        //undercounting the total made each water/lava hit subtract more than its intended share
+        int totalPointAmount = (int) (Math.ceil(width / (double) scanStep) * Math.ceil(depth / (double) scanStep));
         for (int x = 0; x < width; x += scanStep) {
             for (int z = 0; z < depth; z += scanStep) {
-                Location projectedLocation = LocationProjector.project(iteratedLocation, new Vector(x, 0, z), schematicOffset);
+                Location projectedLocation = LocationProjector.project(iteratedLocation, schematicOffset, new Vector(x, 0, z));
                 projectedLocation = getHighestBlockAt(projectedLocation);
                 if (projectedLocation == null) {
                     return 0;

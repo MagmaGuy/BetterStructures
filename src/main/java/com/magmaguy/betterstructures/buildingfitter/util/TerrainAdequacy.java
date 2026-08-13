@@ -22,17 +22,22 @@ public class TerrainAdequacy {
         int depth = schematicClipboard.getDimensions().z();
         int height = schematicClipboard.getDimensions().y();
 
+        //Clipboard reads are absolute: the region spans [minimumPoint, maximumPoint], and reads
+        //outside it silently return air. Zero-based coordinates must be offset by the minimum
+        //point, the same way SchematicContainer and Schematic read clipboards.
+        BlockVector3 minimumPoint = schematicClipboard.getMinimumPoint();
+
         int totalCount = 0;
         int negativeCount = 0;
 
         for (int x = 0; x < width; x += scanStep) {
             for (int y = 0; y < height; y += scanStep) {
                 for (int z = 0; z < depth; z += scanStep) {
-                    BlockState schematicBlockStateAtPosition = schematicClipboard.getBlock(BlockVector3.at(x, y, z));
+                    BlockState schematicBlockStateAtPosition = schematicClipboard.getBlock(BlockVector3.at(x, y, z).add(minimumPoint));
                     Material schematicMaterialAtPosition = WorldEditUtils.adaptMaterial(schematicBlockStateAtPosition);
                     boolean schematicBlockIsAir = WorldEditUtils.isAir(schematicBlockStateAtPosition);
                     boolean schematicBlockIsLiquid = schematicMaterialAtPosition == Material.WATER || schematicMaterialAtPosition == Material.LAVA;
-                    Location projectedLocation = LocationProjector.project(iteratedLocation, new Vector(x, y, z), schematicOffset);
+                    Location projectedLocation = LocationProjector.project(iteratedLocation, schematicOffset, new Vector(x, y, z));
                     if (!isBlockAdequate(projectedLocation, schematicBlockIsAir, schematicBlockIsLiquid, iteratedLocation.getBlockY() - 1, scanType))
                         negativeCount++;
                     totalCount++;

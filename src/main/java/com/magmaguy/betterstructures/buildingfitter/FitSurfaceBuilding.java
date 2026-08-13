@@ -55,7 +55,6 @@ public class FitSurfaceBuilding extends FitAnything {
             }
 
         if (location == null) {
-            //Bukkit.broadcastMessage("Yo your locations are whack!");
             return;
         }
 
@@ -79,11 +78,6 @@ public class FitSurfaceBuilding extends FitAnything {
         double adequacyScore = TerrainAdequacy.scan(scanStep, schematicClipboard, iteratedLocation, schematicOffset, TerrainAdequacy.ScanType.SURFACE);
         //Adequacy has an impact of 50% on the score
         score += (.5 * adequacyScore);
-
-        if (score == 0) {
-            //Bukkit.getLogger().info("Exited because ground or surface fit was bad");
-            return;
-        }
 
         if (score > highestScore) {
             highestScore = score;

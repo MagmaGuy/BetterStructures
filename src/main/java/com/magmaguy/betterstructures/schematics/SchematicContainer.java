@@ -8,13 +8,11 @@ import com.magmaguy.betterstructures.config.treasures.TreasureConfig;
 import com.magmaguy.betterstructures.config.treasures.TreasureConfigFields;
 import com.magmaguy.betterstructures.util.WorldEditUtils;
 import com.magmaguy.magmacore.util.Logger;
-import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
 import com.sk89q.worldedit.math.BlockVector3;
 import com.sk89q.worldedit.world.block.BaseBlock;
 import com.sk89q.worldedit.world.block.BlockState;
 import lombok.Getter;
-import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.entity.EntityType;
@@ -24,10 +22,15 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class SchematicContainer {
     @Getter
     private static final ArrayListMultimap<GeneratorConfigFields.StructureType, SchematicContainer> schematics = ArrayListMultimap.create();
+    private static final Map<Object, String> BIOME_ID_CACHE = new ConcurrentHashMap<>();
+    private static volatile boolean eliteMobsAvailable;
+    private static volatile boolean mythicMobsAvailable;
     @Getter
     private final Clipboard clipboard;
     @Getter
@@ -47,12 +50,9 @@ public class SchematicContainer {
     @Getter
     private final HashMap<Vector, String> mythicMobsSpawns = new HashMap<>(); // carm - Support for MythicMobs
     @Getter
-    List<AbstractBlock> abstractBlocks = new ArrayList<>();
-    @Getter
     private ChestContents chestContents = null;
     @Getter
     private ChestContents barrelContents = null;
-    @Getter
     private boolean valid = true;
 
     public SchematicContainer(Clipboard clipboard, String clipboardFilename, SchematicConfigField schematicConfigField, String configFilename) {
@@ -65,12 +65,21 @@ public class SchematicContainer {
             Logger.warn("Failed to assign generator for configuration of schematic " + schematicConfigField.getFilename() + " ! This means this structure will not appear in the world.");
             return;
         }
-        for (int x = 0; x <= clipboard.getDimensions().x(); x++)
-            for (int y = 0; y <= clipboard.getDimensions().y(); y++)
-                for (int z = 0; z <= clipboard.getDimensions().z(); z++) {
+        if (!generatorConfigFields.isEnabled()) {
+            valid = false;
+            return;
+        }
+        if (clipboard == null) {
+            Logger.warn("Failed to find schematic " + clipboardFilename + " for configuration " + configFilename + "; this structure will not be used.");
+            valid = false;
+            return;
+        }
+        for (int x = 0; x < clipboard.getDimensions().x(); x++)
+            for (int y = 0; y < clipboard.getDimensions().y(); y++)
+                for (int z = 0; z < clipboard.getDimensions().z(); z++) {
                     BlockVector3 translatedLocation = BlockVector3.at(x, y, z).add(clipboard.getMinimumPoint());
                     BlockState weBlockState = clipboard.getBlock(translatedLocation);
-                    Material minecraftMaterial = BukkitAdapter.adapt(weBlockState.getBlockType());
+                    Material minecraftMaterial = WorldEditUtils.adaptMaterial(weBlockState);
                     if (minecraftMaterial == null) continue;
                     //register chest location
                     if (minecraftMaterial.equals(Material.CHEST) ||
@@ -79,29 +88,20 @@ public class SchematicContainer {
                             minecraftMaterial.equals(Material.BARREL)) {
                         chestLocations.add(new Vector(x, y, z));
                     }
-                    if (minecraftMaterial.equals(Material.ACACIA_SIGN) ||
-                            minecraftMaterial.equals(Material.ACACIA_WALL_SIGN) ||
-                            minecraftMaterial.equals(Material.SPRUCE_SIGN) ||
-                            minecraftMaterial.equals(Material.SPRUCE_WALL_SIGN) ||
-                            minecraftMaterial.equals(Material.BIRCH_SIGN) ||
-                            minecraftMaterial.equals(Material.BIRCH_WALL_SIGN) ||
-                            minecraftMaterial.equals(Material.CRIMSON_SIGN) ||
-                            minecraftMaterial.equals(Material.CRIMSON_WALL_SIGN) ||
-                            minecraftMaterial.equals(Material.DARK_OAK_SIGN) ||
-                            minecraftMaterial.equals(Material.DARK_OAK_WALL_SIGN) ||
-                            minecraftMaterial.equals(Material.JUNGLE_SIGN) ||
-                            minecraftMaterial.equals(Material.JUNGLE_WALL_SIGN) ||
-                            minecraftMaterial.equals(Material.OAK_SIGN) ||
-                            minecraftMaterial.equals(Material.OAK_WALL_SIGN) ||
-                            minecraftMaterial.equals(Material.WARPED_SIGN) ||
-                            minecraftMaterial.equals(Material.WARPED_WALL_SIGN)) {
+                    if (isSign(minecraftMaterial)) {
                         BaseBlock baseBlock = clipboard.getFullBlock(translatedLocation);
                         //For future reference, I don't know how to get the data in any other way than parsing the string. Sorry!
                         String line1 = WorldEditUtils.getLine(baseBlock, 1);
+                        if (line1 == null || line1.isBlank()) continue;
 
                         //Case for spawning a vanilla mob
                         if (line1.toLowerCase(Locale.ROOT).contains("[spawn]")) {
-                            String line2 = WorldEditUtils.getLine(baseBlock, 2).toUpperCase(Locale.ROOT).replaceAll("\"", "");
+                            String rawLine2 = WorldEditUtils.getLine(baseBlock, 2);
+                            if (rawLine2 == null || rawLine2.isBlank()) {
+                                Logger.warn("Missing entity type for spawn sign in schematic " + clipboardFilename);
+                                continue;
+                            }
+                            String line2 = rawLine2.toUpperCase(Locale.ROOT).replace("\"", "");
                             EntityType entityType;
                             try {
                                 entityType = EntityType.valueOf(line2);
@@ -115,9 +115,8 @@ public class SchematicContainer {
                             }
                             vanillaSpawns.put(new Vector(x, y, z), entityType);
                         } else if (line1.toLowerCase(Locale.ROOT).contains("[elitemobs]")) {
-                            if (Bukkit.getPluginManager().getPlugin("EliteMobs") == null) {
-                                Bukkit.getLogger().warning("[BetterStructures] " + configFilename + " uses EliteMobs bosses but you do not have EliteMobs installed! BetterStructures does not require EliteMobs to work, but if you want cool EliteMobs boss fights you will have to install EliteMobs here: https://nightbreak.io/plugin/elitemobs/");
-                                Bukkit.getLogger().warning("[BetterStructures] Since EliteMobs is not installed, " + configFilename + " will not be used.");
+                            if (!eliteMobsAvailable) {
+                                Logger.warn(configFilename + " uses EliteMobs bosses but EliteMobs is not installed; this schematic will not be used.");
                                 valid = false;
                                 return;
                             }
@@ -125,15 +124,23 @@ public class SchematicContainer {
                             for (int i = 2; i < 5; i++) filename += WorldEditUtils.getLine(baseBlock, i);
                             eliteMobsSpawns.put(new Vector(x, y, z), filename);
                         } else if (line1.toLowerCase(Locale.ROOT).contains("[mythicmobs]")) { // carm start - Support MythicMobs
-                            if (Bukkit.getPluginManager().getPlugin("MythicMobs") == null) {
-                                Bukkit.getLogger().warning("[BetterStructures] " + configFilename + " uses MythicMobs bosses but you do not have MythicMobs installed! BetterStructures does not require MythicMobs to work, but if you want MythicMobs boss fights you will have to install MythicMobs.");
-                                Bukkit.getLogger().warning("[BetterStructures] Since MythicMobs is not installed, " + configFilename + " will not be used.");
+                            if (!mythicMobsAvailable) {
+                                Logger.warn(configFilename + " uses MythicMobs bosses but MythicMobs is not installed; this schematic will not be used.");
                                 valid = false;
                                 return;
                             }
                             String mob = WorldEditUtils.getLine(baseBlock, 2);
                             String level = WorldEditUtils.getLine(baseBlock, 3);
-                            mythicMobsSpawns.put(new Vector(x, y, z), mob + (level.isEmpty() ? "" : ":" + level));
+                            if (mob == null || mob.isBlank()) {
+                                Logger.warn("Missing MythicMobs entity ID for spawn sign in schematic "
+                                        + clipboardFilename);
+                                continue;
+                            }
+                            mythicMobsSpawns.put(
+                                    new Vector(x, y, z),
+                                    mob + (level == null || level.isBlank()
+                                            ? ""
+                                            : ":" + level));
                         } // carm end - Support MythicMobs
                     }
                 }
@@ -159,8 +166,18 @@ public class SchematicContainer {
             generatorConfigFields.getStructureTypes().forEach(structureType -> schematics.put(structureType, this));
     }
 
+    private static boolean isSign(Material material) {
+        return material.name().endsWith("_SIGN") || material.name().endsWith("_WALL_SIGN");
+    }
+
     public static void shutdown() {
         schematics.clear();
+        BIOME_ID_CACHE.clear();
+    }
+
+    public static void updateOptionalPluginAvailability(boolean eliteMobs, boolean mythicMobs) {
+        eliteMobsAvailable = eliteMobs;
+        mythicMobsAvailable = mythicMobs;
     }
 
     public boolean isValidEnvironment(World.Environment environment) {
@@ -173,7 +190,7 @@ public class SchematicContainer {
      * Validates if a biome is in the list of valid biomes, handling both newer interface-based
      * biomes and older class-based biomes.
      *
-     * @param biome The biome to validate
+     * @param biomeObj The biome to validate
      * @return True if the biome is valid, false otherwise
      */
     public boolean isValidBiome(Object biomeObj) {
@@ -199,7 +216,11 @@ public class SchematicContainer {
      * @param biomeObj The biome to get an identifier for (passed as Object to avoid class casting issues)
      * @return A string identifier for the biome
      */
-    private String getBiomeIdentifier(Object biomeObj) {
+    private static String getBiomeIdentifier(Object biomeObj) {
+        return BIOME_ID_CACHE.computeIfAbsent(biomeObj, SchematicContainer::computeBiomeIdentifier);
+    }
+
+    private static String computeBiomeIdentifier(Object biomeObj) {
         // First, try to use reflection to safely handle both class and interface versions
         try {
             // Try to get the getKey method (newer versions)

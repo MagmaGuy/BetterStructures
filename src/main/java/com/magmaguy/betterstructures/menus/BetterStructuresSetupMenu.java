@@ -8,12 +8,8 @@ import com.magmaguy.betterstructures.content.BSPackageRefresher;
 import com.magmaguy.magmacore.menus.MenuButton;
 import com.magmaguy.magmacore.menus.SetupMenuBuilder;
 import com.magmaguy.magmacore.nightbreak.DownloadAllContentPackage;
-import com.magmaguy.magmacore.nightbreak.NightbreakAccount;
 import com.magmaguy.magmacore.nightbreak.NightbreakSetupControls;
 import com.magmaguy.magmacore.util.ChatColorConverter;
-import com.magmaguy.magmacore.util.ItemStackGenerator;
-import com.magmaguy.magmacore.util.Logger;
-import com.magmaguy.magmacore.util.SpigotMessage;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -30,7 +26,8 @@ public class BetterStructuresSetupMenu {
     }
 
     public static void createMenu(Player player) {
-        List<BSPackage> rawBsPackages = new ArrayList<>(BSPackage.getBsPackages().values());
+        if (BetterStructures.rejectContentCommandDuringReload(player)) return;
+        List<BSPackage> rawBsPackages = BetterStructures.availablePackages();
         List<BSPackage> bsPackages = rawBsPackages.stream()
                 .sorted(Comparator.comparing(pkg ->
                         ChatColor.stripColor(ChatColorConverter.convert(pkg.getContentPackageConfigFields().getName()))))
@@ -45,7 +42,7 @@ public class BetterStructuresSetupMenu {
                 .title("Setup menu")
                 .infoButton(infoButton)
                 .packages(bsPackages)
-                .appendPackage(new DownloadAllContentPackage<>(() -> new ArrayList<>(BSPackage.getBsPackages().values()),
+                .appendPackage(new DownloadAllContentPackage<>(BetterStructures::availablePackages,
                         "BetterStructures",
                         "https://nightbreak.io/plugin/betterstructures/",
                         "bs downloadall"))

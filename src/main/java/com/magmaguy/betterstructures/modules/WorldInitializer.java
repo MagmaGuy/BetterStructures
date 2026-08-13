@@ -14,9 +14,11 @@ public class WorldInitializer {
         worldCreator.keepSpawnInMemory(false);
         worldCreator.generator(new VoidGenerator());
         World world = worldCreator.createWorld();
+        if (world == null) {
+            throw new IllegalStateException("Bukkit failed to create world " + worldName);
+        }
         world.setAutoSave(false);
-//        player.teleport(new Location(world, 8, 16, 8));
-        player.setGameMode(GameMode.SPECTATOR);
+        if (player != null) player.setGameMode(GameMode.SPECTATOR);
         return world;
     }
 

@@ -48,50 +48,7 @@ public class FitUndergroundBuilding extends FitAnything {
                 break;
             case NETHER:
                 if (structureType == GeneratorConfigFields.StructureType.UNDERGROUND_SHALLOW) {
-                    boolean streak = false;
-                    int lowPoint = 0;
-                    int highPoint = 0;
-                    int tolerance = 3;
-                    for (int y = lowestY; y < highestY; y++) {
-                        Location currentLocation = originalLocation.clone();
-                        currentLocation.setY(y);
-                        if (currentLocation.getBlock().getType().isSolid()) {
-                            if (streak) {
-                                highPoint = y;
-                            } else {
-                                lowPoint = y;
-                                streak = true;
-                            }
-                        } else {
-                            if (currentLocation.getBlock().getType() == Material.VOID_AIR ||
-                                    currentLocation.getBlock().getType() == Material.BEDROCK ||
-                                    tolerance == 0) {
-                                if (streak) {
-                                    streak = false;
-                                    if (highPoint - lowPoint >= 20)
-                                        break;
-                                    if (currentLocation.getBlock().getType() == Material.VOID_AIR ||
-                                            currentLocation.getBlock().getType() == Material.BEDROCK)
-                                        return;
-                                    tolerance = 3;
-                                }
-                            } else {
-                                if (streak) {
-                                    tolerance--;
-                                    highPoint = y;
-                                }
-                            }
-                        }
-                    }
-                    if (highPoint - lowPoint < 20) {
-                        //Case in which no ground was found which could be used as a valid underground surface
-                        return;
-                    }
-                    if (highPoint - lowPoint > 30) {
-                        originalLocation.setY(ThreadLocalRandom.current().nextInt(lowPoint + 1, highPoint - 20));
-                    } else {
-                        originalLocation.setY(lowPoint + 1D);
-                    }
+                    if (!setShallowUndergroundY(originalLocation)) return;
                 } else {
                     boolean streak = false;
                     int lowPoint = 0;
@@ -141,50 +98,7 @@ public class FitUndergroundBuilding extends FitAnything {
                 break;
             case THE_END:
                 if (structureType == GeneratorConfigFields.StructureType.UNDERGROUND_SHALLOW) {
-                    boolean streak = false;
-                    int lowPoint = 0;
-                    int highPoint = 0;
-                    int tolerance = 3;
-                    for (int y = lowestY; y < highestY; y++) {
-                        Location currentLocation = originalLocation.clone();
-                        currentLocation.setY(y);
-                        if (currentLocation.getBlock().getType().isSolid()) {
-                            if (streak) {
-                                highPoint = y;
-                            } else {
-                                lowPoint = y;
-                                streak = true;
-                            }
-                        } else {
-                            if (currentLocation.getBlock().getType() == Material.VOID_AIR ||
-                                    currentLocation.getBlock().getType() == Material.BEDROCK ||
-                                    tolerance == 0) {
-                                if (streak) {
-                                    streak = false;
-                                    if (highPoint - lowPoint >= 20)
-                                        break;
-                                    if (currentLocation.getBlock().getType() == Material.VOID_AIR ||
-                                            currentLocation.getBlock().getType() == Material.BEDROCK)
-                                        return;
-                                    tolerance = 3;
-                                }
-                            } else {
-                                if (streak) {
-                                    tolerance--;
-                                    highPoint = y;
-                                }
-                            }
-                        }
-                    }
-                    if (highPoint - lowPoint < 20) {
-                        //Case in which no ground was found which could be used as a valid underground surface
-                        return;
-                    }
-                    if (highPoint - lowPoint > 30) {
-                        originalLocation.setY(ThreadLocalRandom.current().nextInt(lowPoint + 1, highPoint - 20));
-                    } else {
-                        originalLocation.setY(lowPoint + 1D);
-                    }
+                    if (!setShallowUndergroundY(originalLocation)) return;
                 }
                 break;
         }
@@ -215,8 +129,8 @@ public class FitUndergroundBuilding extends FitAnything {
             case THE_END:
                 if (originalLocation.getY() - Math.abs(schematicOffset.getY()) < DefaultConfig.getLowestYEnd())
                     originalLocation.setY(DefaultConfig.getLowestYEnd() + 1 + Math.abs(schematicOffset.getY()));
-                else if (originalLocation.getY() + Math.abs(schematicOffset.getY()) - schematicClipboard.getRegion().getHeight() > DefaultConfig.getLowestYEnd())
-                    originalLocation.setY(DefaultConfig.getLowestYEnd() - schematicClipboard.getRegion().getHeight() + Math.abs(schematicOffset.getY()));
+                else if (originalLocation.getY() + Math.abs(schematicOffset.getY()) - schematicClipboard.getRegion().getHeight() > DefaultConfig.getHighestYEnd())
+                    originalLocation.setY(DefaultConfig.getHighestYEnd() - schematicClipboard.getRegion().getHeight() + Math.abs(schematicOffset.getY()));
                 break;
         }
 
@@ -235,6 +149,61 @@ public class FitUndergroundBuilding extends FitAnything {
             return;
 
         paste(location);
+    }
+
+    /**
+     * Upward scan shared by the Nether and End shallow-underground cases: finds a solid streak at
+     * least 20 blocks tall between lowestY and highestY and sets the Y of originalLocation to a
+     * buried position inside it.
+     *
+     * @return true when a valid Y was set, false when no usable underground pocket exists here
+     */
+    private boolean setShallowUndergroundY(Location originalLocation) {
+        boolean streak = false;
+        int lowPoint = 0;
+        int highPoint = 0;
+        int tolerance = 3;
+        for (int y = lowestY; y < highestY; y++) {
+            Location currentLocation = originalLocation.clone();
+            currentLocation.setY(y);
+            if (currentLocation.getBlock().getType().isSolid()) {
+                if (streak) {
+                    highPoint = y;
+                } else {
+                    lowPoint = y;
+                    streak = true;
+                }
+            } else {
+                if (currentLocation.getBlock().getType() == Material.VOID_AIR ||
+                        currentLocation.getBlock().getType() == Material.BEDROCK ||
+                        tolerance == 0) {
+                    if (streak) {
+                        streak = false;
+                        if (highPoint - lowPoint >= 20)
+                            break;
+                        if (currentLocation.getBlock().getType() == Material.VOID_AIR ||
+                                currentLocation.getBlock().getType() == Material.BEDROCK)
+                            return false;
+                        tolerance = 3;
+                    }
+                } else {
+                    if (streak) {
+                        tolerance--;
+                        highPoint = y;
+                    }
+                }
+            }
+        }
+        if (highPoint - lowPoint < 20) {
+            //Case in which no ground was found which could be used as a valid underground surface
+            return false;
+        }
+        if (highPoint - lowPoint > 30) {
+            originalLocation.setY(ThreadLocalRandom.current().nextInt(lowPoint + 1, highPoint - 20));
+        } else {
+            originalLocation.setY(lowPoint + 1D);
+        }
+        return true;
     }
 
     private void chunkScan(Location originalLocation, int chunkX, int chunkZ) {

@@ -195,9 +195,9 @@ public class FitAnything {
         int maxSurfaceHeightScan = 20;
 
         //get underground pedestal blocks
-        for (int x = 0; x < schematicClipboard.getDimensions().x(); x++)
-            for (int z = 0; z < schematicClipboard.getDimensions().z(); z++)
-                for (int y = 0; y < schematicClipboard.getDimensions().y(); y++) {
+        for (int x = 0; x < schematicClipboard.getDimensions().x(); x += scanStep)
+            for (int z = 0; z < schematicClipboard.getDimensions().z(); z += scanStep)
+                for (int y = 0; y < schematicClipboard.getDimensions().y(); y += scanStep) {
                     Block groundBlock = lowestCorner.clone().add(new Vector(x, y, z)).getBlock();
                     Block aboveBlock = groundBlock.getRelative(BlockFace.UP);
 
@@ -206,8 +206,8 @@ public class FitAnything {
                 }
 
         //get above ground pedestal blocks, if any
-        for (int x = 0; x < schematicClipboard.getDimensions().x(); x++)
-            for (int z = 0; z < schematicClipboard.getDimensions().z(); z++) {
+        for (int x = 0; x < schematicClipboard.getDimensions().x(); x += scanStep)
+            for (int z = 0; z < schematicClipboard.getDimensions().z(); z += scanStep) {
                 boolean scanUp = lowestCorner.clone().add(new Vector(x, schematicClipboard.getDimensions().y(), z)).getBlock().getType().isSolid();
                 for (int y = 0; y < maxSurfaceHeightScan; y++) {
                     Block groundBlock = lowestCorner.clone().add(new Vector(x, scanUp ? y : -y, z)).getBlock();
@@ -273,9 +273,10 @@ public class FitAnything {
 
     private void clearTrees(Location location) {
         Location highestCorner = location.clone().add(schematicOffset).add(new Vector(0, schematicClipboard.getDimensions().y() + 1, 0));
-        boolean detectedTreeElement = true;
         for (int x = 0; x < schematicClipboard.getDimensions().x(); x++)
             for (int z = 0; z < schematicClipboard.getDimensions().z(); z++) {
+                //Reset per column: each column scans upward until it finds a layer with no tree element
+                boolean detectedTreeElement = true;
                 for (int y = 0; y < 31; y++) {
                     if (!detectedTreeElement) break;
                     detectedTreeElement = false;
@@ -360,7 +361,7 @@ public class FitAnything {
             //If the spawn fails then don't continue
             if (!EliteMobs.Spawn(eliteLocation, bossFilename)) return;
             Location lowestCorner = location.clone().add(schematicOffset);
-            Location highestCorner = lowestCorner.clone().add(new Vector(schematicClipboard.getRegion().getWidth() - 1, schematicClipboard.getRegion().getHeight(), schematicClipboard.getRegion().getLength() - 1));
+            Location highestCorner = lowestCorner.clone().add(new Vector(schematicClipboard.getRegion().getWidth() - 1, schematicClipboard.getRegion().getHeight() - 1, schematicClipboard.getRegion().getLength() - 1));
             if (DefaultConfig.isProtectEliteMobsRegions() &&
                     Bukkit.getPluginManager().getPlugin("WorldGuard") != null &&
                     Bukkit.getPluginManager().getPlugin("EliteMobs") != null) {

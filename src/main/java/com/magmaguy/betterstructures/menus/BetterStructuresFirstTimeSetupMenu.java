@@ -1,5 +1,6 @@
 package com.magmaguy.betterstructures.menus;
 
+import com.magmaguy.betterstructures.BetterStructures;
 import com.magmaguy.betterstructures.MetadataHandler;
 import com.magmaguy.betterstructures.commands.ReloadCommand;
 import com.magmaguy.betterstructures.config.DefaultConfig;
@@ -18,6 +19,7 @@ import java.util.List;
 
 public class BetterStructuresFirstTimeSetupMenu {
     public static void createMenu(Player player) {
+        if (BetterStructures.rejectContentCommandDuringReload(player)) return;
         new FirstTimeSetupMenu(
                 (JavaPlugin) MetadataHandler.PLUGIN,
                 player,

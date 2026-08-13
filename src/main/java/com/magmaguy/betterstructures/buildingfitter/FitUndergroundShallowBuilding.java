@@ -13,13 +13,13 @@ public class FitUndergroundShallowBuilding {
         switch (chunk.getWorld().getEnvironment()) {
             case NORMAL:
             case CUSTOM:
-                new FitUndergroundBuilding(chunk, -0, 50, GeneratorConfigFields.StructureType.UNDERGROUND_SHALLOW);
+                new FitUndergroundBuilding(chunk, 0, 50, GeneratorConfigFields.StructureType.UNDERGROUND_SHALLOW);
                 break;
             case NETHER:
                 new FitUndergroundBuilding(chunk, 60, 120, GeneratorConfigFields.StructureType.UNDERGROUND_SHALLOW);
                 break;
             case THE_END:
-                //The nether has no "deep" underground area, it's floating islands
+                //The End has no "deep" underground area, it's floating islands
                 new FitUndergroundBuilding(chunk, 0, 80, GeneratorConfigFields.StructureType.UNDERGROUND_SHALLOW);
                 break;
             default:
@@ -30,14 +30,14 @@ public class FitUndergroundShallowBuilding {
         switch (chunk.getWorld().getEnvironment()) {
             case NORMAL:
             case CUSTOM:
-                new FitUndergroundBuilding(chunk, schematicContainer, -53, 0, GeneratorConfigFields.StructureType.UNDERGROUND_SHALLOW);
+                new FitUndergroundBuilding(chunk, schematicContainer, 0, 50, GeneratorConfigFields.StructureType.UNDERGROUND_SHALLOW);
                 break;
             case NETHER:
-                new FitUndergroundBuilding(chunk, schematicContainer, 5, 60, GeneratorConfigFields.StructureType.UNDERGROUND_SHALLOW);
+                new FitUndergroundBuilding(chunk, schematicContainer, 60, 120, GeneratorConfigFields.StructureType.UNDERGROUND_SHALLOW);
                 break;
             case THE_END:
                 new FitUndergroundBuilding(chunk, schematicContainer, 0, 80, GeneratorConfigFields.StructureType.UNDERGROUND_SHALLOW);
-                //The nether has no "deep" underground area, it's floating islands
+                //The End has no "deep" underground area, it's floating islands
                 break;
             default:
                 Logger.warn("Unexpected environment type: " + chunk.getWorld().getEnvironment());

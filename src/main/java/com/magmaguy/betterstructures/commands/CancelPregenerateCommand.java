@@ -23,7 +23,7 @@ public class CancelPregenerateCommand extends AdvancedCommand {
         World world = commandData.getPlayerSender().getWorld();
         
         // Find active pregenerators in the player's world
-        List<ChunkPregenerator> worldPregenerators = ChunkPregenerator.activePregenerators.stream()
+        List<ChunkPregenerator> worldPregenerators = ChunkPregenerator.getActivePregenerators().stream()
                 .filter(p -> p.getWorld().equals(world))
                 .toList();
 
