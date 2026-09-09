@@ -1,8 +1,10 @@
 package com.magmaguy.betterstructures.config;
 
 import com.magmaguy.betterstructures.MetadataHandler;
+import com.magmaguy.betterstructures.thirdparty.EliteMobs;
 import com.magmaguy.magmacore.config.ConfigurationEngine;
 import com.magmaguy.magmacore.config.ConfigurationFile;
+import com.magmaguy.magmacore.util.Logger;
 import com.magmaguy.magmacore.util.WorldFolderResolver;
 import lombok.Getter;
 import org.bukkit.Bukkit;
@@ -20,6 +22,7 @@ import java.util.HashMap;
 
 public class ValidWorldsConfig extends ConfigurationFile {
     private static final String VALID_WORLDS_KEY = "Valid worlds";
+
     private static final long UNLOAD_PRUNE_DELAY_TICKS = 20L * 10L;
     private static final HashMap<String, Boolean> validWorlds = new HashMap<>();
     private static boolean whitelistNewWorlds;
@@ -32,7 +35,18 @@ public class ValidWorldsConfig extends ConfigurationFile {
 
     public static void registerNewWorld(World world) {
         if (world == null || instance == null) return;
-        registerWorldName(world.getName(), whitelistNewWorlds, true);
+        registerWorldName(world.getName(), defaultFor(world), true);
+        warnEnabledManagedWorld(world);
+    }
+
+    /**
+     * EliteMobs-managed worlds (content worlds like the adventurers guild, and instanced dungeon
+     * copies) default to not generating structures: their void chunks beyond the pre-built area
+     * count as new chunks, which had BetterStructures decorating dungeon hubs. The entry is still
+     * written to ValidWorlds.yml, so an admin who genuinely wants structures there can flip it.
+     */
+    private static boolean defaultFor(World world) {
+        return whitelistNewWorlds && !EliteMobs.isEliteMobsManagedWorld(world);
     }
 
     private static void registerWorldName(String worldName, boolean defaultValue, boolean save) {
@@ -84,6 +98,12 @@ public class ValidWorldsConfig extends ConfigurationFile {
         }
     }
 
+    private static void warnEnabledManagedWorld(World world) {
+        if (Boolean.TRUE.equals(validWorlds.get(world.getName())) && EliteMobs.isEliteMobsManagedWorld(world))
+            Logger.warn("Structure generation is explicitly enabled for EliteMobs-managed world " + world.getName()
+                    + ". Preserving your ValidWorlds.yml setting; disable it there if this was unintended.");
+    }
+
     public static boolean isValidWorld(World world) {
         if (world == null) return false;
         if (validWorlds.get(world.getName()) != null)
@@ -103,8 +123,10 @@ public class ValidWorldsConfig extends ConfigurationFile {
 
         pruneMissingWorldEntries();
 
-        for (World world : Bukkit.getWorlds())
-            registerWorldName(world.getName(), whitelistNewWorlds, false);
+        for (World world : Bukkit.getWorlds()) {
+            registerWorldName(world.getName(), defaultFor(world), false);
+            warnEnabledManagedWorld(world);
+        }
 
         ConfigurationSection validWorldsSection = fileConfiguration.getConfigurationSection(VALID_WORLDS_KEY);
         if (validWorldsSection == null) return;

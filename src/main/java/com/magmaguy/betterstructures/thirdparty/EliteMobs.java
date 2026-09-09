@@ -2,13 +2,22 @@ package com.magmaguy.betterstructures.thirdparty;
 
 import com.magmaguy.betterstructures.MetadataHandler;
 import com.magmaguy.elitemobs.commands.ReloadCommand;
+import com.magmaguy.elitemobs.dungeons.EliteMobsWorld;
 import com.magmaguy.elitemobs.mobconstructor.custombosses.RegionalBossEntity;
 import com.magmaguy.magmacore.util.Logger;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
 
 public class EliteMobs {
+
+    /** Uses EliteMobs' ownership registry, including worlds currently being loaded by it. */
+    public static boolean isEliteMobsManagedWorld(World world) {
+        if (world == null) return false;
+        if (!Bukkit.getPluginManager().isPluginEnabled("EliteMobs")) return false;
+        return EliteMobsWorld.isEliteMobsWorld(world.getUID());
+    }
     /**
      * Spawns a 1-time regional boss at the set location
      *
