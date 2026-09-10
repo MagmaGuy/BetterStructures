@@ -9,6 +9,10 @@ final class ChunkScanReentrancyGuard {
 
     private final ThreadLocal<Boolean> active = ThreadLocal.withInitial(() -> false);
 
+    boolean isActive() {
+        return active.get();
+    }
+
     boolean runIfIdle(Runnable scan) {
         if (active.get()) return false;
 

@@ -36,12 +36,13 @@ import java.util.concurrent.ThreadLocalRandom;
 public class NewChunkLoadEvent implements Listener {
 
     private static final Set<LoadingChunkKey> loadingChunks = new HashSet<>();
-    // A content reload temporarily owns and rebuilds every registry read by a
-    // chunk scan. Keep only stable coordinates for new chunks observed during
-    // that window; retaining Chunk/World objects would pin unloaded worlds.
+    // Terrain lookups must run after the chunk-load callback has returned. The
+    // same queue also retains scans across content reloads. Store coordinates
+    // rather than Chunk/World references so deferred work cannot pin worlds.
     private static final Set<LoadingChunkKey> deferredNewChunks = new LinkedHashSet<>();
     private static final ChunkScanReentrancyGuard chunkScanReentrancyGuard = new ChunkScanReentrancyGuard();
     private static final int MAX_DEFERRED_SCANS_PER_DRAIN = 32;
+    private static final long MAX_DEFERRED_SCAN_NANOS = 5_000_000L;
     private static BukkitTask deferredDrainTask;
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
@@ -54,22 +55,20 @@ public class NewChunkLoadEvent implements Listener {
             if (event.isNewChunk()) deferredNewChunks.add(loadingChunkKey);
             return;
         }
-        // A deferred chunk may have unloaded while content was rebuilding. Its
+        // A deferred chunk may have unloaded before its scan could run. Its
         // later load is no longer reported as "new", but it still needs the one
         // generation scan that was postponed by the reload gate.
         if (!event.isNewChunk() && !deferred) return;
 
-        boolean scanned = chunkScanReentrancyGuard.runIfIdle(
-                () -> scanNewChunk(chunk, loadingChunkKey));
-        if (scanned) {
-            deferredNewChunks.remove(loadingChunkKey);
-        } else if (deferred) {
-            // This load happened synchronously inside another guarded scan. The
-            // chunk is loaded now, so waiting for another ChunkLoadEvent could
-            // strand its reload-deferred scan forever. Drain it next tick, once
-            // the outer scan has released the reentrancy guard.
-            scheduleDeferredDrain();
+        if (chunkScanReentrancyGuard.isActive()) {
+            // A terrain read can load neighboring chunks. Do not enqueue those
+            // side effects: replaying them would recursively expand generation.
+            // Previously queued work still needs a drain now that it is loaded.
+            if (deferred) scheduleDeferredDrain();
+            return;
         }
+        deferredNewChunks.add(loadingChunkKey);
+        scheduleDeferredDrain();
     }
 
     private static void scanNewChunk(Chunk chunk, LoadingChunkKey loadingChunkKey) {
@@ -124,10 +123,12 @@ public class NewChunkLoadEvent implements Listener {
         if (BetterStructures.isReloading() || deferredNewChunks.isEmpty()
                 || MetadataHandler.PLUGIN == null || !MetadataHandler.PLUGIN.isEnabled()) return;
 
+        long started = System.nanoTime();
         Set<LoadingChunkKey> attempted = new HashSet<>();
         int attempts = 0;
         for (LoadingChunkKey loadingChunkKey : new ArrayList<>(deferredNewChunks)) {
-            if (attempts >= MAX_DEFERRED_SCANS_PER_DRAIN) break;
+            if (attempts >= MAX_DEFERRED_SCANS_PER_DRAIN
+                    || (attempts > 0 && System.nanoTime() - started >= MAX_DEFERRED_SCAN_NANOS)) break;
             World world = Bukkit.getWorld(loadingChunkKey.worldId());
             if (world == null || !world.isChunkLoaded(
                     loadingChunkKey.x(), loadingChunkKey.z())) continue;

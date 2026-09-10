@@ -52,27 +52,28 @@ public class TerrainAdequacy {
 
     private static boolean isBlockAdequate(Location projectedWorldLocation, boolean schematicBlockIsAir, boolean schematicBlockIsLiquid, int floorHeight, ScanType scanType) {
         int floorYValue = projectedWorldLocation.getBlockY();
-        if (projectedWorldLocation.getBlock().getType().equals(Material.VOID_AIR)) return false;
+        Material terrain = projectedWorldLocation.getBlock().getType();
+        if (terrain == Material.VOID_AIR) return false;
         switch (scanType) {
             case SURFACE:
                 if (floorYValue > floorHeight)
                     //for air level
-                    return SurfaceMaterials.ignorable(projectedWorldLocation.getBlock().getType()) || !schematicBlockIsAir;
+                    return SurfaceMaterials.ignorable(terrain) || !schematicBlockIsAir;
                 else
                     //for underground level
-                    return !projectedWorldLocation.getBlock().getType().isAir();
+                    return !terrain.isAir();
             case AIR:
-                return projectedWorldLocation.getBlock().getType().isAir();
+                return terrain.isAir();
             case UNDERGROUND:
-                return projectedWorldLocation.getBlock().getType().isSolid();
+                return terrain.isSolid();
             case LIQUID:
                 if (floorYValue > floorHeight) {
                     //for air level
-                    return projectedWorldLocation.getBlock().getType().isAir();
+                    return terrain.isAir();
                 } else {
                     //for underwater level
                     if (schematicBlockIsLiquid)
-                        return projectedWorldLocation.getBlock().isLiquid();
+                        return terrain == Material.WATER || terrain == Material.LAVA;
                     else
                         return true;
                 }
