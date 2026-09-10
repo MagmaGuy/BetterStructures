@@ -7,6 +7,7 @@ import com.magmaguy.betterstructures.worldedit.Schematic;
 import com.magmaguy.betterstructures.worldedit.SchematicClipboardCache;
 import com.magmaguy.betterstructures.worldedit.SchematicConversionLog;
 import com.magmaguy.magmacore.config.CustomConfig;
+import com.magmaguy.magmacore.config.ContentFileSelector;
 import com.magmaguy.magmacore.util.Logger;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
 import com.sk89q.worldedit.extent.clipboard.io.BuiltInClipboardFormat;
@@ -28,7 +29,6 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.HashSet;
@@ -83,8 +83,8 @@ public class SchematicConfig extends CustomConfig {
         File[] schematicFiles = readMeFile.getParentFile().listFiles();
         if (schematicFiles != null)
             for (File file : schematicFiles) SchematicFileUtils.scanDirectoryForSchematics(file, schematicFilesList);
-        //Sorted so config generation order, and therefore console output, is stable between boots.
-        schematicFilesList.sort(Comparator.comparing(File::getAbsolutePath));
+        // Resolve filename collisions before reading clipboards or generating their configurations.
+        schematicFilesList = ContentFileSelector.select(schematicFilesList);
 
         Map<File, Clipboard> clipboards = loadClipboards(schematicFilesList);
         phaseStart = logPhase("read " + clipboards.size() + " schematic files", phaseStart);
@@ -94,16 +94,9 @@ public class SchematicConfig extends CustomConfig {
         //is ~682 configurations x ~682 clipboards of string comparisons for no reason.
         Map<String, File> sourceByFilename = new HashMap<>();
         for (Map.Entry<File, Clipboard> entry : clipboards.entrySet()) {
-            File previous = sourceByFilename.putIfAbsent(
+            sourceByFilename.put(
                     entry.getKey().getName(),
                     entry.getKey());
-            if (previous != null && !previous.equals(entry.getKey())) {
-                throw new IllegalStateException(
-                        "Duplicate schematic filename '" + entry.getKey().getName()
-                                + "' exists at both " + previous.getPath() + " and "
-                                + entry.getKey().getPath()
-                                + "; configuration lookup by filename would be ambiguous.");
-            }
         }
 
         for (File file : clipboards.keySet()) {
