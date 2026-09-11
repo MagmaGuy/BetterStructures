@@ -133,7 +133,6 @@ publishing {
 
     publications {
         mavenJava(MavenPublication) {
-            artifact(tasks.named('shadowJar')) { classifier = null }
             pom {
                 groupId = 'com.magmaguy'
                 name = 'betterstructures'
