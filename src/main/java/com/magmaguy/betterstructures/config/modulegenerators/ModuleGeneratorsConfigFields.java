@@ -72,6 +72,7 @@ public class ModuleGeneratorsConfigFields extends CustomConfigFields {
 
     @Override
     public void processConfigFields() {
+        this.isEnabled = processBoolean("isEnabled", isEnabled, true, true);
         this.radius = processInt("radius", radius, 1, true);
         this.edges = processBoolean("edges", edges, false, true);
         this.startModules = processStringList("startModule", startModules, null, true);
@@ -87,7 +88,10 @@ public class ModuleGeneratorsConfigFields extends CustomConfigFields {
         this.generateLootInBarrels = processBoolean("generateLootInBarrels", generateLootInBarrels, true, false);
         this.barrelTreasureFilename = processString("barrelTreasureFilename", barrelTreasureFilename, "treasure_barrel_food.yml", false);
         this.validWorlds = processStringList("validWorlds", validWorlds, new ArrayList<>(), false);
-        this.validWorldEnvironments = processEnumList("validWorldEnvironments", validWorldEnvironments, null, World.Environment.class, false);
+        // NORMAL+CUSTOM is the field-level default so hand-written or third-party
+        // generator files without the key can't generate in the Nether/End.
+        this.validWorldEnvironments = processEnumList("validWorldEnvironments", validWorldEnvironments,
+                List.of(World.Environment.NORMAL, World.Environment.CUSTOM), World.Environment.class, false);
         this.centerModuleAltitude = processInt("centerModuleAltitude", centerModuleAltitude, 0, false);
     }
 }

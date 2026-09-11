@@ -6,7 +6,7 @@ plugins {
 }
 
 group = 'com.magmaguy'
-version = '2.7.0'
+version = '2.7.1'
 
 repositories {
     mavenCentral()
@@ -44,6 +44,10 @@ dependencies {
     //data converter emits while reading schematics (see SchematicConversionLog). compileOnly: the
     //server always provides it, and a runtime without it degrades to the original output.
     compileOnly 'org.apache.logging.log4j:log4j-core:2.24.1'
+
+    testImplementation platform('org.junit:junit-bom:5.12.2')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 //This allows any modules tagged as changing to be updated every time, which is extremely convenient for some of the shaded libs
@@ -95,6 +99,10 @@ tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
 }
 
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
 ext {
     resourceTokens = [
             'Version': version
@@ -117,8 +125,8 @@ publishing {
             name = "BetterStructures"
             url = "https://repo.magmaguy.com/releases"
             credentials {
-                username = project.hasProperty('ossrhUsername') ? ossrhUsername : "Unknown user"
-                password = project.hasProperty('ossrhPassword') ? ossrhPassword : "Unknown password"
+                username = project.findProperty('magmaguyUsername') ?: System.getenv('MAGMAGUY_USERNAME') ?: ''
+                password = project.findProperty('magmaguyPassword') ?: System.getenv('MAGMAGUY_PASSWORD') ?: ''
             }
         }
     }

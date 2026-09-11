@@ -41,6 +41,20 @@ public final class SchematicConversionLog {
     private static final String DATA_FIXER_LOGGER_NAME = "com.mojang.datafixers.DataFixerUpper";
     private static final String UNSUPPORTED_KEY_PREFIX = "Unsupported key: ";
 
+    /**
+     * Every install path used to bail out silently, so "filter absent" and "filter
+     * present but a new path escaped it" were indistinguishable in reports. One
+     * line per JVM keeps the distinction visible without becoming its own spam.
+     */
+    private static final java.util.concurrent.atomic.AtomicBoolean installSkipReported =
+            new java.util.concurrent.atomic.AtomicBoolean();
+
+    private static void reportInstallSkippedOnce(String reason) {
+        if (!installSkipReported.compareAndSet(false, true)) return;
+        Logger.info("Legacy-conversion log summarizer could not attach (" + reason
+                + "); per-line DataFixerUpper output stays as-is. Content still loads normally.");
+    }
+
     private SchematicConversionLog() {
     }
 
@@ -59,7 +73,11 @@ public final class SchematicConversionLog {
 
         private Session() {
             try {
-                if (!(LogManager.getContext(false) instanceof LoggerContext context)) return;
+                LoggerContext context = resolveDataFixerContext();
+                if (context == null) {
+                    reportInstallSkippedOnce("the logging backend is not log4j-core");
+                    return;
+                }
                 LoggerConfig dataFixerLoggerConfig =
                         context.getConfiguration().getLoggerConfig(DATA_FIXER_LOGGER_NAME);
                 filter.start();
@@ -68,8 +86,33 @@ public final class SchematicConversionLog {
             } catch (Throwable throwable) {
                 //A logging backend this cannot drive is not a reason to fail a content load; the
                 //only consequence is that the original per-occurrence output stays.
+                reportInstallSkippedOnce(throwable.getClass().getSimpleName()
+                        + (throwable.getMessage() == null ? "" : ": " + throwable.getMessage()));
                 close();
             }
+        }
+
+        /**
+         * The filter must land in the Log4j context that actually dispatches
+         * DataFixerUpper's events. {@code LogManager.getContext(false)} resolves by
+         * THIS class's classloader — the plugin classloader — and under a
+         * classloader-based context selector that can be a separate context whose
+         * configuration no DataFixerUpper event ever traverses: the filter then
+         * installs cleanly and does nothing, which is exactly the failure a
+         * support ticket reported as "the bed spam is still there". Resolve
+         * through DataFixerUpper's own classloader first; fall back to the caller
+         * context for backends where both resolve the same.
+         */
+        private static LoggerContext resolveDataFixerContext() {
+            try {
+                Class<?> dataFixerClass = Class.forName("com.mojang.datafixers.DataFixerUpper");
+                if (LogManager.getContext(dataFixerClass.getClassLoader(), false)
+                        instanceof LoggerContext context) return context;
+            } catch (Throwable ignored) {
+                //DataFixerUpper missing or shaded elsewhere; the caller-context
+                //fallback below is the pre-existing behavior.
+            }
+            return LogManager.getContext(false) instanceof LoggerContext context ? context : null;
         }
 
         @Override

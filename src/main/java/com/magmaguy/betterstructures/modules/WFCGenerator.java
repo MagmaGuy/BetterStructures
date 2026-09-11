@@ -24,13 +24,19 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
+import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 
 import static com.magmaguy.betterstructures.modules.ModulesContainer.pickWeightedRandomModule;
 
 public class WFCGenerator {
     private static final Set<WFCGenerator> ACTIVE_GENERATORS = ConcurrentHashMap.newKeySet();
+    // A single exceeded backtrack limit is just an unlucky layout that gets skipped; only warn once a
+    // generator keeps failing without ever succeeding, since that means it can likely never generate.
+    private static final int STUCK_GENERATOR_WARNING_THRESHOLD = 100;
+    private static final ConcurrentHashMap<String, AtomicInteger> backtrackFailureStreaks = new ConcurrentHashMap<>();
     @Getter
     private ModuleGeneratorsConfigFields moduleGeneratorsConfigFields;
 
@@ -53,6 +59,7 @@ public class WFCGenerator {
     private volatile String pendingProgressMessage;
     private final AtomicBoolean progressUpdateScheduled = new AtomicBoolean();
     private final AtomicBoolean cleanedUp = new AtomicBoolean();
+    private BooleanSupplier naturalPasteGuard;
 
     public WFCGenerator(ModuleGeneratorsConfigFields moduleGeneratorsConfigFields, Player player) {
         this.player = Objects.requireNonNull(player, "player");
@@ -65,10 +72,29 @@ public class WFCGenerator {
         initialize(moduleGeneratorsConfigFields);
     }
 
+    private WFCGenerator(
+            ModuleGeneratorsConfigFields moduleGeneratorsConfigFields,
+            Location startLocation,
+            BooleanSupplier naturalPasteGuard) {
+        this.startLocation = Objects.requireNonNull(startLocation, "startLocation");
+        this.naturalPasteGuard = Objects.requireNonNull(naturalPasteGuard, "naturalPasteGuard");
+        initialize(moduleGeneratorsConfigFields);
+    }
+
     public static void generateFromConfig(ModuleGeneratorsConfigFields generatorsConfigFields, Player player) {
         Objects.requireNonNull(generatorsConfigFields, "generatorsConfigFields");
         Objects.requireNonNull(player, "player");
         runOnPrimaryThread(() -> new WFCGenerator(generatorsConfigFields, player));
+    }
+
+    public static void generateNaturally(
+            ModuleGeneratorsConfigFields generatorsConfigFields,
+            Location startLocation,
+            BooleanSupplier pasteGuard) {
+        Objects.requireNonNull(generatorsConfigFields, "generatorsConfigFields");
+        Objects.requireNonNull(startLocation, "startLocation");
+        Objects.requireNonNull(pasteGuard, "pasteGuard");
+        runOnPrimaryThread(() -> new WFCGenerator(generatorsConfigFields, startLocation, pasteGuard));
     }
 
     public static void shutdown() {
@@ -274,9 +300,18 @@ public class WFCGenerator {
         rollbackCounter++;
         if (rollbackCounter > 1000) {
             updateProgressBar("Generation failed - exceeded backtrack limit");
-            Logger.warn("Exceeded backtrack limit!");
+            registerBacktrackLimitFailure();
             isCancelled = true;
         }
+    }
+
+    private void registerBacktrackLimitFailure() {
+        String generatorName = moduleGeneratorsConfigFields.getFilename();
+        int streak = backtrackFailureStreaks.computeIfAbsent(generatorName, key -> new AtomicInteger()).incrementAndGet();
+        if (streak % STUCK_GENERATOR_WARNING_THRESHOLD == 0)
+            Logger.warn("Exceeded backtrack limit! Generator " + generatorName + " has failed " + streak +
+                    " times in a row without a successful generation, so it is likely unable to generate at all." +
+                    " Check that its modules can fit together and that the lattice settings are sane.");
     }
 
     private void finishGeneration() {
@@ -284,6 +319,24 @@ public class WFCGenerator {
             cleanup();
             return;
         }
+        if (naturalPasteGuard != null) {
+            boolean safeToPaste;
+            try {
+                safeToPaste = naturalPasteGuard.getAsBoolean();
+            } catch (Throwable throwable) {
+                Logger.warn("Cancelled natural modular generation because its final safety check failed: "
+                        + throwable.getMessage());
+                cleanup();
+                return;
+            }
+            if (!safeToPaste) {
+                Logger.info("Cancelled natural modular generation because part of its reserved "
+                        + "footprint became occupied or protected before paste.");
+                cleanup();
+                return;
+            }
+        }
+        backtrackFailureStreaks.remove(moduleGeneratorsConfigFields.getFilename());
         updateProgressBar("Generation complete!");
         if (player != null) {
             player.sendMessage("Done assembling!");

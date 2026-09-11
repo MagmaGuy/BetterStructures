@@ -4,13 +4,18 @@ import com.magmaguy.betterstructures.MetadataHandler;
 import com.magmaguy.betterstructures.api.WorldGenerationFinishEvent;
 import com.magmaguy.betterstructures.config.spawnpools.SpawnPoolsConfig;
 import com.magmaguy.betterstructures.config.spawnpools.SpawnPoolsConfigFields;
+import com.magmaguy.betterstructures.util.SchematicFileUtils;
 import com.magmaguy.betterstructures.worldedit.Schematic;
+import com.magmaguy.betterstructures.worldedit.SchematicClipboardCache;
+import com.magmaguy.betterstructures.worldedit.SchematicConversionLog;
+import com.magmaguy.betterstructures.worldedit.SchematicDiskCache;
 import com.magmaguy.elitemobs.config.custombosses.CustomBossesConfig;
 import com.magmaguy.elitemobs.config.custombosses.CustomBossesConfigFields;
 import com.magmaguy.elitemobs.mobconstructor.custombosses.CustomBossEntity;
 import com.magmaguy.elitemobs.mobconstructor.custombosses.InstancedBossEntity;
 import com.magmaguy.magmacore.instance.MatchInstance;
 import com.magmaguy.magmacore.util.Logger;
+import com.sk89q.worldedit.extent.clipboard.Clipboard;
 import lombok.Getter;
 import org.bukkit.*;
 import org.bukkit.block.Block;
@@ -22,6 +27,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -117,33 +123,60 @@ public class ModularWorld {
         return barrels;
     }
 
+    //Component schematics load one at a time at world-generation time, outside the startup scan,
+    //so every generated world used to re-run Mojang's data converter over the same few files.
+    private static final SchematicClipboardCache componentClipboardCache = new SchematicClipboardCache();
+
     //todo: maybe this should go into extractioncraft later
     public List<Location> spawnInaccessibleExitLocations() {
-        List<Location> randomizedLocations = new ArrayList<>();
-        for (ExitLocation exitLocation : exitLocations) {
-            File exitLocationsFile = new File(MetadataHandler.PLUGIN.getDataFolder().getAbsolutePath() + File.separatorChar + "components" + File.separatorChar + exitLocation.clipboardFilenameUp + ".schem");
-            if (!exitLocationsFile.exists()) {
-                Logger.warn("Failed to find elevator file");
-                continue;
-            }
-            randomizedLocations.add(exitLocation.location);
-            Schematic.paste(Schematic.load(exitLocationsFile), exitLocation.location);
-        }
-        return randomizedLocations;
+        return spawnExitLocations(exitLocation -> exitLocation.clipboardFilenameUp);
     }
 
     public List<Location> spawnAccessibleExitLocations() {
+        return spawnExitLocations(exitLocation -> exitLocation.clipboardFilenameDown);
+    }
+
+    private List<Location> spawnExitLocations(Function<ExitLocation, String> componentFilename) {
         List<Location> randomizedLocations = new ArrayList<>();
-        for (ExitLocation exitLocation : exitLocations) {
-            File exitLocationsFile = new File(MetadataHandler.PLUGIN.getDataFolder().getAbsolutePath() + File.separatorChar + "components" + File.separatorChar + exitLocation.clipboardFilenameDown + ".schem");
-            if (!exitLocationsFile.exists()) {
-                Logger.warn("Failed to find elevator file");
-                continue;
+        if (exitLocations.isEmpty()) return randomizedLocations;
+
+        File componentsFolder = new File(MetadataHandler.PLUGIN.getDataFolder().getAbsolutePath()
+                + File.separatorChar + "components");
+        //Pruning needs the full current component set, not just the files this world references —
+        //anything the prune cannot account for is deleted.
+        List<File> componentFiles = new ArrayList<>();
+        SchematicFileUtils.scanDirectoryForSchematics(componentsFolder, componentFiles);
+        int forgotten = componentClipboardCache.retainOnly(componentFiles);
+        SchematicDiskCache diskCache =
+                new SchematicDiskCache(SchematicDiskCache.componentCacheFolder());
+
+        // Conversion-log capture: these component schematics load fresh at
+        // world-generation time, outside the startup scan, so without a session
+        // here they were the one remaining path spamming raw DataFixerUpper
+        // errors for legacy block entries.
+        try (SchematicConversionLog.Session conversionLog = SchematicConversionLog.capture()) {
+            for (ExitLocation exitLocation : exitLocations) {
+                File exitLocationsFile = new File(componentsFolder,
+                        componentFilename.apply(exitLocation) + ".schem");
+                if (!exitLocationsFile.exists()) {
+                    Logger.warn("Failed to find elevator file");
+                    continue;
+                }
+                randomizedLocations.add(exitLocation.location);
+                Schematic.paste(loadComponent(exitLocationsFile, diskCache), exitLocation.location);
             }
-            randomizedLocations.add(exitLocation.location);
-            Schematic.paste(Schematic.load(exitLocationsFile), exitLocation.location);
         }
+        if (diskCache.filesRead() > 0 || forgotten > 0)
+            diskCache.pruneStaleEntries(componentFiles);
         return randomizedLocations;
+    }
+
+    private static Clipboard loadComponent(File componentFile, SchematicDiskCache diskCache) {
+        Clipboard clipboard = componentClipboardCache.get(componentFile);
+        if (clipboard != null) return clipboard;
+        clipboard = diskCache.load(componentFile);
+        if (clipboard != null) componentClipboardCache.put(componentFile, clipboard);
+        return clipboard;
     }
 
     public void spawnOtherEntities() {

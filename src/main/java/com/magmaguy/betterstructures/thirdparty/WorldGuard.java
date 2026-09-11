@@ -2,6 +2,7 @@ package com.magmaguy.betterstructures.thirdparty;
 
 import com.magmaguy.betterstructures.buildingfitter.FitAnything;
 import com.magmaguy.betterstructures.config.DefaultConfig;
+import com.magmaguy.betterstructures.modules.NaturalDungeonReservation;
 import com.magmaguy.elitemobs.api.EliteMobDeathEvent;
 import com.magmaguy.elitemobs.mobconstructor.custombosses.CustomBossEntity;
 import com.magmaguy.elitemobs.mobconstructor.custombosses.RegionalBossEntity;
@@ -114,6 +115,24 @@ public class WorldGuard implements Listener {
             player.sendMessage(DefaultConfig.getRegionProtectedMessage());
             return true;
         }
+        return false;
+    }
+
+    /** Returns true when a natural modular-generation footprint overlaps a named region. */
+    public static boolean hasRegionOverlap(
+            org.bukkit.World world,
+            NaturalDungeonReservation.BlockBounds bounds) {
+        RegionContainer regionContainer = com.sk89q.worldguard.WorldGuard.getInstance()
+                .getPlatform().getRegionContainer();
+        RegionManager regionManager = regionContainer.get(BukkitAdapter.adapt(world));
+        if (regionManager == null) return true;
+
+        ProtectedRegion probe = new ProtectedCuboidRegion(
+                "__betterstructures_natural_generation_probe__",
+                BlockVector3.at(bounds.minBlockX(), world.getMinHeight(), bounds.minBlockZ()),
+                BlockVector3.at(bounds.maxBlockX(), world.getMaxHeight() - 1, bounds.maxBlockZ()));
+        for (ProtectedRegion region : regionManager.getApplicableRegions(probe))
+            if (!ProtectedRegion.GLOBAL_REGION.equals(region.getId())) return true;
         return false;
     }
 

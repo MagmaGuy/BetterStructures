@@ -3,9 +3,9 @@ package com.magmaguy.betterstructures.config.modules;
 import com.magmaguy.betterstructures.MetadataHandler;
 import com.magmaguy.betterstructures.modules.ModulesContainer;
 import com.magmaguy.betterstructures.util.SchematicFileUtils;
-import com.magmaguy.betterstructures.worldedit.Schematic;
 import com.magmaguy.betterstructures.worldedit.SchematicClipboardCache;
 import com.magmaguy.betterstructures.worldedit.SchematicConversionLog;
+import com.magmaguy.betterstructures.worldedit.SchematicDiskCache;
 import com.magmaguy.magmacore.config.CustomConfig;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
 import lombok.Getter;
@@ -47,32 +47,41 @@ public class ModulesConfig extends CustomConfig {
         Map<String, File> moduleSourcesByFilename = new HashMap<>();
         //Modules that are gone stop being cached before anything reads the cache, so a deleted
         //module schematic can never be served out of the previous load.
-        clipboardCache.retainOnly(discoveredModuleFiles);
-        try (SchematicConversionLog.Session conversionLog = SchematicConversionLog.capture()) {
-            for (File file : discoveredModuleFiles) {
-                File previous = moduleSourcesByFilename.putIfAbsent(
-                        file.getName(),
-                        file);
-                if (previous != null && !previous.equals(file)) {
-                    throw new IllegalStateException(
-                            "Duplicate module schematic filename '"
-                                    + file.getName() + "' exists at both "
-                                    + previous.getPath() + " and "
-                                    + file.getPath()
-                                    + "; module configuration lookup would be ambiguous.");
+        int forgotten = clipboardCache.retainOnly(discoveredModuleFiles);
+        if (!discoveredModuleFiles.isEmpty()) {
+            //Module schematics ship at an older DataVersion just like structure schematics do, so
+            //without this every cold start re-ran Mojang's data converter over every module file —
+            //the last remaining source of legacy-conversion cost and log spam at startup.
+            SchematicDiskCache diskCache =
+                    new SchematicDiskCache(SchematicDiskCache.moduleCacheFolder());
+            try (SchematicConversionLog.Session conversionLog = SchematicConversionLog.capture()) {
+                for (File file : discoveredModuleFiles) {
+                    File previous = moduleSourcesByFilename.putIfAbsent(
+                            file.getName(),
+                            file);
+                    if (previous != null && !previous.equals(file)) {
+                        throw new IllegalStateException(
+                                "Duplicate module schematic filename '"
+                                        + file.getName() + "' exists at both "
+                                        + previous.getPath() + " and "
+                                        + file.getPath()
+                                        + "; module configuration lookup would be ambiguous.");
+                    }
+                    Clipboard clipboard = clipboardCache.get(file);
+                    if (clipboard == null) {
+                        clipboard = diskCache.load(file);
+                        if (clipboard != null) clipboardCache.put(file, clipboard);
+                    }
+                    if (clipboard == null) {
+                        throw new IllegalStateException(
+                                "Failed to load module schematic " + file.getPath()
+                                        + "; refusing to initialize a partial module registry.");
+                    }
+                    clipboards.put(file, clipboard);
                 }
-                Clipboard clipboard = clipboardCache.get(file);
-                if (clipboard == null) {
-                    clipboard = Schematic.load(file);
-                    if (clipboard != null) clipboardCache.put(file, clipboard);
-                }
-                if (clipboard == null) {
-                    throw new IllegalStateException(
-                            "Failed to load module schematic " + file.getPath()
-                                    + "; refusing to initialize a partial module registry.");
-                }
-                clipboards.put(file, clipboard);
             }
+            if (diskCache.filesRead() > 0 || forgotten > 0)
+                diskCache.pruneStaleEntries(discoveredModuleFiles);
         }
 
         for (File file : discoveredModuleFiles) {
