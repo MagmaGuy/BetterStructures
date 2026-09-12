@@ -47,6 +47,8 @@ dependencies {
 
     testImplementation platform('org.junit:junit-bom:5.12.2')
     testImplementation 'org.junit.jupiter:junit-jupiter'
+    // The cache ticket test exercises the production Clipboard seam without starting Bukkit.
+    testImplementation group: 'com.sk89q.worldedit', name: 'worldedit-core', version: '7.3.0'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
