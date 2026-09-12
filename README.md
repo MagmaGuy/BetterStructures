@@ -52,7 +52,7 @@ The global settings include generation distances, administrator notices, dungeon
 
 If nothing appears, check the selected world, installed packs, generator biome and environment restrictions, and whether you are exploring new terrain. Include the relevant generator and schematic configuration with support reports.
 
-## Building and integration
+## Building from source
 
 Build with JDK 21 and the included Gradle wrapper:
 
@@ -62,7 +62,11 @@ Build with JDK 21 and the included Gradle wrapper:
 
 On Unix, use `./gradlew shadowJar`. The deployable file is `build/libs/BetterStructures.jar`. Set `MC_DIST_DIR` to copy it to a shared artifact directory. When changing MagmaCore locally, publish the matching MagmaCore version to Maven Local before rebuilding.
 
-The latest release in this checkout is `2.7.1`. Plugin integrations can resolve `com.magmaguy:BetterStructures:2.7.1` from [MagmaGuy's Maven repository](https://repo.magmaguy.com/releases), using Maven `provided` or Gradle `compileOnly` scope.
+## Developer API
+
+Structure generation events: [BetterStructures developer reference](https://wiki.nightbreak.io/BetterStructures/developers). See the [Java API index](https://wiki.nightbreak.io/developers) for dependency setup and lifecycle guidance.
+
+Maven: `com.magmaguy:BetterStructures:2.7.1` from [MagmaGuy's repository](https://repo.magmaguy.com/releases). Use `provided` or `compileOnly` scope for the installed plugin.
 
 ## License
 
