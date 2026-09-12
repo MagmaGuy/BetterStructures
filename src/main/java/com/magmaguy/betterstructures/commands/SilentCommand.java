@@ -10,6 +10,7 @@ import java.util.List;
 public class SilentCommand extends AdvancedCommand {
     public SilentCommand() {
         super(List.of("silent"));
+        setPermission("betterstructures.*");
         setUsage("/betterstructures silent");
         setDescription("Silences the warnings about structures appearing for admins.");
     }

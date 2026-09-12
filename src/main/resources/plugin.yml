@@ -18,6 +18,8 @@ website: magmaguy.com
 commands:
   betterstructures:
     description: Main command
+    # Any existing child grant permits root access; each child still checks its own permission.
+    permission: 'betterstructures.*;betterstructures.setup;betterstructures.initialize;betterstructures.generatemodules'
     aliases:
       - bs
 permissions:

@@ -232,6 +232,11 @@ public class Schematic {
         if (!isDistributedPasting) processNextPaste();
     }
 
+    public static void enqueue(PasteOperation operation) {
+        pasteQueue.add(operation);
+        startQueueIfIdle();
+    }
+
     /**
      * Processes the next paste operation in the queue
      */
@@ -264,8 +269,10 @@ public class Schematic {
                         try {
                             long stopTime = System.nanoTime() + maxNanosPerTick;
                             boolean processedAtLeastOne = false;
+                            int steps = 0;
                             while (operation.hasNext() &&
-                                    (!processedAtLeastOne || System.nanoTime() < stopTime)) {
+                                    steps++ < 4096 && (!processedAtLeastOne || System.nanoTime() < stopTime)) {
+                                if (!operation.ready()) break;
                                 operation.pasteNext();
                                 processedAtLeastOne = true;
                             }
@@ -323,6 +330,7 @@ public class Schematic {
         activePasteOperation = null;
         activePasteTask = null;
         try {
+            operation.close();
             operation.onComplete();
         } catch (Throwable throwable) {
             Logger.warn("A BetterStructures paste completion callback failed: " + throwable.getMessage());
@@ -331,6 +339,7 @@ public class Schematic {
     }
 
     private static void abortActivePaste() {
+        if (activePasteOperation != null) activePasteOperation.close();
         activePasteOperation = null;
         activePasteTask = null;
     }
@@ -341,17 +350,22 @@ public class Schematic {
      * queue by itself.
      */
     public static void shutdown() {
+        for (PasteOperation operation : pasteQueue) operation.close();
         pasteQueue.clear();
         if (activePasteTask != null) {
             activePasteTask.cancel();
         }
         activePasteTask = null;
-        activePasteOperation = null;
+        abortActivePaste();
         isDistributedPasting = false;
     }
 
-    private interface PasteOperation {
+    public interface PasteOperation {
         boolean hasNext();
+
+        default boolean ready() { return true; }
+
+        default void close() { }
 
         void pasteNext();
 

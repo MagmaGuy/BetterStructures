@@ -12,7 +12,6 @@ import com.magmaguy.betterstructures.util.WorldEditUtils;
 import com.magmaguy.easyminecraftgoals.NMSManager;
 import com.magmaguy.magmacore.util.Logger;
 import com.magmaguy.magmacore.util.SpigotMessage;
-import com.magmaguy.magmacore.util.WorkloadRunnable;
 import com.sk89q.worldedit.EditSession;
 import com.sk89q.worldedit.WorldEdit;
 import com.sk89q.worldedit.WorldEditException;
@@ -83,7 +82,7 @@ public final class ModulePasting {
         this.createModularWorld = firstNode != null && firstNode.getWfcGenerator() != null &&
                 firstNode.getWfcGenerator().getModuleGeneratorsConfigFields().isWorldGeneration();
 
-        batchPaste(WFCNodeDeque, interpretedSigns);
+        batchPaste(WFCNodeDeque);
 
         // Send notification to players
         if (DefaultConfig.isNewBuildingWarn()) {
@@ -198,91 +197,68 @@ public final class ModulePasting {
         WorldEditUtils.pasteArmorStandsOnlyFromTransformed(transformedClipboard, location);
     }
 
-    private List<Pasteable> generatePasteMeList(Clipboard transformedClipboard,
-                                                Location worldPasteOriginLocation,
-                                                List<InterpretedSign> interpretedSigns,
-                                                ModulesConfigFields modulesConfigFields) {
-        List<Pasteable> pasteableList = new ArrayList<>();
+    private Pasteable prepareBlock(BaseBlock baseBlock, Location pasteLocation,
+                                   ModulesConfigFields modulesConfigFields, boolean collect) {
+        BlockState blockState = baseBlock.toImmutableState();
+        // Air must still be pasted when generating into an existing world, as it is what
+        // carves the walkable interiors out of the terrain. Only void worlds can skip it.
+        if (createModularWorld && WorldEditUtils.isAir(blockState)) return null;
 
-        // Get the minimum point of the transformed clipboard to use as reference
-        BlockVector3 minPoint = transformedClipboard.getMinimumPoint();
+        Material material = WorldEditUtils.adaptMaterial(blockState);
 
-        World world = worldPasteOriginLocation.getWorld();
-        int baseX = worldPasteOriginLocation.getBlockX();
-        int baseY = worldPasteOriginLocation.getBlockY();
-        int baseZ = worldPasteOriginLocation.getBlockZ();
+        // Skip barriers
+        if (material == Material.BARRIER) return null;
 
-        // Process each block in the transformed clipboard
-        transformedClipboard.getRegion().forEach(blockPos -> {
-            BaseBlock baseBlock = transformedClipboard.getFullBlock(blockPos);
-            BlockState blockState = baseBlock.toImmutableState();
-            // Air must still be pasted when generating into an existing world, as it is what
-            // carves the walkable interiors out of the terrain. Only void worlds can skip it.
-            if (createModularWorld && WorldEditUtils.isAir(blockState)) return;
+        BlockData blockData = material == null ? null : WorldEditUtils.createBlockDataOrNull(baseBlock);
+        if (blockData == null) {
+            if (collect) nbtToPlace.add(new NbtPlacement(pasteLocation, baseBlock));
+            return null;
+        }
 
-            // Calculate world coordinates relative to the minimum point
-            int worldX = baseX + (blockPos.x() - minPoint.x());
-            int worldY = baseY + (blockPos.y() - minPoint.y());
-            int worldZ = baseZ + (blockPos.z() - minPoint.z());
+        // Handle signs - collect instructions then turn into AIR
+        if (SIGN_MATERIALS.contains(blockData.getMaterial())) {
+            List<String> lines = getLines(baseBlock);
+            if (collect) interpretedSigns.add(new InterpretedSign(pasteLocation, lines));
 
-            Location pasteLocation = new Location(world, worldX, worldY, worldZ);
-            Material material = WorldEditUtils.adaptMaterial(blockState);
-
-            // Skip barriers
-            if (material == Material.BARRIER) return;
-
-            BlockData blockData = material == null ? null : WorldEditUtils.createBlockDataOrNull(baseBlock);
-            if (blockData == null) {
-                nbtToPlace.add(new NbtPlacement(pasteLocation, baseBlock));
-                return;
-            }
-
-            // Handle signs - collect instructions then turn into AIR
-            if (SIGN_MATERIALS.contains(blockData.getMaterial())) {
-                List<String> lines = getLines(baseBlock);
-                interpretedSigns.add(new InterpretedSign(pasteLocation, lines));
-
-                // Parse sign content for special markers
-                for (String line : lines) {
-                    if (line.contains("[spawn]") && lines.size() > 1) {
-                        try {
-                            EntityType entityType = EntityType.valueOf(lines.get(1).toUpperCase());
-                            entitiesToSpawn.add(new EntitySpawn(pasteLocation, entityType));
-                        } catch (Exception e) {
-                            Logger.warn("Invalid entity type in sign: " + lines.get(1));
-                        }
-                    } else if (line.contains("[chest]")) {
-                        chestsToPlace.add(new ChestPlacement(pasteLocation, Material.CHEST));
-                    } else if (line.contains("[trapped_chest]")) {
-                        chestsToPlace.add(new ChestPlacement(pasteLocation, Material.TRAPPED_CHEST));
+            // Parse sign content for special markers
+            if (collect) for (String line : lines) {
+                if (line.contains("[spawn]") && lines.size() > 1) {
+                    try {
+                        EntityType entityType = EntityType.valueOf(lines.get(1).toUpperCase());
+                        entitiesToSpawn.add(new EntitySpawn(pasteLocation, entityType));
+                    } catch (Exception e) {
+                        Logger.warn("Invalid entity type in sign: " + lines.get(1));
                     }
+                } else if (line.contains("[chest]")) {
+                    chestsToPlace.add(new ChestPlacement(pasteLocation, Material.CHEST));
+                } else if (line.contains("[trapped_chest]")) {
+                    chestsToPlace.add(new ChestPlacement(pasteLocation, Material.TRAPPED_CHEST));
                 }
-
-                // Replace sign with air in the paste list so it won't be deferred as NBT-rich
-                blockData = Material.AIR.createBlockData();
             }
 
-            // Convert bedrock to stone (unless replacing a solid block)
-            if (blockData.getMaterial().equals(Material.BEDROCK)) {
-                if (pasteLocation.getBlock().getType().isSolid()) return;
-                blockData = Material.STONE.createBlockData();
-            }
+            // Replace sign with air in the paste list so it won't be deferred as NBT-rich
+            blockData = Material.AIR.createBlockData();
+        }
 
-            // Defer complex NBT blocks (dispensers, spawners, etc.) for post-processing via BaseBlock
-            if (isNbtRichMaterial(blockData.getMaterial())) {
-                nbtToPlace.add(new NbtPlacement(pasteLocation, baseBlock)); // keep full NBT
-                return; // do NOT add to normal paste list
-            }
+        // Convert bedrock to stone (unless replacing a solid block)
+        if (blockData.getMaterial().equals(Material.BEDROCK)) {
+            if (pasteLocation.getBlock().getType().isSolid()) return null;
+            blockData = Material.STONE.createBlockData();
+        }
 
-            if (blockData.getMaterial() == Material.BARREL) {
-                barrelsToFill.add(new BarrelPlacement(pasteLocation, modulesConfigFields));
-            }
+        // Defer complex NBT blocks (dispensers, spawners, etc.) for post-processing via BaseBlock
+        if (isNbtRichMaterial(blockData.getMaterial())) {
+            if (collect) nbtToPlace.add(new NbtPlacement(pasteLocation, baseBlock)); // keep full NBT
+            return null; // do NOT add to normal paste list
+        }
 
-            // Normal placement path
-            pasteableList.add(new Pasteable(pasteLocation, blockData));
-        });
+        if (collect && blockData.getMaterial() == Material.BARREL) {
+            barrelsToFill.add(new BarrelPlacement(pasteLocation, modulesConfigFields));
+        }
 
-        return pasteableList;
+        // Normal placement path
+        return new Pasteable(pasteLocation, blockData);
+
     }
 
     private List<String> getLines(BaseBlock baseBlock) {
@@ -295,211 +271,195 @@ public final class ModulePasting {
         return strings;
     }
 
-    private void batchPaste(Deque<WFCNode> WFCNodeDeque, List<InterpretedSign> interpretedSigns) {
-        List<Pasteable> pasteableList = new ArrayList<>();
+    private void batchPaste(Deque<WFCNode> nodes) {
+        List<ModuleInput> inputs = new ArrayList<>();
+        while (!nodes.isEmpty()) {
+            WFCNode node = nodes.poll();
+            ModulesContainer module = node.getModulesContainer();
+            if (module != null && module.getClipboard() != null)
+                inputs.add(new ModuleInput(module.getClipboard(), node.getRealLocation(startLocation).clone(),
+                        module.getRotation(), module.getModulesConfigField()));
+        }
+        com.magmaguy.betterstructures.worldedit.Schematic.enqueue(new ModularPaste(inputs));
+    }
 
-        // Collect entity paste info while processing blocks
-        List<EntityPasteInfo> entityPasteInfos = new ArrayList<>();
+    private record ModuleInput(Clipboard clipboard, Location location, int rotation, ModulesConfigFields config) { }
 
-        while (!WFCNodeDeque.isEmpty()) {
-            WFCNode WFCNode = WFCNodeDeque.poll();
-            if (WFCNode == null || WFCNode.getModulesContainer() == null) continue;
-            Clipboard clipboard = WFCNode.getModulesContainer().getClipboard();
-            if (clipboard == null) continue;
+    /** One block or post-processing entry per queue step. No complete transformed clipboard is materialized. */
+    private final class ModularPaste implements com.magmaguy.betterstructures.worldedit.Schematic.PasteOperation {
+        private final List<ModuleInput> inputs;
+        private final com.magmaguy.betterstructures.worldedit.PasteChunkReadiness chunks =
+                new com.magmaguy.betterstructures.worldedit.PasteChunkReadiness(world);
+        private int phase, moduleIndex, postIndex;
+        private ModuleInput module;
+        private AffineTransform transform;
+        private BlockVector3 minimum;
+        private com.sk89q.worldedit.extent.transform.BlockTransformExtent blocks;
+        private java.util.Iterator<BlockVector3> cursor;
+        private java.util.Iterator<? extends com.sk89q.worldedit.entity.Entity> entityCursor;
+        private BlockVector3 nextBlock;
+        private com.sk89q.worldedit.entity.Entity nextEntity;
+        private Location nextLocation;
+        private final Map<String, ChestContents> barrelContents = new HashMap<>();
+        private boolean closed;
 
-            // Rotate the clipboard once and reuse it for both the block paste list and the entity paste
-            AffineTransform transform = new AffineTransform().rotateY(normalizeRotation(WFCNode.getModulesContainer().getRotation()));
-            Clipboard transformedClipboard;
-            try {
-                transformedClipboard = clipboard.transform(transform);
-            } catch (WorldEditException e) {
-                throw new RuntimeException(e);
-            }
+        private ModularPaste(List<ModuleInput> inputs) { this.inputs = inputs; }
+        public boolean hasNext() { return !closed && phase < 8; }
 
-            // Process blocks
-            ModulesConfigFields modulesConfigField = WFCNode.getModulesContainer().getModulesConfigField();
-            pasteableList.addAll(generatePasteMeList(transformedClipboard, WFCNode.getRealLocation(startLocation),
-                    interpretedSigns, modulesConfigField));
-
-            // Store entity paste info for later - WITH TRANSFORMED CLIPBOARD
-            entityPasteInfos.add(new EntityPasteInfo(transformedClipboard, WFCNode.getRealLocation(startLocation)));
+        private void selectModule() {
+            module = inputs.get(moduleIndex);
+            transform = new AffineTransform().rotateY(normalizeRotation(module.rotation()));
+            BlockVector3 low = module.clipboard().getMinimumPoint(), high = module.clipboard().getMaximumPoint();
+            minimum = transform.apply(low.toVector3()).toBlockPoint();
+            for (int x : new int[]{low.x(), high.x()})
+                for (int y : new int[]{low.y(), high.y()})
+                    for (int z : new int[]{low.z(), high.z()})
+                        minimum = minimum.getMinimum(transform.apply(BlockVector3.at(x, y, z).toVector3()).toBlockPoint());
+            blocks = new com.sk89q.worldedit.extent.transform.BlockTransformExtent(module.clipboard(), transform);
+            cursor = module.clipboard().getRegion().iterator();
+            entityCursor = module.clipboard().getEntities().iterator();
         }
 
-        List<Pasteable> slowBlocks = new ArrayList<>();
-        WorkloadRunnable pasteMeRunnable = new WorkloadRunnable(.1, () -> {
-            WorkloadRunnable vanillaPlacementRunnable = new WorkloadRunnable(.1, () -> {
-                postPasteProcessing(entityPasteInfos);
-            });
+        private Location target(com.sk89q.worldedit.math.Vector3 position) {
+            var rotated = transform.apply(position).subtract(minimum.toVector3());
+            return module.location().clone().add(rotated.x(), rotated.y(), rotated.z());
+        }
 
-            for (Pasteable slowBlock : slowBlocks)
-                vanillaPlacementRunnable.addWorkload(() -> {
-                    slowBlock.location.getBlock().setBlockData(slowBlock.blockData, false);
-                });
-            vanillaPlacementRunnable.runTaskTimer(MetadataHandler.PLUGIN, 0, 1);
-        });
-
-        // Enable fast path only for world-based generation
-        final boolean fastPathEnabled = this.createModularWorld;
-
-        for (Pasteable pasteable : pasteableList) {
-            if (!fastPathEnabled) {
-                // Not world-based generation: force slow placement for EVERYTHING
-                slowBlocks.add(pasteable);
-                continue;
-            }
-
-            // World-based generation: keep original split between fast/slow
-            if (pasteable.blockData.getLightEmission() > 0
-                    || pasteable.blockData instanceof Directional
-                    || pasteable.blockData instanceof Rail
-                    || pasteable.blockData instanceof Sign) {
-                slowBlocks.add(pasteable);
+        public boolean ready() {
+            if (Bukkit.getWorld(world.getUID()) != world) throw new IllegalStateException("Paste world was unloaded");
+            if (phase < 2 || phase == 5) {
+                if (moduleIndex >= inputs.size()) return true;
+                if (module == null) return true;
+                if (phase < 2) {
+                    if (nextBlock == null && cursor.hasNext()) nextBlock = cursor.next();
+                    if (nextBlock == null) return true;
+                    nextLocation = target(nextBlock.toVector3());
+                } else {
+                    if (nextEntity == null && entityCursor.hasNext()) nextEntity = entityCursor.next();
+                    if (nextEntity == null) return true;
+                    nextLocation = target(nextEntity.getLocation().toVector());
+                }
             } else {
-                pasteMeRunnable.addWorkload(() -> {
-                    NMSManager.getAdapter().setBlockInNativeDataPalette(
-                            pasteable.location.getWorld(),
-                            pasteable.location.getBlockX(),
-                            pasteable.location.getBlockY(),
-                            pasteable.location.getBlockZ(),
-                            pasteable.blockData,
-                            true);
-                });
+                nextLocation = switch (phase) {
+                    case 2 -> postIndex < nbtToPlace.size() ? nbtToPlace.get(postIndex).location() : null;
+                    case 3 -> postIndex < chestsToPlace.size() ? chestsToPlace.get(postIndex).location() : null;
+                    case 4 -> postIndex < barrelsToFill.size() ? barrelsToFill.get(postIndex).location() : null;
+                    case 6 -> postIndex < entitiesToSpawn.size() ? entitiesToSpawn.get(postIndex).location() : null;
+                    case 7 -> postIndex < interpretedSigns.size() ? interpretedSigns.get(postIndex).location() : null;
+                    default -> null;
+                };
             }
+            return nextLocation == null || chunks.ready(nextLocation);
         }
 
-        pasteMeRunnable.runTaskTimer(MetadataHandler.PLUGIN, 0, 1);
-    }
-
-    private void postPasteProcessing(List<EntityPasteInfo> entityPasteInfos) {
-        if (createModularWorld) {
-            createModularWorld(world, worldFolder);
-            modularWorld.spawnOtherEntities();
-        }
-
-        // 1) Paste deferred NBT-rich blocks (dispenser, spawner, etc.) with WE so NBT is preserved
-        if (!nbtToPlace.isEmpty()) {
-            com.sk89q.worldedit.world.World adaptedWorld = BukkitAdapter.adapt(world);
-            try (EditSession editSession = WorldEdit.getInstance().newEditSession(adaptedWorld)) {
-                editSession.setTrackingHistory(false);
-                editSession.setSideEffectApplier(SideEffectSet.none());
-
-                for (NbtPlacement np : nbtToPlace) {
-                    BlockVector3 wp = BlockVector3.at(
-                            np.location().getBlockX(),
-                            np.location().getBlockY(),
-                            np.location().getBlockZ()
-                    );
+        public void pasteNext() {
+            if (phase < 2 || phase == 5) {
+                if (moduleIndex >= inputs.size()) { advance(); return; }
+                if (module == null) { selectModule(); return; }
+                if (phase < 2) {
+                    if (nextBlock == null) { moduleIndex++; module = null; return; }
+                    Pasteable block = prepareBlock(blocks.getFullBlock(nextBlock), nextLocation, module.config(), phase == 0);
+                    nextBlock = null;
+                    if (block == null) return;
+                    boolean fast = createModularWorld && block.blockData().getLightEmission() == 0
+                            && !(block.blockData() instanceof Directional) && !(block.blockData() instanceof Rail)
+                            && !(block.blockData() instanceof Sign);
+                    if (phase == 0 && fast)
+                        NMSManager.getAdapter().setBlockInNativeDataPalette(world, block.location().getBlockX(),
+                                block.location().getBlockY(), block.location().getBlockZ(), block.blockData(), true);
+                    else if (phase == 1 && !fast) block.location().getBlock().setBlockData(block.blockData(), false);
+                } else {
+                    if (nextEntity == null) { moduleIndex++; module = null; return; }
+                    var origin = module.clipboard().getOrigin().toVector3();
+                    var destination = transform.apply(origin).subtract(minimum.toVector3())
+                            .add(module.location().getX(), module.location().getY(), module.location().getZ());
                     try {
-                        editSession.setBlock(wp, np.baseBlock()); // BaseBlock carries NBT
-                    } catch (WorldEditException e) {
-                        Logger.warn("Failed to set NBT block at " + np.location() + ": " + e.getMessage());
-                    }
+                        new com.sk89q.worldedit.function.entity.ExtentEntityCopy(origin, BukkitAdapter.adapt(world),
+                                destination, transform).apply(nextEntity);
+                    } catch (WorldEditException failure) { throw new IllegalStateException(failure); }
+                    nextEntity = null;
                 }
-            } catch (Exception e) {
-                Logger.warn("Failed NBT post-paste session: " + e.getMessage());
+                return;
+            }
+            switch (phase) {
+                case 2 -> {
+                    if (postIndex >= nbtToPlace.size()) { advance(); return; }
+                    NbtPlacement entry = nbtToPlace.get(postIndex++);
+                    try (EditSession edit = WorldEdit.getInstance().newEditSession(BukkitAdapter.adapt(world))) {
+                        edit.setTrackingHistory(false);
+                        edit.setSideEffectApplier(SideEffectSet.none());
+                        edit.setBlock(BlockVector3.at(entry.location().getBlockX(), entry.location().getBlockY(),
+                                entry.location().getBlockZ()), entry.baseBlock());
+                    } catch (WorldEditException failure) { throw new IllegalStateException(failure); }
+                }
+                case 3 -> {
+                    if (postIndex >= chestsToPlace.size()) { advance(); return; }
+                    ChestPlacement entry = chestsToPlace.get(postIndex++);
+                    Block block = entry.location().getBlock();
+                    block.setType(entry.material(), false);
+                    if (block.getState() instanceof Container container)
+                        fill(container, moduleGeneratorsConfigFields.getTreasureFile());
+                }
+                case 4 -> {
+                    if (postIndex >= barrelsToFill.size()) { advance(); return; }
+                    BarrelPlacement entry = barrelsToFill.get(postIndex++);
+                    ModulesConfigFields config = entry.modulesConfigFields();
+                    if (!moduleGeneratorsConfigFields.isGenerateLootInBarrels() || config != null && !config.isGenerateLootInBarrels()) return;
+                    String treasure = config != null && config.getBarrelTreasureFilename() != null && !config.getBarrelTreasureFilename().isEmpty()
+                            ? config.getBarrelTreasureFilename() : moduleGeneratorsConfigFields.getBarrelTreasureFilename();
+                    if (entry.location().getBlock().getType() == Material.BARREL
+                            && entry.location().getBlock().getState() instanceof Container container) fill(container, treasure);
+                }
+                case 6 -> {
+                    if (postIndex >= entitiesToSpawn.size()) { advance(); return; }
+                    EntitySpawn entry = entitiesToSpawn.get(postIndex++);
+                    org.bukkit.entity.Entity entity = world.spawnEntity(entry.location(), entry.entityType());
+                    if (entity instanceof LivingEntity living) living.setRemoveWhenFarAway(false);
+                    entity.setPersistent(true);
+                }
+                case 7 -> {
+                    if (!createModularWorld || postIndex >= interpretedSigns.size()) { advance(); return; }
+                    if (modularWorld == null) modularWorld = new ModularWorld(world, worldFolder, List.of());
+                    InterpretedSign sign = interpretedSigns.get(postIndex++);
+                    modularWorld.addSign(sign);
+                    modularWorld.spawnOtherEntitiesAt(sign);
+                }
+                default -> throw new IllegalStateException("Invalid paste phase");
             }
         }
 
-        // 2) Paste entities from schematics (armor stands, etc.)
-        pasteArmorStandsForBatch(entityPasteInfos);
-
-        // 3) Fill chests placed by [chest]/[trapped_chest] signs
-        if (!chestsToPlace.isEmpty()) {
-            // Loop-invariant: every chest here uses the generator's treasure file, so resolve it
-            // once (the barrel loop below already memoizes the same way)
-            String treasureFilename = moduleGeneratorsConfigFields.getTreasureFile();
-            TreasureConfigFields treasureConfigFields = TreasureConfig.getConfigFields(treasureFilename);
-            ChestContents chestContents = treasureConfigFields == null ? null : treasureConfigFields.getChestContents();
-            for (ChestPlacement chestPlacement : chestsToPlace) {
-                Block block = chestPlacement.location.getBlock();
-                block.setType(chestPlacement.material);
-
-                if (block.getBlockData() instanceof Chest chest) {
-                    block.setBlockData(chest, false);
-
-                    if (chestContents != null) {
-                        Container container = (Container) block.getState();
-                        chestContents.rollChestContents(container);
-                        ChestFillEvent chestFillEvent = new ChestFillEvent(container, treasureFilename);
-                        Bukkit.getServer().getPluginManager().callEvent(chestFillEvent);
-                        if (!chestFillEvent.isCancelled())
-                            container.update(true);
-                    }
-                }
+        private void fill(Container container, String filename) {
+            if (filename == null || filename.isEmpty()) return;
+            if (!barrelContents.containsKey(filename)) {
+                TreasureConfigFields config = TreasureConfig.getConfigFields(filename);
+                barrelContents.put(filename, config == null ? null : config.getChestContents());
+                if (config == null) Logger.warn("Missing modular treasure configuration " + filename);
             }
+            ChestContents contents = barrelContents.get(filename);
+            if (contents == null) return;
+            contents.rollChestContents(container);
+            ChestFillEvent event = new ChestFillEvent(container, filename);
+            Bukkit.getPluginManager().callEvent(event);
+            if (!event.isCancelled()) container.update(true);
         }
 
-        // 4) Fill barrels with loot
-        if (moduleGeneratorsConfigFields.isGenerateLootInBarrels() && !barrelsToFill.isEmpty()) {
-            Map<String, ChestContents> contentsByTreasure = new HashMap<>();
-            Set<String> warnedMissingTreasures = new HashSet<>();
-            for (BarrelPlacement bp : barrelsToFill) {
-                ModulesConfigFields modConfig = bp.modulesConfigFields();
-                if (modConfig != null && !modConfig.isGenerateLootInBarrels()) continue;
-
-                String treasureFilename = (modConfig != null && modConfig.getBarrelTreasureFilename() != null && !modConfig.getBarrelTreasureFilename().isEmpty())
-                        ? modConfig.getBarrelTreasureFilename()
-                        : moduleGeneratorsConfigFields.getBarrelTreasureFilename();
-                if (treasureFilename == null || treasureFilename.isEmpty()) continue;
-
-                ChestContents barrelContents = contentsByTreasure.get(treasureFilename);
-                if (barrelContents == null && !contentsByTreasure.containsKey(treasureFilename)) {
-                    TreasureConfigFields barrelTreasureFields = TreasureConfig.getConfigFields(treasureFilename);
-                    barrelContents = barrelTreasureFields != null ? new ChestContents(barrelTreasureFields) : null;
-                    contentsByTreasure.put(treasureFilename, barrelContents);
-                }
-                if (barrelContents == null) {
-                    if (warnedMissingTreasures.add(treasureFilename)) {
-                        Logger.warn("Module generator " + moduleGeneratorsConfigFields.getFilename() + " has barrels referencing barrelTreasureFilename '" + treasureFilename + "' but it did not resolve to a valid treasure config. Affected barrels will be empty.");
-                    }
-                    continue;
-                }
-
-                Block block = bp.location().getBlock();
-                if (block.getType() != Material.BARREL) continue;
-                if (!(block.getState() instanceof Container container)) continue;
-
-                barrelContents.rollChestContents(container);
-                ChestFillEvent chestFillEvent = new ChestFillEvent(container, treasureFilename);
-                Bukkit.getServer().getPluginManager().callEvent(chestFillEvent);
-                if (!chestFillEvent.isCancelled()) {
-                    container.update(true);
-                }
+        private void advance() {
+            phase++; moduleIndex = 0; postIndex = 0; module = null; nextBlock = null; nextEntity = null; nextLocation = null;
+        }
+        public void onComplete() {
+            if (createModularWorld) {
+                if (modularWorld == null) modularWorld = new ModularWorld(world, worldFolder, List.of());
+                modularWorld.generationFinished();
             }
         }
-
-        // 5) Spawn entities last
-        for (EntitySpawn entitySpawn : entitiesToSpawn) {
-            try {
-                LivingEntity entity = (LivingEntity) world.spawnEntity(entitySpawn.location, entitySpawn.entityType);
-                entity.setRemoveWhenFarAway(false);
-                entity.setPersistent(true);
-            } catch (Exception e) {
-                Logger.warn("Failed to spawn entity of type " + entitySpawn.entityType + " at " + entitySpawn.location);
-            }
+        public void close() {
+            closed = true; chunks.close(); inputs.clear();
+            nbtToPlace.clear(); chestsToPlace.clear(); barrelsToFill.clear(); entitiesToSpawn.clear(); interpretedSigns.clear();
+            module = null; cursor = null; entityCursor = null; nextBlock = null; nextEntity = null;
         }
-    }
-
-    // Helper method to paste entities for all collected clipboards
-    private void pasteArmorStandsForBatch(List<EntityPasteInfo> entityPasteInfos) {
-        for (EntityPasteInfo info : entityPasteInfos) {
-            try {
-                WorldEditUtils.pasteArmorStandsOnlyFromTransformed(info.clipboard, info.location);
-            } catch (Exception e) {
-                Logger.warn("Failed to paste entities for batch operation at " + info.location + ": " + e.getMessage());
-            }
-        }
-    }
-
-    private void createModularWorld(World world, File worldFolder) {
-        modularWorld = new ModularWorld(world, worldFolder, interpretedSigns);
     }
 
     private record NbtPlacement(Location location, BaseBlock baseBlock) {
-    }
-
-    // Record to hold entity paste information - now with transformed clipboard
-    private record EntityPasteInfo(Clipboard clipboard, Location location) {
     }
 
     private record ChestPlacement(Location location, Material material) {
