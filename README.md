@@ -64,9 +64,11 @@ On Unix, use `./gradlew shadowJar`. The deployable file is `build/libs/BetterStr
 
 ## Developer API
 
+[Java class and method reference](https://wiki.nightbreak.io/javadoc/betterstructures/index.html).
+
 Structure generation events: [BetterStructures developer reference](https://wiki.nightbreak.io/BetterStructures/developers). See the [Java API index](https://wiki.nightbreak.io/developers) for dependency setup and lifecycle guidance.
 
-Maven: `com.magmaguy:BetterStructures:2.7.1` from [MagmaGuy's repository](https://repo.magmaguy.com/releases). Use `provided` or `compileOnly` scope for the installed plugin.
+Maven: `com.magmaguy:BetterStructures:2.7.1` from [MagmaGuy's repository](https://repo.magmaguy.com/#/releases). Use `provided` or `compileOnly` scope for the installed plugin.
 
 ## License
 
