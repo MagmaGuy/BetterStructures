@@ -241,9 +241,7 @@ public class Schematic {
      * Processes the next paste operation in the queue
      */
     private static void processNextPaste() {
-        long maxNanosPerTick = Math.max(
-                (long) (50_000_000D * DefaultConfig.getPercentageOfTickUsedForPasting()),
-                2_000_000L);
+        long maxNanosPerTick = maxNanosPerTick(DefaultConfig.getPercentageOfTickUsedForPasting());
 
         RuntimeException firstFailure = null;
         int abandoned = 0;
@@ -304,6 +302,11 @@ public class Schematic {
                     + " queued BetterStructures paste(s) because their paste task could not be scheduled.");
             throw firstFailure;
         }
+    }
+
+    /** Converts the configured tick share to a bounded per-tick work budget. */
+    static long maxNanosPerTick(double percentage) {
+        return PasteBudget.nanosPerTick(percentage);
     }
 
     private static void pasteBlock(PasteBlock pasteBlock) {
