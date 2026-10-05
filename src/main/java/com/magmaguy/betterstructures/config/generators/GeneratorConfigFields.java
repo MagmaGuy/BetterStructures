@@ -3,6 +3,7 @@ package com.magmaguy.betterstructures.config.generators;
 import com.magmaguy.betterstructures.chests.ChestContents;
 import com.magmaguy.betterstructures.config.treasures.TreasureConfig;
 import com.magmaguy.betterstructures.config.treasures.TreasureConfigFields;
+import com.magmaguy.betterstructures.util.RegistrySnapshot;
 import com.magmaguy.magmacore.config.CustomConfigFields;
 import com.magmaguy.magmacore.thirdparty.CustomBiomeCompatibility;
 import com.magmaguy.magmacore.util.Logger;
@@ -195,7 +196,7 @@ public class GeneratorConfigFields extends CustomConfigFields {
 
         // Handle vanilla biomes (convert from enum name to namespace:key format)
         try {
-            Biome biome = Biome.valueOf(biomeString.toUpperCase(Locale.ROOT));
+            Biome biome = RegistrySnapshot.biome(biomeString);
             return "minecraft:" + biome.getKey().getKey();
         } catch (IllegalArgumentException e) {
             Logger.warn("Invalid biome name: " + biomeString);

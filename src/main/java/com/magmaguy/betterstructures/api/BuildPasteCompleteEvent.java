@@ -60,8 +60,8 @@ public class BuildPasteCompleteEvent extends Event {
     }
 
     /**
-     * @return Every chest, trapped chest, shulker box and barrel from the schematic, in world coordinates,
-     * whether or not BetterStructures filled it with loot.
+     * @return Every chest, trapped chest, shulker box of any color and barrel from the schematic, in world
+     * coordinates, whether or not BetterStructures filled it with loot.
      */
     public List<Location> getContainerLocations() {
         return containerLocations.stream().map(Location::clone).toList();

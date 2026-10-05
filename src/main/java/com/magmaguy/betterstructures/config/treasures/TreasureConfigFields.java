@@ -3,6 +3,7 @@ package com.magmaguy.betterstructures.config.treasures;
 import com.magmaguy.betterstructures.chests.ChestContents;
 import com.magmaguy.betterstructures.commands.ReloadCommand;
 import com.magmaguy.betterstructures.util.DefaultChestContents;
+import com.magmaguy.betterstructures.util.RegistrySnapshot;
 import com.magmaguy.magmacore.config.CustomConfigFields;
 import com.magmaguy.magmacore.util.Logger;
 import lombok.Getter;
@@ -83,7 +84,7 @@ public class TreasureConfigFields extends CustomConfigFields {
             for (Map.Entry<String, Object> enchantmentsEntry : enchantments.entrySet()) {
                 NamespacedKey enchantmentKey = NamespacedKey.fromString(enchantmentsEntry.getKey());
                 if (enchantmentKey == null || !NamespacedKey.MINECRAFT.equals(enchantmentKey.getNamespace())) continue;
-                Enchantment enchantment = Enchantment.getByKey(enchantmentKey);
+                Enchantment enchantment = RegistrySnapshot.enchantment(enchantmentKey);
                 if (enchantment == null) continue;
                 int minLevel = 1;
                 int maxLevel = 1;

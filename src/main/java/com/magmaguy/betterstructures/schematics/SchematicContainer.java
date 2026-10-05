@@ -94,7 +94,7 @@ public class SchematicContainer {
                         //register chest location
                         if (minecraftMaterial.equals(Material.CHEST) ||
                                 minecraftMaterial.equals(Material.TRAPPED_CHEST) ||
-                                minecraftMaterial.equals(Material.SHULKER_BOX) ||
+                                isShulkerBox(minecraftMaterial) ||
                                 minecraftMaterial.equals(Material.BARREL)) {
                             chestLocations.add(new Vector(x, y, z));
                         }
@@ -197,6 +197,11 @@ public class SchematicContainer {
 
     private static boolean isSign(Material material) {
         return material.name().endsWith("_SIGN") || material.name().endsWith("_WALL_SIGN");
+    }
+
+    /** The plain shulker box and all 16 dyed ones. */
+    private static boolean isShulkerBox(Material material) {
+        return material.name().endsWith("SHULKER_BOX") && !material.name().startsWith("LEGACY_");
     }
 
     private static <T> Map<Vector, T> copyMarkers(Map<Vector, T> source) {

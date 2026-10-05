@@ -21,6 +21,7 @@ import com.magmaguy.betterstructures.schematics.SchematicContainer;
 import com.magmaguy.betterstructures.thirdparty.EliteMobs;
 import com.magmaguy.betterstructures.thirdparty.WorldGuard;
 import com.magmaguy.betterstructures.util.ChunkPregenerator;
+import com.magmaguy.betterstructures.util.RegistrySnapshot;
 import com.magmaguy.betterstructures.worldedit.Schematic;
 import com.magmaguy.betterstructures.worldedit.SchematicClipboardCache;
 import com.magmaguy.easyminecraftgoals.NMSManager;
@@ -80,6 +81,8 @@ public final class BetterStructures extends JavaPlugin {
         SchematicContainer.updateOptionalPluginAvailability(
                 Bukkit.getPluginManager().isPluginEnabled("EliteMobs"),
                 Bukkit.getPluginManager().isPluginEnabled("MythicMobs"));
+        // Content parsing runs on a worker thread and must not resolve registry entries itself.
+        RegistrySnapshot.capture();
         MagmaCore.startInitialization(this,
                 new PluginInitializationConfig("BetterStructures", "betterstructures.*", 17, resolveInitializationDependencies()),
                 this::asyncInitialization,

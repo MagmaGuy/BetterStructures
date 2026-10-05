@@ -3,6 +3,7 @@ package com.magmaguy.betterstructures.config.modules;
 import com.magmaguy.betterstructures.chests.ChestContents;
 import com.magmaguy.betterstructures.config.treasures.TreasureConfig;
 import com.magmaguy.betterstructures.config.treasures.TreasureConfigFields;
+import com.magmaguy.betterstructures.util.RegistrySnapshot;
 import com.magmaguy.magmacore.config.CustomConfigFields;
 import com.magmaguy.magmacore.util.Logger;
 import lombok.Getter;
@@ -180,7 +181,7 @@ public class ModulesConfigFields extends CustomConfigFields {
         this.minecraftBiomeString = processString("minecraftBiome", minecraftBiomeString, minecraftBiomeString, true);
         if (!minecraftBiomeString.equalsIgnoreCase("null"))
             try {
-                this.minecraftBiome = Biome.valueOf(minecraftBiomeString.toUpperCase());
+                this.minecraftBiome = RegistrySnapshot.biome(minecraftBiomeString);
             } catch (Exception e) {
                 Logger.warn("Biome " + minecraftBiomeString + " is not a valid biome! Fix it in " + filename);
             }
