@@ -24,6 +24,7 @@ import com.magmaguy.betterstructures.util.ChunkPregenerator;
 import com.magmaguy.betterstructures.util.RegistrySnapshot;
 import com.magmaguy.betterstructures.worldedit.Schematic;
 import com.magmaguy.betterstructures.worldedit.SchematicClipboardCache;
+import com.magmaguy.betterstructures.worldedit.WorldEditCompatibility;
 import com.magmaguy.easyminecraftgoals.NMSManager;
 import com.magmaguy.magmacore.MagmaCore;
 import com.magmaguy.magmacore.command.CommandManager;
@@ -231,6 +232,10 @@ public final class BetterStructures extends JavaPlugin {
         initializationContext.step("NMS Adapter");
         NMSManager.initializeAdapter(this);
 
+        initializationContext.step("WorldEdit Check");
+        // Runs on the first tick, once WorldEdit has finished choosing its platform.
+        Bukkit.getScheduler().runTask(this, WorldEditCompatibility::checkAdapterOnStartup);
+
         initializationContext.step("Components Folder");
         ComponentsConfigFolder.initialize();
 
@@ -355,8 +360,11 @@ public final class BetterStructures extends JavaPlugin {
 
     private void finishImportedContentReload(boolean successful) {
         if (!isEnabled() || MagmaCore.isShutdownRequested(this)) return;
+        String worldEditWarning = successful ? null : WorldEditCompatibility.chatWarning();
         String resultMessage = successful
                 ? "Reloaded BetterStructures content."
+                : worldEditWarning != null
+                ? worldEditWarning
                 : "&cFailed to reload BetterStructures content. Check the console.";
         for (CommandSender sender : activeReloadSenders) {
             Logger.sendMessage(sender, resultMessage);

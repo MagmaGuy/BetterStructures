@@ -6,6 +6,7 @@ import com.magmaguy.betterstructures.util.SchematicFileUtils;
 import com.magmaguy.betterstructures.worldedit.SchematicClipboardCache;
 import com.magmaguy.betterstructures.worldedit.SchematicConversionLog;
 import com.magmaguy.betterstructures.worldedit.SchematicDiskCache;
+import com.magmaguy.betterstructures.worldedit.WorldEditCompatibility;
 import com.magmaguy.magmacore.config.CustomConfig;
 import com.magmaguy.magmacore.config.ContentFileSelector;
 import com.magmaguy.magmacore.util.Logger;
@@ -173,6 +174,7 @@ public class SchematicConfig extends CustomConfig {
      */
     private static Map<File, Clipboard> loadClipboards(List<File> schematicFiles) {
         Map<File, Clipboard> clipboards = new LinkedHashMap<>();
+        WorldEditCompatibility.reset();
         if (schematicFiles.isEmpty()) return clipboards;
 
         //Half the machine, capped. Thread dumps of this pool show the workers overwhelmingly
@@ -211,14 +213,14 @@ public class SchematicConfig extends CustomConfig {
                     }
                     throw new IllegalStateException(
                             "Failed to load schematic " + warmupFile.getPath()
-                                    + "; refusing to initialize a partial structure registry.",
+                                    + "; refusing to initialize a partial structure registry." + worldEditHint(),
                             exception.getCause());
                 }
                 activeLoad.checkRunning();
                 if (warmupClipboard == null) {
                     throw new IllegalStateException(
                             "Failed to load schematic " + warmupFile.getPath()
-                                    + "; refusing to initialize a partial structure registry.");
+                                    + "; refusing to initialize a partial structure registry." + worldEditHint());
                 }
                 clipboards.put(warmupFile, warmupClipboard);
 
@@ -265,7 +267,7 @@ public class SchematicConfig extends CustomConfig {
                                     remaining.size() - loaded.size())
                                     + " of " + schematicFiles.size()
                                     + " schematics; refusing to initialize a partial "
-                                    + "structure registry. First failure: " + sample);
+                                    + "structure registry. First failure: " + sample + worldEditHint());
                 }
                 //Re-insert in sorted order rather than ConcurrentHashMap order.
                 for (File file : remaining) {
@@ -328,6 +330,12 @@ public class SchematicConfig extends CustomConfig {
             activeLoad.checkRunning();
         }
         return clipboard;
+    }
+
+    private static String worldEditHint() {
+        return WorldEditCompatibility.firstFault() == null
+                ? ""
+                : " WorldEdit failed to read it, see the WorldEdit warning above.";
     }
 
     public static SchematicConfigField getSchematicConfiguration(String filename) {

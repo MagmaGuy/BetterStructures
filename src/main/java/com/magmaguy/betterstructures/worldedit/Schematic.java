@@ -103,22 +103,35 @@ public class Schematic {
      * @return The loaded clipboard or null if loading failed
      */
     public static Clipboard load(File schematicFile) {
+        return load(schematicFile, schematicFile);
+    }
+
+    /**
+     * Loads a schematic from a copy of the installed file.
+     *
+     * @param schematicFile The file to read
+     * @param source        The installed schematic it was copied from, named in error messages
+     * @return The loaded clipboard or null if loading failed
+     */
+    public static Clipboard load(File schematicFile, File source) {
         Clipboard clipboard;
 
         ClipboardFormat format = ClipboardFormats.findByFile(schematicFile);
+        if (format == null) {
+            Logger.warn("Failed to load schematic " + source.getPath() + ": WorldEdit does not recognize its format.");
+            return null;
+        }
 
         try (FileInputStream input = new FileInputStream(schematicFile);
              ClipboardReader reader = format.getReader(input)) {
             clipboard = reader.read();
         } catch (IOException e) {
+            Logger.warn("Failed to read schematic " + source.getPath() + ": " + e.getMessage());
             e.printStackTrace();
             return null;
-        } catch (NoSuchElementException e) {
-            Logger.warn("Failed to get element from schematic " + schematicFile.getName());
-            e.printStackTrace();
-            return null;
-        } catch (Exception e) {
-            Logger.warn("Failed to load schematic " + schematicFile.getName() + " ! 99% of the time, this is because you are not using the correct WorldEdit version for your Minecraft server. You should be downloading WorldEdit from here https://dev.bukkit.org/projects/worldedit . You can check which versions the download links are compatible with by hovering over them.");
+        } catch (Exception | LinkageError e) {
+            if (WorldEditCompatibility.report(e, source)) return null;
+            Logger.warn("Failed to load schematic " + source.getPath() + " (" + e + "). If the file is not damaged, check that your WorldEdit build supports this server version.");
             boolean firstFailure = !erroredOnce;
             erroredOnce = true;
             if (firstFailure) e.printStackTrace();

@@ -142,7 +142,7 @@ public final class SchematicDiskCache {
             Clipboard clipboard = cacheFile == null ? null : readVerifiedCacheEntry(cacheFile);
             if (clipboard == null) {
                 if (cacheFile != null) Files.deleteIfExists(cacheFile.toPath());
-                clipboard = Schematic.load(snapshot.toFile());
+                clipboard = Schematic.load(snapshot.toFile(), schematicFile);
                 if (clipboard != null && cacheFolder.isDirectory()) writeCache(clipboard, key, schematicFile);
             }
             if (clipboard == null) return null;
