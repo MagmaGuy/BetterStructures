@@ -19,6 +19,7 @@ import com.magmaguy.betterstructures.thirdparty.WorldGuard;
 import com.magmaguy.magmacore.util.Logger;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
+import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -163,8 +164,8 @@ public class NewChunkLoadEvent implements Listener {
     private static void drainDeferredNewChunks() {
         if (BetterStructures.isReloading() || MetadataHandler.PLUGIN == null || !MetadataHandler.PLUGIN.isEnabled()) return;
         long started = System.nanoTime();
-        // Only loaded keys count against the scan cap. Skipping an unloaded key
-        // is cheap, and charging it would let dormant keys starve loaded ones.
+        // Only keys that are scanned or scheduled count against the cap. Skipping
+        // a key is cheap, and charging it would let dormant keys starve live ones.
         int scanned = 0;
         while (remainingNewInspections > 0 && !deferredNewChunks.isEmpty()
                 && scanned < MAX_DEFERRED_SCANS_PER_DRAIN
@@ -196,8 +197,9 @@ public class NewChunkLoadEvent implements Listener {
                 && System.nanoTime() - started < MAX_DEFERRED_SCAN_NANOS) {
             LoadingChunkKey key = delayedDungeonScans.pollDeferred();
             remainingDungeonInspections--;
-            World world = Bukkit.getWorld(key.worldId());
-            if (deferredNewChunks.contains(key) || world == null || !world.isChunkLoaded(key.x(), key.z())) {
+            // A full deferred scan includes its dungeon scan and must run first.
+            // Dungeon scans do not need their origin chunk loaded.
+            if (deferredNewChunks.contains(key) || Bukkit.getWorld(key.worldId()) == null) {
                 delayedDungeonScans.defer(key);
                 continue;
             }
@@ -279,30 +281,38 @@ public class NewChunkLoadEvent implements Listener {
                 return;
             }
             World world = Bukkit.getWorld(loadingChunkKey.worldId());
-            if (world == null || !world.isChunkLoaded(
-                    loadingChunkKey.x(), loadingChunkKey.z())) {
+            if (world == null) {
                 delayedDungeonScans.defer(loadingChunkKey);
                 return;
             }
-            dungeonScanner(world.getChunkAt(loadingChunkKey.x(), loadingChunkKey.z()));
+            // Pregenerators release their chunks within a tick, so the origin may
+            // already be unloaded. The scan needs only its coordinates, and waiting
+            // for a later load would miss the two-minute generated-footprint window.
+            dungeonScanner(world, loadingChunkKey.x(), loadingChunkKey.z());
         }, 1L);
+    }
+
+    private static boolean isValidStructurePosition(Chunk chunk, GeneratorConfigFields.StructureType structureType,
+                                                    int gridDistance, int maxOffset) {
+        return isValidStructurePosition(chunk.getWorld(), chunk.getX(), chunk.getZ(),
+                structureType, gridDistance, maxOffset);
     }
 
     /**
      * Determines if the given chunk is a valid structure position based on
      * a diamond grid pattern with seeded random offsets.
      *
-     * @param chunk The chunk to check
+     * @param world The world of the chunk
+     * @param x The chunk X coordinate
+     * @param z The chunk Z coordinate
      * @param structureType The type of structure
      * @param gridDistance The distance between grid points
      * @param maxOffset The maximum random offset from grid points
      * @return True if this chunk should have a structure
      */
-    private static boolean isValidStructurePosition(Chunk chunk, GeneratorConfigFields.StructureType structureType,
+    private static boolean isValidStructurePosition(World world, int x, int z,
+                                                    GeneratorConfigFields.StructureType structureType,
                                                     int gridDistance, int maxOffset) {
-        int x = chunk.getX();
-        int z = chunk.getZ();
-
         // Check spawn protection radius (2D distance from 0,0 in blocks)
         int spawnProtectionRadius = DefaultConfig.getSpawnProtectionRadius();
         if (spawnProtectionRadius > 0) {
@@ -313,7 +323,7 @@ public class NewChunkLoadEvent implements Listener {
             }
         }
 
-        long worldSeed = chunk.getWorld().getSeed();
+        long worldSeed = world.getSeed();
 
         // Create a unique seed for each structure type
         long typeSeed = worldSeed + structureType.name().hashCode() * 7919; // Use a prime number for better distribution
@@ -392,29 +402,38 @@ public class NewChunkLoadEvent implements Listener {
         new FitLiquidBuilding(chunk);
     }
 
-    private static void dungeonScanner(Chunk chunk) {
+    // Runs from coordinates alone: the origin chunk only marks where the dungeon
+    // starts, and the paste loads and holds every chunk it writes to.
+    private static void dungeonScanner(World world, int chunkX, int chunkZ) {
         if (ModuleGeneratorsConfig.getModuleGenerators().isEmpty()) return;
-        if (!isValidStructurePosition(chunk, GeneratorConfigFields.StructureType.DUNGEON,
+        if (!isValidStructurePosition(world, chunkX, chunkZ, GeneratorConfigFields.StructureType.DUNGEON,
                 DefaultConfig.getDistanceDungeon(), DefaultConfig.getMaxOffsetDungeon())) return;
         List<ModuleGeneratorsConfigFields> validatedGenerators = new ArrayList<>();
         for (ModuleGeneratorsConfigFields moduleGeneratorsConfigFields : ModuleGeneratorsConfig.getModuleGenerators().values()){
             if (!moduleGeneratorsConfigFields.isEnabled()) continue;
-            if (moduleGeneratorsConfigFields.getValidWorlds() != null && !moduleGeneratorsConfigFields.getValidWorlds().isEmpty() && !moduleGeneratorsConfigFields.getValidWorlds().contains(chunk.getWorld().getName())) continue;
-            if (moduleGeneratorsConfigFields.getValidWorldEnvironments() != null && !moduleGeneratorsConfigFields.getValidWorldEnvironments().isEmpty() && !moduleGeneratorsConfigFields.getValidWorldEnvironments().contains(chunk.getWorld().getEnvironment())) continue;
+            if (moduleGeneratorsConfigFields.getValidWorlds() != null && !moduleGeneratorsConfigFields.getValidWorlds().isEmpty() && !moduleGeneratorsConfigFields.getValidWorlds().contains(world.getName())) continue;
+            if (moduleGeneratorsConfigFields.getValidWorldEnvironments() != null && !moduleGeneratorsConfigFields.getValidWorldEnvironments().isEmpty() && !moduleGeneratorsConfigFields.getValidWorldEnvironments().contains(world.getEnvironment())) continue;
             validatedGenerators.add(moduleGeneratorsConfigFields);
         }
         if (validatedGenerators.isEmpty()) return;
         ModuleGeneratorsConfigFields moduleGeneratorsConfigFields = validatedGenerators.get(ThreadLocalRandom.current().nextInt(0, validatedGenerators.size()));
-        var startLocation = chunk.getBlock(
-                8, moduleGeneratorsConfigFields.getCenterModuleAltitude(), 8).getLocation();
-        UUID worldId = chunk.getWorld().getUID();
+        int altitude = moduleGeneratorsConfigFields.getCenterModuleAltitude();
+        // Chunk#getBlock used to reject this; keep refusing altitudes outside the world.
+        if (altitude < world.getMinHeight() || altitude >= world.getMaxHeight()) {
+            Logger.warn("Skipped natural modular generation because centerModuleAltitude " + altitude
+                    + " of " + moduleGeneratorsConfigFields.getFilename() + " is outside the height of world "
+                    + world.getName() + ".");
+            return;
+        }
+        var startLocation = new Location(world, (chunkX << 4) + 8, altitude, (chunkZ << 4) + 8);
+        UUID worldId = world.getUID();
         var reservation = NaturalDungeonReservation.tryCreate(
                 startLocation.getBlockX(),
                 startLocation.getBlockZ(),
                 moduleGeneratorsConfigFields.getRadius(),
                 moduleGeneratorsConfigFields.getModuleSizeXZ(),
                 DefaultConfig.getSpawnProtectionRadius(),
-                coordinate -> chunk.getWorld().isChunkGenerated(coordinate.x(), coordinate.z()),
+                coordinate -> world.isChunkGenerated(coordinate.x(), coordinate.z()),
                 coordinate -> wasRecentlyGenerated(worldId, coordinate));
         if (reservation.isEmpty()) {
             Logger.info("Skipped natural modular generation because its full footprint overlaps "
@@ -423,7 +442,7 @@ public class NewChunkLoadEvent implements Listener {
         }
 
         NaturalDungeonReservation naturalReservation = reservation.get();
-        if (hasWorldGuardOverlap(chunk.getWorld(), naturalReservation.blockBounds())) {
+        if (hasWorldGuardOverlap(world, naturalReservation.blockBounds())) {
             Logger.info("Skipped natural modular generation because its full footprint overlaps "
                     + "a WorldGuard region.");
             return;
@@ -433,8 +452,8 @@ public class NewChunkLoadEvent implements Listener {
                 moduleGeneratorsConfigFields,
                 startLocation,
                 () -> naturalReservation.remainsSafe(
-                        coordinate -> chunk.getWorld().isChunkGenerated(coordinate.x(), coordinate.z()))
-                        && !hasWorldGuardOverlap(chunk.getWorld(), naturalReservation.blockBounds()));
+                        coordinate -> world.isChunkGenerated(coordinate.x(), coordinate.z()))
+                        && !hasWorldGuardOverlap(world, naturalReservation.blockBounds()));
     }
 
     private static boolean hasWorldGuardOverlap(
