@@ -42,9 +42,9 @@ import java.util.concurrent.TimeUnit;
 public class NewChunkLoadEvent implements Listener {
 
     private static final Set<LoadingChunkKey> loadingChunks = new HashSet<>();
-    // Terrain lookups must run after the chunk-load callback has returned. The
-    // same queue also retains scans across content reloads. Store coordinates
-    // rather than Chunk/World references so deferred work cannot pin worlds.
+    // A content reload temporarily owns and rebuilds every registry read by a
+    // chunk scan. Keep only stable coordinates for new chunks observed during
+    // that window; retaining Chunk/World objects would pin unloaded worlds.
     private static final Set<LoadingChunkKey> deferredNewChunks = new LinkedHashSet<>();
     private static final DelayedDungeonScanTracker<LoadingChunkKey> delayedDungeonScans =
             new DelayedDungeonScanTracker<>();
@@ -70,7 +70,7 @@ public class NewChunkLoadEvent implements Listener {
             if (event.isNewChunk()) deferredNewChunks.add(loadingChunkKey);
             return;
         }
-        // A deferred chunk may have unloaded before its scan could run. Its
+        // A deferred chunk may have unloaded while content was rebuilding. Its
         // later load is no longer reported as "new", but it still needs the one
         // generation scan that was postponed by the reload gate.
         if (!event.isNewChunk() && !deferred) {
@@ -81,15 +81,24 @@ public class NewChunkLoadEvent implements Listener {
             return;
         }
 
-        if (chunkScanReentrancyGuard.isActive()) {
-            // A terrain read can load neighboring chunks. Do not enqueue those
-            // side effects: replaying them would recursively expand generation.
-            // Previously queued work still needs a drain now that it is loaded.
-            if (deferred) scheduleDeferredDrain();
-            return;
+        // Scan now, while the load event guarantees the chunk is loaded.
+        // Pregenerators such as /bs pregenerate and Chunky hold nothing on the
+        // chunks they load, so a scan postponed to a later tick finds most of
+        // them unloaded again and never places their structures.
+        boolean scanned = chunkScanReentrancyGuard.runIfIdle(
+                () -> scanNewChunk(chunk, loadingChunkKey));
+        if (scanned) {
+            deferredNewChunks.remove(loadingChunkKey);
+            delayedDungeonScans.removeDeferred(loadingChunkKey);
+        } else if (deferred) {
+            // This load happened synchronously inside another guarded scan. The
+            // chunk is loaded now, so waiting for another ChunkLoadEvent could
+            // strand its reload-deferred scan forever. Drain it next tick, once
+            // the outer scan has released the reentrancy guard.
+            scheduleDeferredDrain();
         }
-        deferredNewChunks.add(loadingChunkKey);
-        scheduleDeferredDrain();
+        // A nested new chunk is a side effect of the outer scan's terrain reads.
+        // It is not queued: replaying those would recursively expand generation.
     }
 
     private static void scanNewChunk(Chunk chunk, LoadingChunkKey loadingChunkKey) {
@@ -119,9 +128,10 @@ public class NewChunkLoadEvent implements Listener {
     }
 
     /**
-     * Schedules a bounded replay of deferred chunks that are still loaded
-     * without force-loading worlds or chunks. Unloaded coordinates stay queued
-     * and are consumed by their next ordinary ChunkLoadEvent.
+     * Schedules a bounded replay of chunks that generated during a content
+     * reload and are still loaded, without force-loading worlds or chunks.
+     * Unloaded coordinates stay queued and are scanned by their next ordinary
+     * ChunkLoadEvent.
      */
     public static void replayDeferredNewChunks() {
         scheduleDeferredDrain();
@@ -153,20 +163,22 @@ public class NewChunkLoadEvent implements Listener {
     private static void drainDeferredNewChunks() {
         if (BetterStructures.isReloading() || MetadataHandler.PLUGIN == null || !MetadataHandler.PLUGIN.isEnabled()) return;
         long started = System.nanoTime();
-        int inspected = 0;
+        // Only loaded keys count against the scan cap. Skipping an unloaded key
+        // is cheap, and charging it would let dormant keys starve loaded ones.
+        int scanned = 0;
         while (remainingNewInspections > 0 && !deferredNewChunks.isEmpty()
-                && inspected < MAX_DEFERRED_SCANS_PER_DRAIN
+                && scanned < MAX_DEFERRED_SCANS_PER_DRAIN
                 && System.nanoTime() - started < MAX_DEFERRED_SCAN_NANOS) {
             var iterator = deferredNewChunks.iterator();
             LoadingChunkKey key = iterator.next();
             iterator.remove();
             remainingNewInspections--;
-            inspected++;
             World world = Bukkit.getWorld(key.worldId());
             if (world == null || !world.isChunkLoaded(key.x(), key.z())) {
                 deferredNewChunks.add(key);
                 continue;
             }
+            scanned++;
             try {
                 Chunk chunk = world.getChunkAt(key.x(), key.z());
                 if (chunkScanReentrancyGuard.runIfIdle(() -> scanNewChunk(chunk, key))) {
@@ -180,16 +192,16 @@ public class NewChunkLoadEvent implements Listener {
             }
         }
         while (remainingDungeonInspections > 0 && delayedDungeonScans.hasDeferred()
-                && inspected < MAX_DEFERRED_SCANS_PER_DRAIN
+                && scanned < MAX_DEFERRED_SCANS_PER_DRAIN
                 && System.nanoTime() - started < MAX_DEFERRED_SCAN_NANOS) {
             LoadingChunkKey key = delayedDungeonScans.pollDeferred();
             remainingDungeonInspections--;
-            inspected++;
             World world = Bukkit.getWorld(key.worldId());
             if (deferredNewChunks.contains(key) || world == null || !world.isChunkLoaded(key.x(), key.z())) {
                 delayedDungeonScans.defer(key);
                 continue;
             }
+            scanned++;
             scheduleDungeonScanner(key);
         }
         if (deferredNewChunks.isEmpty()) remainingNewInspections = 0;
