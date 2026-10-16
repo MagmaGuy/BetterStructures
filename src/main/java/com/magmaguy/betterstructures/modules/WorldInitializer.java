@@ -1,10 +1,10 @@
 package com.magmaguy.betterstructures.modules;
 
+import com.magmaguy.magmacore.util.TemporaryWorldManager;
 import org.bukkit.GameMode;
 import org.bukkit.World;
 import org.bukkit.WorldCreator;
 import org.bukkit.entity.Player;
-import org.bukkit.generator.ChunkGenerator;
 
 public class WorldInitializer {
 
@@ -12,7 +12,9 @@ public class WorldInitializer {
         WorldCreator worldCreator = new WorldCreator(worldName);
         worldCreator.environment(World.Environment.NORMAL);
         worldCreator.keepSpawnInMemory(false);
-        worldCreator.generator(new VoidGenerator());
+        // MagmaCore's void generator lives outside this plugin's class loader, so a world that
+        // outlasts a restart-free update does not keep the replaced copy of BetterStructures loaded.
+        worldCreator.generator(TemporaryWorldManager.voidGenerator());
         World world = worldCreator.createWorld();
         if (world == null) {
             throw new IllegalStateException("Bukkit failed to create world " + worldName);
@@ -20,8 +22,5 @@ public class WorldInitializer {
         world.setAutoSave(false);
         if (player != null) player.setGameMode(GameMode.SPECTATOR);
         return world;
-    }
-
-    private static class VoidGenerator extends ChunkGenerator {
     }
 }
