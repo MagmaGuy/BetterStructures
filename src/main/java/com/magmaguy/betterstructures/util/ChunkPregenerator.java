@@ -1,6 +1,7 @@
 package com.magmaguy.betterstructures.util;
 
 import com.magmaguy.betterstructures.MetadataHandler;
+import com.magmaguy.betterstructures.api.BuildPasteCompleteEvent;
 import com.magmaguy.betterstructures.api.BuildPlaceEvent;
 import com.magmaguy.betterstructures.config.DefaultConfig;
 import com.magmaguy.magmacore.util.Logger;
@@ -39,8 +40,10 @@ public class ChunkPregenerator implements Listener {
     private int newlyGeneratedChunks = 0;
     private int chunksLoadedLast30s = 0;
     private int allChunksLoadedLast30s = 0; // Track all chunks (new or existing) loaded in last 30s
-    private int structuresGeneratedTotal = 0;
-    private int structuresGeneratedLast30s = 0;
+    // Placed counts structures queued for pasting; pasted counts the ones whose paste finished.
+    private int structuresPlacedTotal = 0;
+    private int structuresPastedTotal = 0;
+    private int structuresPastedLast30s = 0;
     private Integer expectedChunksTotal = null; // Cached calculation
     private BukkitTask statsTask;
     private BukkitTask tpsMonitorTask;
@@ -345,8 +348,15 @@ public class ChunkPregenerator implements Listener {
     public void onBuildPlace(BuildPlaceEvent event) {
         // Only count structures in the world we're pregenerating
         if (event.getFitAnything().getLocation().getWorld().equals(world)) {
-            structuresGeneratedTotal++;
-            structuresGeneratedLast30s++;
+            structuresPlacedTotal++;
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onBuildPasteComplete(BuildPasteCompleteEvent event) {
+        if (world.equals(event.getLowestCorner().getWorld())) {
+            structuresPastedTotal++;
+            structuresPastedLast30s++;
         }
     }
 
@@ -400,8 +410,9 @@ public class ChunkPregenerator implements Listener {
         Logger.info("  - Target Radius: " + maxRadiusBlocks + " blocks (" + maxRadiusChunks + " chunks)");
         Logger.info("  - Current Chunk Radius: " + currentRadius + " / " + maxRadiusChunks + " (" + (currentRadius * 16) + " / " + maxRadiusBlocks + " blocks)");
         Logger.info("  - Max Chunk Radius Reached: " + actualMaxRadiusChunks);
-        Logger.info("Structures Generated (Total): " + structuresGeneratedTotal);
-        Logger.info("Structures Generated (Last 30s): " + structuresGeneratedLast30s);
+        Logger.info("Structures Pasted (Total): " + structuresPastedTotal);
+        Logger.info("Structures Pasted (Last 30s): " + structuresPastedLast30s);
+        Logger.info("Structures Waiting To Paste: " + Math.max(0, structuresPlacedTotal - structuresPastedTotal));
         if (estimatedTimeLeft != null) {
             Logger.info("Estimated Time Remaining: " + estimatedTimeLeft);
         }
@@ -410,7 +421,7 @@ public class ChunkPregenerator implements Listener {
         // Reset 30s counters
         chunksLoadedLast30s = 0;
         allChunksLoadedLast30s = 0;
-        structuresGeneratedLast30s = 0;
+        structuresPastedLast30s = 0;
     }
     
     private String calculateEstimatedTimeLeft(int chunksLoaded, int expectedChunksTotal, int chunksLoadedLast30s) {
