@@ -1,27 +1,21 @@
 package com.magmaguy.betterstructures.modules;
 
-import java.util.HashSet;
 import java.util.Optional;
-import java.util.Set;
 
 /**
- * Reserves the complete chunk footprint of a naturally generated modular structure.
+ * The block footprint of a naturally generated modular dungeon.
  *
- * <p>The chunk that triggered generation is not the structure's boundary. A modular dungeon can
- * extend several chunks in every direction, so checking only {@code ChunkLoadEvent#isNewChunk()}
- * on the origin can overwrite an older base at the edge of the paste. This class keeps the
- * geometry and state decision independent of Bukkit so the destructive case remains covered by a
- * deterministic unit test.</p>
+ * <p>The chunk that triggered generation is not the structure's boundary: a modular dungeon
+ * extends several chunks in every direction, so spawn protection applies to its whole footprint,
+ * and WorldGuard regions are checked against these bounds. Chunk generation state is deliberately
+ * not consulted. Vanilla keeps partially generated chunks around every loaded area, and treating
+ * them as existing terrain refused nearly every dungeon a player approached.</p>
  */
 public final class NaturalDungeonReservation {
     private final BlockBounds blockBounds;
-    private final Set<ChunkCoordinate> initiallyUngeneratedChunks;
 
-    private NaturalDungeonReservation(
-            BlockBounds blockBounds,
-            Set<ChunkCoordinate> initiallyUngeneratedChunks) {
+    private NaturalDungeonReservation(BlockBounds blockBounds) {
         this.blockBounds = blockBounds;
-        this.initiallyUngeneratedChunks = Set.copyOf(initiallyUngeneratedChunks);
     }
 
     public static Optional<NaturalDungeonReservation> tryCreate(
@@ -29,34 +23,13 @@ public final class NaturalDungeonReservation {
             int originBlockZ,
             int latticeRadius,
             int moduleSize,
-            int spawnProtectionRadius,
-            ChunkProbe isGenerated,
-            ChunkProbe wasObservedNew) {
+            int spawnProtectionRadius) {
         if (latticeRadius < 1) throw new IllegalArgumentException("latticeRadius must be positive");
         if (moduleSize < 1) throw new IllegalArgumentException("moduleSize must be positive");
 
         BlockBounds bounds = blockBounds(originBlockX, originBlockZ, latticeRadius, moduleSize);
         if (bounds.intersectsSpawnProtection(spawnProtectionRadius)) return Optional.empty();
-
-        Set<ChunkCoordinate> initiallyUngenerated = new HashSet<>();
-        for (int x = bounds.minChunkX(); x <= bounds.maxChunkX(); x++) {
-            for (int z = bounds.minChunkZ(); z <= bounds.maxChunkZ(); z++) {
-                ChunkCoordinate coordinate = new ChunkCoordinate(x, z);
-                if (!isGenerated.test(coordinate)) {
-                    initiallyUngenerated.add(coordinate);
-                    continue;
-                }
-                if (!wasObservedNew.test(coordinate)) return Optional.empty();
-            }
-        }
-
-        return Optional.of(new NaturalDungeonReservation(bounds, initiallyUngenerated));
-    }
-
-    public boolean remainsSafe(ChunkProbe isGenerated) {
-        for (ChunkCoordinate coordinate : initiallyUngeneratedChunks)
-            if (isGenerated.test(coordinate)) return false;
-        return true;
+        return Optional.of(new NaturalDungeonReservation(bounds));
     }
 
     public BlockBounds blockBounds() {
@@ -78,14 +51,6 @@ public final class NaturalDungeonReservation {
                 Math.addExact(originBlockZ, localMinimum),
                 Math.addExact(originBlockX, localMaximum),
                 Math.addExact(originBlockZ, localMaximum));
-    }
-
-    @FunctionalInterface
-    public interface ChunkProbe {
-        boolean test(ChunkCoordinate coordinate);
-    }
-
-    public record ChunkCoordinate(int x, int z) {
     }
 
     public record BlockBounds(int minBlockX, int minBlockZ, int maxBlockX, int maxBlockZ) {

@@ -31,14 +31,11 @@ import org.bukkit.scheduler.BukkitTask;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.TimeUnit;
 
 public class NewChunkLoadEvent implements Listener {
 
@@ -49,9 +46,6 @@ public class NewChunkLoadEvent implements Listener {
     private static final Set<LoadingChunkKey> deferredNewChunks = new LinkedHashSet<>();
     private static final DelayedDungeonScanTracker<LoadingChunkKey> delayedDungeonScans =
             new DelayedDungeonScanTracker<>();
-    private static final Map<LoadingChunkKey, Long> recentlyGeneratedChunks = new LinkedHashMap<>();
-    private static final long RECENT_NEW_CHUNK_NANOS = TimeUnit.MINUTES.toNanos(2);
-    private static final int MAX_RECENT_NEW_CHUNKS = 65_536;
     private static final ChunkScanReentrancyGuard chunkScanReentrancyGuard = new ChunkScanReentrancyGuard();
     private static final int MAX_DEFERRED_SCANS_PER_DRAIN = 32;
     private static final long MAX_DEFERRED_SCAN_NANOS = 5_000_000L;
@@ -63,7 +57,6 @@ public class NewChunkLoadEvent implements Listener {
     public void onChunkLoad(ChunkLoadEvent event) {
         Chunk chunk = event.getChunk();
         LoadingChunkKey loadingChunkKey = LoadingChunkKey.from(chunk);
-        if (event.isNewChunk()) rememberGeneratedChunk(loadingChunkKey);
         boolean deferred = deferredNewChunks.contains(loadingChunkKey);
         boolean deferredDungeon = delayedDungeonScans.isDeferred(loadingChunkKey);
 
@@ -228,45 +221,12 @@ public class NewChunkLoadEvent implements Listener {
         loadingChunks.clear();
         deferredNewChunks.clear();
         delayedDungeonScans.clear();
-        recentlyGeneratedChunks.clear();
     }
 
     private record LoadingChunkKey(UUID worldId, int x, int z) {
         private static LoadingChunkKey from(Chunk chunk) {
             return new LoadingChunkKey(chunk.getWorld().getUID(), chunk.getX(), chunk.getZ());
         }
-    }
-
-    private static void rememberGeneratedChunk(LoadingChunkKey key) {
-        purgeExpiredGeneratedChunks();
-        recentlyGeneratedChunks.remove(key);
-        recentlyGeneratedChunks.put(key, System.nanoTime());
-        while (recentlyGeneratedChunks.size() > MAX_RECENT_NEW_CHUNKS) {
-            var iterator = recentlyGeneratedChunks.keySet().iterator();
-            if (!iterator.hasNext()) break;
-            iterator.next();
-            iterator.remove();
-        }
-    }
-
-    private static void purgeExpiredGeneratedChunks() {
-        long cutoff = System.nanoTime() - RECENT_NEW_CHUNK_NANOS;
-        var iterator = recentlyGeneratedChunks.entrySet().iterator();
-        while (iterator.hasNext()) {
-            if (iterator.next().getValue() >= cutoff) break;
-            iterator.remove();
-        }
-    }
-
-    private static boolean wasRecentlyGenerated(UUID worldId, NaturalDungeonReservation.ChunkCoordinate coordinate) {
-        LoadingChunkKey key = new LoadingChunkKey(worldId, coordinate.x(), coordinate.z());
-        Long observed = recentlyGeneratedChunks.get(key);
-        if (observed == null) return false;
-        if (System.nanoTime() - observed > RECENT_NEW_CHUNK_NANOS) {
-            recentlyGeneratedChunks.remove(key);
-            return false;
-        }
-        return true;
     }
 
     private static void scheduleDungeonScanner(LoadingChunkKey loadingChunkKey) {
@@ -426,24 +386,24 @@ public class NewChunkLoadEvent implements Listener {
             return;
         }
         var startLocation = new Location(world, (chunkX << 4) + 8, altitude, (chunkZ << 4) + 8);
-        UUID worldId = world.getUID();
+        // Only explicit protections stop a natural dungeon: spawn protection and WorldGuard regions.
+        // Whether footprint chunks were already generated is not a usable signal: vanilla keeps
+        // partially generated chunks around every loaded area, so that check refused nearly every
+        // dungeon a player approached.
         var reservation = NaturalDungeonReservation.tryCreate(
                 startLocation.getBlockX(),
                 startLocation.getBlockZ(),
                 moduleGeneratorsConfigFields.getRadius(),
                 moduleGeneratorsConfigFields.getModuleSizeXZ(),
-                DefaultConfig.getSpawnProtectionRadius(),
-                coordinate -> world.isChunkGenerated(coordinate.x(), coordinate.z()),
-                coordinate -> wasRecentlyGenerated(worldId, coordinate));
+                DefaultConfig.getSpawnProtectionRadius());
         if (reservation.isEmpty()) {
-            Logger.info("Skipped natural modular generation because its full footprint overlaps "
-                    + "spawn protection or a chunk that was not just generated.");
+            Logger.info("Skipped natural modular generation because its footprint overlaps spawn protection.");
             return;
         }
 
-        NaturalDungeonReservation naturalReservation = reservation.get();
-        if (hasWorldGuardOverlap(world, naturalReservation.blockBounds())) {
-            Logger.info("Skipped natural modular generation because its full footprint overlaps "
+        NaturalDungeonReservation.BlockBounds bounds = reservation.get().blockBounds();
+        if (hasWorldGuardOverlap(world, bounds)) {
+            Logger.info("Skipped natural modular generation because its footprint overlaps "
                     + "a WorldGuard region.");
             return;
         }
@@ -451,9 +411,7 @@ public class NewChunkLoadEvent implements Listener {
         WFCGenerator.generateNaturally(
                 moduleGeneratorsConfigFields,
                 startLocation,
-                () -> naturalReservation.remainsSafe(
-                        coordinate -> world.isChunkGenerated(coordinate.x(), coordinate.z()))
-                        && !hasWorldGuardOverlap(world, naturalReservation.blockBounds()));
+                () -> !hasWorldGuardOverlap(world, bounds));
     }
 
     private static boolean hasWorldGuardOverlap(

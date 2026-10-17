@@ -330,8 +330,8 @@ public class WFCGenerator {
                 return;
             }
             if (!safeToPaste) {
-                Logger.info("Cancelled natural modular generation because part of its reserved "
-                        + "footprint became occupied or protected before paste.");
+                Logger.info("Cancelled natural modular generation because its footprint gained "
+                        + "a WorldGuard region before paste.");
                 cleanup();
                 return;
             }
