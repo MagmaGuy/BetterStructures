@@ -7,6 +7,9 @@ import com.magmaguy.betterstructures.config.DefaultConfig;
 import com.magmaguy.betterstructures.config.schematics.SchematicConfig;
 import com.magmaguy.magmacore.menus.FirstTimeSetupMenu;
 import com.magmaguy.magmacore.menus.MenuButton;
+import com.magmaguy.magmacore.nightbreak.NightbreakAccount;
+import com.magmaguy.magmacore.nightbreak.NightbreakFirstTimeSetupSpec;
+import com.magmaguy.magmacore.nightbreak.NightbreakSetupMenuHelper;
 import com.magmaguy.magmacore.util.ItemStackGenerator;
 import com.magmaguy.magmacore.util.Logger;
 import com.magmaguy.magmacore.util.SpigotMessage;
@@ -18,6 +21,12 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.util.List;
 
 public class BetterStructuresFirstTimeSetupMenu {
+    // The recommended-setup chat reads the name and /bs setup (and /bs recommendedplugins from it).
+    private static final NightbreakFirstTimeSetupSpec SETUP_SPEC = new NightbreakFirstTimeSetupSpec(
+            "BetterStructures", "betterstructures.*", null, "/bs setup", null,
+            "https://nightbreak.io/plugin/betterstructures/", "https://discord.gg/eSxvPbWYy4",
+            List.of(), List.of());
+
     public static void createMenu(Player player) {
         if (BetterStructures.rejectContentCommandDuringReload(player)) return;
         new FirstTimeSetupMenu(
@@ -44,9 +53,11 @@ public class BetterStructuresFirstTimeSetupMenu {
                 sendLink(player, "&2Setup guide: ", "&9&nhttps://nightbreak.io/plugin/betterstructures/#setup",
                         "&7Click to open the BetterStructures setup guide.",
                         "https://nightbreak.io/plugin/betterstructures/#setup");
-                sendLink(player, "&2Account token: ", "&9&nhttps://nightbreak.io/account/",
-                        "&7Click to open the account token page.",
-                        "https://nightbreak.io/account/");
+                if (NightbreakAccount.hasToken()) {
+                    Logger.sendSimpleMessage(player, "&2Nightbreak account: &aconnected");
+                } else {
+                    NightbreakSetupMenuHelper.sendLinkCommand(player, "&2Link this server: ");
+                }
                 sendCommand(player, "&2Setup menu: ", "&a/bs setup",
                         "&7Click to open the BetterStructures setup menu.",
                         "/bs setup");
@@ -70,25 +81,8 @@ public class BetterStructuresFirstTimeSetupMenu {
             public void onClick(Player player) {
                 player.closeInventory();
                 DefaultConfig.toggleSetupDone(true);
-                Logger.sendSimpleMessage(player, "&8&m-----------------------------------------------------");
-                Logger.sendSimpleMessage(player, "&aBetterStructures setup is now marked as complete.");
-                Logger.sendSimpleMessage(player, "&7Connect this server so BetterStructures can install content and download plugin updates from in-game.");
-                sendLink(player, "&7Step 1: get your account token at ",
-                        "&9&nhttps://nightbreak.io/account/",
-                        "&7Click to open the account token page.",
-                        "https://nightbreak.io/account/");
-                sendCommand(player, "&7Step 2: link it in-game with ", "&a/nightbreaklogin <token>",
-                        "&7Click to prepare the token command.",
-                        "/nightbreaklogin ");
-                player.spigot().sendMessage(
-                        SpigotMessage.simpleMessage("&7Step 3: open the setup menu with "),
-                        SpigotMessage.commandHoverMessage("&a/bs setup",
-                                "&7Click to open the BetterStructures setup menu.",
-                                "/bs setup"));
-                sendCommand(player, "&7Recommended plugins: ", "&a/bs recommendedplugins",
-                        "&7Click to see plugins that work well with BetterStructures.",
-                        "/bs recommendedplugins");
-                Logger.sendSimpleMessage(player, "&8&m-----------------------------------------------------");
+                // Starts the browser link right away when this admin may run /nightbreaklogin.
+                NightbreakSetupMenuHelper.sendRecommendedSetupInstructions(player, SETUP_SPEC);
             }
         };
     }
