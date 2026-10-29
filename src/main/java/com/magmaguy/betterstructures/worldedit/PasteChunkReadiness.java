@@ -1,6 +1,7 @@
 package com.magmaguy.betterstructures.worldedit;
 
 import com.magmaguy.betterstructures.MetadataHandler;
+import com.magmaguy.betterstructures.util.PluginChunkHolds;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
@@ -11,7 +12,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
- * One requested chunk and one owned ticket per active paste; all world mutation stays on the server thread.
+ * One requested chunk and one chunk hold per active paste; all world mutation stays on the server thread.
  * A requested chunk is claimed inside its load completion: Paper removes its own load ticket right after
  * completing the request, so a chunk claimed on a later tick is usually unloaded again when nobody is near.
  */
@@ -22,7 +23,6 @@ public final class PasteChunkReadiness implements AutoCloseable {
     private final Method asyncLoad;
     private CompletableFuture<Void> pending;
     private Chunk held;
-    private boolean ownsTicket;
     private long waitingSince = -1;
     private boolean closed;
 
@@ -93,17 +93,14 @@ public final class PasteChunkReadiness implements AutoCloseable {
     private void hold(Chunk chunk) {
         release();
         held = chunk;
-        ownsTicket = chunk.addPluginChunkTicket(MetadataHandler.PLUGIN);
+        PluginChunkHolds.hold(chunk);
     }
 
     private void release() {
         if (held == null) return;
         Chunk chunk = held;
-        boolean owned = ownsTicket;
         held = null;
-        ownsTicket = false;
-        // Tickets die with their world; Bukkit also drops a disabled plugin's tickets.
-        if (owned && Bukkit.getWorld(world.getUID()) == world) chunk.removePluginChunkTicket(MetadataHandler.PLUGIN);
+        PluginChunkHolds.release(chunk);
     }
 
     @Override public void close() {

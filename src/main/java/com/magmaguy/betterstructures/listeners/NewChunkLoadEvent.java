@@ -16,6 +16,7 @@ import com.magmaguy.betterstructures.modules.WFCGenerator;
 import com.magmaguy.betterstructures.modules.NaturalDungeonReservation;
 import com.magmaguy.betterstructures.schematics.SchematicContainer;
 import com.magmaguy.betterstructures.thirdparty.WorldGuard;
+import com.magmaguy.betterstructures.util.PluginChunkHolds;
 import com.magmaguy.magmacore.util.Logger;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
@@ -30,12 +31,15 @@ import org.bukkit.scheduler.BukkitTask;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.logging.Level;
 
 public class NewChunkLoadEvent implements Listener {
 
@@ -46,10 +50,15 @@ public class NewChunkLoadEvent implements Listener {
     private static final Set<LoadingChunkKey> deferredNewChunks = new LinkedHashSet<>();
     private static final DelayedDungeonScanTracker<LoadingChunkKey> delayedDungeonScans =
             new DelayedDungeonScanTracker<>();
+    // Structure grid chunks waiting one tick for their terrain scans, each held
+    // loaded with a plugin ticket. The Chunk is kept for that tick only; a reload
+    // moves these to deferredNewChunks as coordinates.
+    private static final Map<LoadingChunkKey, Chunk> heldTerrainScans = new LinkedHashMap<>();
     private static final ChunkScanReentrancyGuard chunkScanReentrancyGuard = new ChunkScanReentrancyGuard();
     private static final int MAX_DEFERRED_SCANS_PER_DRAIN = 32;
     private static final long MAX_DEFERRED_SCAN_NANOS = 5_000_000L;
     private static BukkitTask deferredDrainTask;
+    private static BukkitTask heldTerrainScanTask;
     private static int remainingNewInspections;
     private static int remainingDungeonInspections;
 
@@ -75,29 +84,37 @@ public class NewChunkLoadEvent implements Listener {
             return;
         }
 
-        // Scan now, while the load event guarantees the chunk is loaded.
-        // Pregenerators such as /bs pregenerate and Chunky hold nothing on the
-        // chunks they load, so a scan postponed to a later tick finds most of
-        // them unloaded again and never places their structures.
-        boolean scanned = chunkScanReentrancyGuard.runIfIdle(
-                () -> scanNewChunk(chunk, loadingChunkKey));
-        if (scanned) {
-            deferredNewChunks.remove(loadingChunkKey);
-            delayedDungeonScans.removeDeferred(loadingChunkKey);
-        } else if (deferred) {
-            // This load happened synchronously inside another guarded scan. The
-            // chunk is loaded now, so waiting for another ChunkLoadEvent could
-            // strand its reload-deferred scan forever. Drain it next tick, once
-            // the outer scan has released the reentrancy guard.
-            scheduleDeferredDrain();
+        if (chunkScanReentrancyGuard.isActive()) {
+            // This load is a side effect of a running scan's terrain reads. It is
+            // not queued: replaying those would recursively expand generation. A
+            // reload-deferred chunk still needs its scan; the chunk is loaded now,
+            // so drain it next tick, once the outer scan has released the guard.
+            if (deferred) scheduleDeferredDrain();
+            return;
         }
-        // A nested new chunk is a side effect of the outer scan's terrain reads.
-        // It is not queued: replaying those would recursively expand generation.
+        deferredNewChunks.remove(loadingChunkKey);
+        delayedDungeonScans.removeDeferred(loadingChunkKey);
+        // The fitters also read terrain in the neighbouring chunks. Reading one
+        // that is not generated yet from inside this callback makes the server
+        // thread wait for it while the chunk system is still dispatching this
+        // load, which can stall the server for good. Scan on the next tick
+        // instead, holding the chunk until then: pregenerators such as
+        // /bs pregenerate and Chunky release their chunks right after loading.
+        if (claimNewChunk(chunk, loadingChunkKey)) holdForTerrainScan(chunk, loadingChunkKey);
     }
 
     private static void scanNewChunk(Chunk chunk, LoadingChunkKey loadingChunkKey) {
-        if (!ValidWorldsConfig.isValidWorld(chunk.getWorld())) return;
-        if (loadingChunks.contains(loadingChunkKey)) return;
+        if (claimNewChunk(chunk, loadingChunkKey)) runTerrainScans(chunk);
+    }
+
+    /**
+     * Claims a new chunk's one generation scan and schedules its dungeon scan,
+     * which needs only coordinates. Reads no terrain. Returns whether the chunk
+     * is a grid point for a structure type whose fitter must read terrain.
+     */
+    private static boolean claimNewChunk(Chunk chunk, LoadingChunkKey loadingChunkKey) {
+        if (!ValidWorldsConfig.isValidWorld(chunk.getWorld())) return false;
+        if (loadingChunks.contains(loadingChunkKey)) return false;
         //In some cases the same chunk gets loaded (at least at an event level) several times, this prevents the plugin from doing multiple scans and placing multiple builds, enhancing performance
         loadingChunks.add(loadingChunkKey);
         new BukkitRunnable() {
@@ -107,16 +124,64 @@ public class NewChunkLoadEvent implements Listener {
             }
         }.runTaskLater(MetadataHandler.PLUGIN, 20L);
 
-        surfaceScanner(chunk);
-        shallowUndergroundScanner(chunk);
-        deepUndergroundScanner(chunk);
-        skyScanner(chunk);
-        liquidSurfaceScanner(chunk);
         scheduleDungeonScanner(loadingChunkKey);
+        return isSurfacePosition(chunk) || isShallowUndergroundPosition(chunk) || isDeepUndergroundPosition(chunk)
+                || isSkyPosition(chunk) || isLiquidSurfacePosition(chunk);
+    }
+
+    private static void runTerrainScans(Chunk chunk) {
+        if (isSurfacePosition(chunk)) new FitSurfaceBuilding(chunk);
+        if (isShallowUndergroundPosition(chunk)) FitUndergroundShallowBuilding.fit(chunk);
+        if (isDeepUndergroundPosition(chunk)) FitUndergroundDeepBuilding.fit(chunk);
+        if (isSkyPosition(chunk)) new FitAirBuilding(chunk);
+        if (isLiquidSurfacePosition(chunk)) new FitLiquidBuilding(chunk);
+    }
+
+    private static void holdForTerrainScan(Chunk chunk, LoadingChunkKey loadingChunkKey) {
+        if (heldTerrainScans.putIfAbsent(loadingChunkKey, chunk) != null) return;
+        PluginChunkHolds.hold(chunk);
+        if (heldTerrainScanTask == null)
+            heldTerrainScanTask = Bukkit.getScheduler().runTask(MetadataHandler.PLUGIN, NewChunkLoadEvent::runHeldTerrainScans);
+    }
+
+    private static void runHeldTerrainScans() {
+        heldTerrainScanTask = null;
+        if (BetterStructures.isReloading()) {
+            releaseHeldTerrainScans(true);
+            return;
+        }
+        List<Chunk> chunks = new ArrayList<>(heldTerrainScans.values());
+        heldTerrainScans.clear();
+        for (Chunk chunk : chunks) {
+            try {
+                World world = chunk.getWorld();
+                // An unloaded world took its chunks and tickets with it.
+                if (Bukkit.getWorld(world.getUID()) == world && chunk.isLoaded())
+                    chunkScanReentrancyGuard.runIfIdle(() -> runTerrainScans(chunk));
+            } catch (Throwable failure) {
+                MetadataHandler.PLUGIN.getLogger().log(Level.WARNING, "Failed chunk scan at "
+                        + chunk.getWorld().getName() + " " + chunk.getX() + ", " + chunk.getZ(), failure);
+            } finally {
+                PluginChunkHolds.release(chunk);
+            }
+        }
+    }
+
+    private static void releaseHeldTerrainScans(boolean keepForReplay) {
+        if (heldTerrainScanTask != null) {
+            heldTerrainScanTask.cancel();
+            heldTerrainScanTask = null;
+        }
+        for (Map.Entry<LoadingChunkKey, Chunk> held : heldTerrainScans.entrySet()) {
+            if (keepForReplay) deferredNewChunks.add(held.getKey());
+            PluginChunkHolds.release(held.getValue());
+        }
+        heldTerrainScans.clear();
     }
 
     public static void prepareForContentReload() {
         cancelDeferredDrain();
+        releaseHeldTerrainScans(true);
         delayedDungeonScans.deferAllPending();
         loadingChunks.clear();
     }
@@ -212,12 +277,14 @@ public class NewChunkLoadEvent implements Listener {
 
     public static void discardDeferredNewChunks() {
         cancelDeferredDrain();
+        releaseHeldTerrainScans(false);
         deferredNewChunks.clear();
         delayedDungeonScans.clear();
     }
 
     public static void shutdown() {
         cancelDeferredDrain();
+        releaseHeldTerrainScans(false);
         loadingChunks.clear();
         deferredNewChunks.clear();
         delayedDungeonScans.clear();
@@ -326,40 +393,35 @@ public class NewChunkLoadEvent implements Listener {
         return false;
     }
 
-    private static void surfaceScanner(Chunk chunk) {
-        if (SchematicContainer.getSchematics().get(GeneratorConfigFields.StructureType.SURFACE).isEmpty()) return;
+    private static boolean isSurfacePosition(Chunk chunk) {
+        if (SchematicContainer.getSchematics().get(GeneratorConfigFields.StructureType.SURFACE).isEmpty()) return false;
         // Get config values directly instead of using static finals
-        if (!isValidStructurePosition(chunk, GeneratorConfigFields.StructureType.SURFACE,
-                DefaultConfig.getDistanceSurface(), DefaultConfig.getMaxOffsetSurface())) return;
-        new FitSurfaceBuilding(chunk);
+        return isValidStructurePosition(chunk, GeneratorConfigFields.StructureType.SURFACE,
+                DefaultConfig.getDistanceSurface(), DefaultConfig.getMaxOffsetSurface());
     }
 
-    private static void shallowUndergroundScanner(Chunk chunk) {
-        if (SchematicContainer.getSchematics().get(GeneratorConfigFields.StructureType.UNDERGROUND_SHALLOW).isEmpty()) return;
-        if (!isValidStructurePosition(chunk, GeneratorConfigFields.StructureType.UNDERGROUND_SHALLOW,
-                DefaultConfig.getDistanceShallow(), DefaultConfig.getMaxOffsetShallow())) return;
-        FitUndergroundShallowBuilding.fit(chunk);
+    private static boolean isShallowUndergroundPosition(Chunk chunk) {
+        if (SchematicContainer.getSchematics().get(GeneratorConfigFields.StructureType.UNDERGROUND_SHALLOW).isEmpty()) return false;
+        return isValidStructurePosition(chunk, GeneratorConfigFields.StructureType.UNDERGROUND_SHALLOW,
+                DefaultConfig.getDistanceShallow(), DefaultConfig.getMaxOffsetShallow());
     }
 
-    private static void deepUndergroundScanner(Chunk chunk) {
-        if (SchematicContainer.getSchematics().get(GeneratorConfigFields.StructureType.UNDERGROUND_DEEP).isEmpty()) return;
-        if (!isValidStructurePosition(chunk, GeneratorConfigFields.StructureType.UNDERGROUND_DEEP,
-                DefaultConfig.getDistanceDeep(), DefaultConfig.getMaxOffsetDeep())) return;
-        FitUndergroundDeepBuilding.fit(chunk);
+    private static boolean isDeepUndergroundPosition(Chunk chunk) {
+        if (SchematicContainer.getSchematics().get(GeneratorConfigFields.StructureType.UNDERGROUND_DEEP).isEmpty()) return false;
+        return isValidStructurePosition(chunk, GeneratorConfigFields.StructureType.UNDERGROUND_DEEP,
+                DefaultConfig.getDistanceDeep(), DefaultConfig.getMaxOffsetDeep());
     }
 
-    private static void skyScanner(Chunk chunk) {
-        if (SchematicContainer.getSchematics().get(GeneratorConfigFields.StructureType.SKY).isEmpty()) return;
-        if (!isValidStructurePosition(chunk, GeneratorConfigFields.StructureType.SKY,
-                DefaultConfig.getDistanceSky(), DefaultConfig.getMaxOffsetSky())) return;
-        new FitAirBuilding(chunk);
+    private static boolean isSkyPosition(Chunk chunk) {
+        if (SchematicContainer.getSchematics().get(GeneratorConfigFields.StructureType.SKY).isEmpty()) return false;
+        return isValidStructurePosition(chunk, GeneratorConfigFields.StructureType.SKY,
+                DefaultConfig.getDistanceSky(), DefaultConfig.getMaxOffsetSky());
     }
 
-    private static void liquidSurfaceScanner(Chunk chunk) {
-        if (SchematicContainer.getSchematics().get(GeneratorConfigFields.StructureType.LIQUID_SURFACE).isEmpty()) return;
-        if (!isValidStructurePosition(chunk, GeneratorConfigFields.StructureType.LIQUID_SURFACE,
-                DefaultConfig.getDistanceLiquid(), DefaultConfig.getMaxOffsetLiquid())) return;
-        new FitLiquidBuilding(chunk);
+    private static boolean isLiquidSurfacePosition(Chunk chunk) {
+        if (SchematicContainer.getSchematics().get(GeneratorConfigFields.StructureType.LIQUID_SURFACE).isEmpty()) return false;
+        return isValidStructurePosition(chunk, GeneratorConfigFields.StructureType.LIQUID_SURFACE,
+                DefaultConfig.getDistanceLiquid(), DefaultConfig.getMaxOffsetLiquid());
     }
 
     // Runs from coordinates alone: the origin chunk only marks where the dungeon

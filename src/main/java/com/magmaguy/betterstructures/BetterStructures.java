@@ -21,6 +21,7 @@ import com.magmaguy.betterstructures.schematics.SchematicContainer;
 import com.magmaguy.betterstructures.thirdparty.EliteMobs;
 import com.magmaguy.betterstructures.thirdparty.WorldGuard;
 import com.magmaguy.betterstructures.util.ChunkPregenerator;
+import com.magmaguy.betterstructures.util.PluginChunkHolds;
 import com.magmaguy.betterstructures.util.RegistrySnapshot;
 import com.magmaguy.betterstructures.worldedit.Schematic;
 import com.magmaguy.betterstructures.worldedit.SchematicClipboardCache;
@@ -153,6 +154,7 @@ public final class BetterStructures extends JavaPlugin {
         BSPackage.shutdown();
         ModulesContainer.shutdown();
         WFCGenerator.shutdown();
+        PluginChunkHolds.shutdown();
         Bukkit.getServer().getScheduler().cancelTasks(MetadataHandler.PLUGIN);
         HandlerList.unregisterAll(MetadataHandler.PLUGIN);
         if (shutdownDuringInitialization) {
