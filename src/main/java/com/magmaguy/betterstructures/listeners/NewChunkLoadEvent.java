@@ -3,6 +3,7 @@ package com.magmaguy.betterstructures.listeners;
 import com.magmaguy.betterstructures.BetterStructures;
 import com.magmaguy.betterstructures.MetadataHandler;
 import com.magmaguy.betterstructures.buildingfitter.FitAirBuilding;
+import com.magmaguy.betterstructures.buildingfitter.FitAnything;
 import com.magmaguy.betterstructures.buildingfitter.FitLiquidBuilding;
 import com.magmaguy.betterstructures.buildingfitter.FitSurfaceBuilding;
 import com.magmaguy.betterstructures.buildingfitter.FitUndergroundShallowBuilding;
@@ -16,7 +17,6 @@ import com.magmaguy.betterstructures.modules.WFCGenerator;
 import com.magmaguy.betterstructures.modules.NaturalDungeonReservation;
 import com.magmaguy.betterstructures.schematics.SchematicContainer;
 import com.magmaguy.betterstructures.thirdparty.WorldGuard;
-import com.magmaguy.betterstructures.util.PluginChunkHolds;
 import com.magmaguy.magmacore.util.Logger;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
@@ -31,15 +31,13 @@ import org.bukkit.scheduler.BukkitTask;
 
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.logging.Level;
+import java.util.function.Supplier;
 
 public class NewChunkLoadEvent implements Listener {
 
@@ -48,15 +46,9 @@ public class NewChunkLoadEvent implements Listener {
     // chunk scan. Keep only stable coordinates for new chunks observed during
     // that window; retaining Chunk/World objects would pin unloaded worlds.
     private static final Set<LoadingChunkKey> deferredNewChunks = new LinkedHashSet<>();
-    // Structure grid chunks waiting one tick for their terrain scans, each held
-    // loaded with a plugin ticket. The Chunk is kept for that tick only; a reload
-    // moves these to deferredNewChunks as coordinates.
-    private static final Map<LoadingChunkKey, Chunk> heldTerrainScans = new LinkedHashMap<>();
-    private static final ChunkScanReentrancyGuard chunkScanReentrancyGuard = new ChunkScanReentrancyGuard();
     private static final int MAX_DEFERRED_SCANS_PER_DRAIN = 32;
     private static final long MAX_DEFERRED_SCAN_NANOS = 5_000_000L;
     private static BukkitTask deferredDrainTask;
-    private static BukkitTask heldTerrainScanTask;
     private static int remainingNewInspections;
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
@@ -73,27 +65,21 @@ public class NewChunkLoadEvent implements Listener {
         // later load is no longer reported as "new", but it still needs the one
         // generation scan that was postponed by the reload gate.
         if (!event.isNewChunk() && !deferred) return;
-
-        if (chunkScanReentrancyGuard.isActive()) {
-            // This load is a side effect of a running scan's terrain reads. It is
-            // not queued: replaying those would recursively expand generation. A
-            // reload-deferred chunk still needs its scan; the chunk is loaded now,
-            // so drain it next tick, once the outer scan has released the guard.
-            if (deferred) scheduleDeferredDrain();
-            return;
-        }
+        // A chunk a structure scan asked for gets no scans of its own; see TerrainScanQueue.
+        if (!deferred && TerrainScanQueue.requested(chunk)) return;
         deferredNewChunks.remove(loadingChunkKey);
-        // The fitters also read terrain in the neighbouring chunks. Reading one
-        // that is not generated yet from inside this callback makes the server
-        // thread wait for it while the chunk system is still dispatching this
-        // load, which can stall the server for good. Scan on the next tick
-        // instead, holding the chunk until then: pregenerators such as
-        // /bs pregenerate and Chunky release their chunks right after loading.
-        if (claimNewChunk(chunk, loadingChunkKey)) holdForTerrainScan(chunk, loadingChunkKey);
+        scanNewChunk(chunk, loadingChunkKey);
     }
 
+    /**
+     * The fitters read terrain in the neighbouring chunks too, and must not load
+     * them on the server thread. The scans run from TerrainScanQueue, which holds
+     * the chunk until they finish: pregenerators such as /bs pregenerate and
+     * Chunky release their chunks right after loading.
+     */
     private static void scanNewChunk(Chunk chunk, LoadingChunkKey loadingChunkKey) {
-        if (claimNewChunk(chunk, loadingChunkKey)) runTerrainScans(chunk);
+        if (claimNewChunk(chunk, loadingChunkKey))
+            TerrainScanQueue.enqueue(loadingChunkKey, chunk, terrainScans(chunk));
     }
 
     /**
@@ -118,59 +104,19 @@ public class NewChunkLoadEvent implements Listener {
                 || isSkyPosition(chunk) || isLiquidSurfacePosition(chunk);
     }
 
-    private static void runTerrainScans(Chunk chunk) {
-        if (isSurfacePosition(chunk)) new FitSurfaceBuilding(chunk);
-        if (isShallowUndergroundPosition(chunk)) FitUndergroundShallowBuilding.fit(chunk);
-        if (isDeepUndergroundPosition(chunk)) FitUndergroundDeepBuilding.fit(chunk);
-        if (isSkyPosition(chunk)) new FitAirBuilding(chunk);
-        if (isLiquidSurfacePosition(chunk)) new FitLiquidBuilding(chunk);
-    }
-
-    private static void holdForTerrainScan(Chunk chunk, LoadingChunkKey loadingChunkKey) {
-        if (heldTerrainScans.putIfAbsent(loadingChunkKey, chunk) != null) return;
-        PluginChunkHolds.hold(chunk);
-        if (heldTerrainScanTask == null)
-            heldTerrainScanTask = Bukkit.getScheduler().runTask(MetadataHandler.PLUGIN, NewChunkLoadEvent::runHeldTerrainScans);
-    }
-
-    private static void runHeldTerrainScans() {
-        heldTerrainScanTask = null;
-        if (BetterStructures.isReloading()) {
-            releaseHeldTerrainScans(true);
-            return;
-        }
-        List<Chunk> chunks = new ArrayList<>(heldTerrainScans.values());
-        heldTerrainScans.clear();
-        for (Chunk chunk : chunks) {
-            try {
-                World world = chunk.getWorld();
-                // An unloaded world took its chunks and tickets with it.
-                if (Bukkit.getWorld(world.getUID()) == world && chunk.isLoaded())
-                    chunkScanReentrancyGuard.runIfIdle(() -> runTerrainScans(chunk));
-            } catch (Throwable failure) {
-                MetadataHandler.PLUGIN.getLogger().log(Level.WARNING, "Failed chunk scan at "
-                        + chunk.getWorld().getName() + " " + chunk.getX() + ", " + chunk.getZ(), failure);
-            } finally {
-                PluginChunkHolds.release(chunk);
-            }
-        }
-    }
-
-    private static void releaseHeldTerrainScans(boolean keepForReplay) {
-        if (heldTerrainScanTask != null) {
-            heldTerrainScanTask.cancel();
-            heldTerrainScanTask = null;
-        }
-        for (Map.Entry<LoadingChunkKey, Chunk> held : heldTerrainScans.entrySet()) {
-            if (keepForReplay) deferredNewChunks.add(held.getKey());
-            PluginChunkHolds.release(held.getValue());
-        }
-        heldTerrainScans.clear();
+    private static List<Supplier<FitAnything>> terrainScans(Chunk chunk) {
+        List<Supplier<FitAnything>> scans = new ArrayList<>();
+        if (isSurfacePosition(chunk)) scans.add(() -> new FitSurfaceBuilding(chunk));
+        if (isShallowUndergroundPosition(chunk)) scans.add(() -> FitUndergroundShallowBuilding.fit(chunk));
+        if (isDeepUndergroundPosition(chunk)) scans.add(() -> FitUndergroundDeepBuilding.fit(chunk));
+        if (isSkyPosition(chunk)) scans.add(() -> new FitAirBuilding(chunk));
+        if (isLiquidSurfacePosition(chunk)) scans.add(() -> new FitLiquidBuilding(chunk));
+        return scans;
     }
 
     public static void prepareForContentReload() {
         cancelDeferredDrain();
-        releaseHeldTerrainScans(true);
+        TerrainScanQueue.clear(deferredNewChunks::add);
         loadingChunks.clear();
     }
 
@@ -223,8 +169,7 @@ public class NewChunkLoadEvent implements Listener {
             }
             scanned++;
             try {
-                Chunk chunk = world.getChunkAt(key.x(), key.z());
-                if (!chunkScanReentrancyGuard.runIfIdle(() -> scanNewChunk(chunk, key))) deferredNewChunks.add(key);
+                scanNewChunk(world.getChunkAt(key.x(), key.z()), key);
             } catch (Throwable failure) {
                 deferredNewChunks.add(key);
                 MetadataHandler.PLUGIN.getLogger().warning("Failed deferred chunk scan at " + key + ": " + failure.getMessage());
@@ -242,18 +187,18 @@ public class NewChunkLoadEvent implements Listener {
 
     public static void discardDeferredNewChunks() {
         cancelDeferredDrain();
-        releaseHeldTerrainScans(false);
+        TerrainScanQueue.clear(null);
         deferredNewChunks.clear();
     }
 
     public static void shutdown() {
         cancelDeferredDrain();
-        releaseHeldTerrainScans(false);
+        TerrainScanQueue.clear(null);
         loadingChunks.clear();
         deferredNewChunks.clear();
     }
 
-    private record LoadingChunkKey(UUID worldId, int x, int z) {
+    record LoadingChunkKey(UUID worldId, int x, int z) {
         private static LoadingChunkKey from(Chunk chunk) {
             return new LoadingChunkKey(chunk.getWorld().getUID(), chunk.getX(), chunk.getZ());
         }

@@ -134,12 +134,18 @@ public class FitUndergroundBuilding extends FitAnything {
                 break;
         }
 
-        chunkScan(originalLocation, 0, 0);
+        anchor = originalLocation;
+        evaluate();
+    }
+
+    @Override
+    protected void evaluate() {
+        chunkScan(anchor, 0, 0);
         if (highestScore < 90)
             for (int chunkX = -searchRadius; chunkX < searchRadius + 1; chunkX++) {
                 for (int chunkZ = -searchRadius; chunkZ < searchRadius + 1; chunkZ++) {
                     if (chunkX == 0 && chunkZ == 0) continue;
-                    chunkScan(originalLocation, chunkX, chunkZ);
+                    chunkScan(anchor, chunkX, chunkZ);
                     if (highestScore > 90) break;
                 }
                 if (highestScore > 90) break;

@@ -108,13 +108,18 @@ public class FitAirBuilding extends FitAnything {
             return;
         }
         schematicOffset = WorldEditUtils.getSchematicOffset(schematicClipboard);
+        anchor = originalLocation;
+        evaluate();
+    }
 
-        chunkScan(originalLocation, 0, 0);
+    @Override
+    protected void evaluate() {
+        chunkScan(anchor, 0, 0);
         if (location == null)
             for (int chunkX = -searchRadius; chunkX < searchRadius + 1; chunkX++) {
                 for (int chunkZ = -searchRadius; chunkZ < searchRadius + 1; chunkZ++) {
                     if (chunkX == 0 && chunkZ == 0) continue;
-                    chunkScan(originalLocation, chunkX, chunkZ);
+                    chunkScan(anchor, chunkX, chunkZ);
                     if (location != null) break;
                 }
                 if (location != null) break;

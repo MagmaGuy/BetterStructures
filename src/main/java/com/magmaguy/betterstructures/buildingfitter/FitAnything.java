@@ -7,6 +7,7 @@ import com.magmaguy.betterstructures.api.ChestFillEvent;
 import com.magmaguy.betterstructures.buildingfitter.util.FitUndergroundDeepBuilding;
 import com.magmaguy.betterstructures.buildingfitter.util.LocationProjector;
 import com.magmaguy.betterstructures.buildingfitter.util.SchematicPicker;
+import com.magmaguy.betterstructures.buildingfitter.util.TerrainReads;
 import com.magmaguy.betterstructures.chests.ChestContents;
 import com.magmaguy.betterstructures.config.DefaultConfig;
 import com.magmaguy.betterstructures.config.generators.GeneratorConfigFields;
@@ -60,9 +61,13 @@ public class FitAnything {
     protected Vector schematicOffset;
     protected int verticalOffset = 0;
     //At 10% it is assumed a fit is so bad it's better just to skip
-    protected double highestScore = 10;
+    private static final double NO_FIT_SCORE = 10;
+    protected double highestScore = NO_FIT_SCORE;
     @Getter
     protected Location location = null;
+    // Set once a scan has picked its schematic and anchor; a natural scan that met an unloaded
+    // chunk scores it again with the same plan once that chunk loads.
+    protected Location anchor;
     protected GeneratorConfigFields.StructureType structureType;
     private Material pedestalMaterial = null;
 
@@ -104,7 +109,24 @@ public class FitAnything {
         }
     }
 
+    /** Scores {@link #anchor} and its neighbouring positions, then pastes the best fit. */
+    protected void evaluate() {
+    }
+
+    /**
+     * Runs a natural scan again after the chunks it could not read have loaded. The schematic and
+     * anchor stay the same, so a structure that needs more chunks is not swapped for one that needs fewer.
+     */
+    public void rescan() {
+        if (anchor == null) return;
+        highestScore = NO_FIT_SCORE;
+        location = null;
+        evaluate();
+    }
+
     protected void paste(Location location) {
+        // A natural scan that met an unloaded chunk scored guesses; it runs again once the chunk loads.
+        if (TerrainReads.incomplete()) return;
         BuildPlaceEvent buildPlaceEvent = new BuildPlaceEvent(this);
         Bukkit.getServer().getPluginManager().callEvent(buildPlaceEvent);
         if (buildPlaceEvent.isCancelled()) return;

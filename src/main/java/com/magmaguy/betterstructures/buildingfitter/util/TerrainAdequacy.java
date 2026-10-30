@@ -52,6 +52,8 @@ public class TerrainAdequacy {
 
     private static boolean isBlockAdequate(Location projectedWorldLocation, boolean schematicBlockIsAir, boolean schematicBlockIsLiquid, int floorHeight, ScanType scanType) {
         int floorYValue = projectedWorldLocation.getBlockY();
+        // An unloaded chunk counts against the fit; a natural scan that met one is run again once it loads.
+        if (!TerrainReads.readable(projectedWorldLocation)) return false;
         Material terrain = projectedWorldLocation.getBlock().getType();
         if (terrain == Material.VOID_AIR) return false;
         switch (scanType) {

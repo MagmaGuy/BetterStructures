@@ -41,9 +41,15 @@ public class Topology {
         //ceil, not floor: the loops below visit ceil(width/step) x ceil(depth/step) points, and
         //undercounting the total made each water/lava hit subtract more than its intended share
         int totalPointAmount = (int) (Math.ceil(width / (double) scanStep) * Math.ceil(depth / (double) scanStep));
+        boolean incomplete = false;
         for (int x = 0; x < width; x += scanStep) {
             for (int z = 0; z < depth; z += scanStep) {
                 Location projectedLocation = LocationProjector.project(iteratedLocation, schematicOffset, new Vector(x, 0, z));
+                // Keep going past an unloaded chunk so one pass finds every chunk this footprint needs.
+                if (!TerrainReads.readable(projectedLocation)) {
+                    incomplete = true;
+                    continue;
+                }
                 projectedLocation = getHighestBlockAt(projectedLocation);
                 if (projectedLocation == null) {
                     return 0;
@@ -68,7 +74,7 @@ public class Topology {
                 heights.add(projectedLocation.getBlockY());
             }
         }
-        return score;
+        return incomplete ? 0 : score;
     }
 
     private static Location getHighestBlockAt(Location location) {

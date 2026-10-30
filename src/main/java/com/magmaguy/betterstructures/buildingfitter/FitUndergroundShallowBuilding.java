@@ -9,38 +9,34 @@ public class FitUndergroundShallowBuilding {
     private FitUndergroundShallowBuilding() {
     }
 
-    public static void fit(Chunk chunk) {
+    public static FitUndergroundBuilding fit(Chunk chunk) {
         switch (chunk.getWorld().getEnvironment()) {
             case NORMAL:
             case CUSTOM:
-                new FitUndergroundBuilding(chunk, 0, 50, GeneratorConfigFields.StructureType.UNDERGROUND_SHALLOW);
-                break;
+                return new FitUndergroundBuilding(chunk, 0, 50, GeneratorConfigFields.StructureType.UNDERGROUND_SHALLOW);
             case NETHER:
-                new FitUndergroundBuilding(chunk, 60, 120, GeneratorConfigFields.StructureType.UNDERGROUND_SHALLOW);
-                break;
+                return new FitUndergroundBuilding(chunk, 60, 120, GeneratorConfigFields.StructureType.UNDERGROUND_SHALLOW);
             case THE_END:
                 //The End has no "deep" underground area, it's floating islands
-                new FitUndergroundBuilding(chunk, 0, 80, GeneratorConfigFields.StructureType.UNDERGROUND_SHALLOW);
-                break;
+                return new FitUndergroundBuilding(chunk, 0, 80, GeneratorConfigFields.StructureType.UNDERGROUND_SHALLOW);
             default:
                 Logger.warn("Unexpected environment type: " + chunk.getWorld().getEnvironment());
+                return null;
         }
     }
-    public static void fit(Chunk chunk, SchematicContainer schematicContainer) {
+    public static FitUndergroundBuilding fit(Chunk chunk, SchematicContainer schematicContainer) {
         switch (chunk.getWorld().getEnvironment()) {
             case NORMAL:
             case CUSTOM:
-                new FitUndergroundBuilding(chunk, schematicContainer, 0, 50, GeneratorConfigFields.StructureType.UNDERGROUND_SHALLOW);
-                break;
+                return new FitUndergroundBuilding(chunk, schematicContainer, 0, 50, GeneratorConfigFields.StructureType.UNDERGROUND_SHALLOW);
             case NETHER:
-                new FitUndergroundBuilding(chunk, schematicContainer, 60, 120, GeneratorConfigFields.StructureType.UNDERGROUND_SHALLOW);
-                break;
+                return new FitUndergroundBuilding(chunk, schematicContainer, 60, 120, GeneratorConfigFields.StructureType.UNDERGROUND_SHALLOW);
             case THE_END:
-                new FitUndergroundBuilding(chunk, schematicContainer, 0, 80, GeneratorConfigFields.StructureType.UNDERGROUND_SHALLOW);
                 //The End has no "deep" underground area, it's floating islands
-                break;
+                return new FitUndergroundBuilding(chunk, schematicContainer, 0, 80, GeneratorConfigFields.StructureType.UNDERGROUND_SHALLOW);
             default:
                 Logger.warn("Unexpected environment type: " + chunk.getWorld().getEnvironment());
+                return null;
         }
     }
 }
