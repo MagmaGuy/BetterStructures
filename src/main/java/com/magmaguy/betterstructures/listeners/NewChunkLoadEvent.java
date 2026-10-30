@@ -48,8 +48,6 @@ public class NewChunkLoadEvent implements Listener {
     // chunk scan. Keep only stable coordinates for new chunks observed during
     // that window; retaining Chunk/World objects would pin unloaded worlds.
     private static final Set<LoadingChunkKey> deferredNewChunks = new LinkedHashSet<>();
-    private static final DelayedDungeonScanTracker<LoadingChunkKey> delayedDungeonScans =
-            new DelayedDungeonScanTracker<>();
     // Structure grid chunks waiting one tick for their terrain scans, each held
     // loaded with a plugin ticket. The Chunk is kept for that tick only; a reload
     // moves these to deferredNewChunks as coordinates.
@@ -60,14 +58,12 @@ public class NewChunkLoadEvent implements Listener {
     private static BukkitTask deferredDrainTask;
     private static BukkitTask heldTerrainScanTask;
     private static int remainingNewInspections;
-    private static int remainingDungeonInspections;
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onChunkLoad(ChunkLoadEvent event) {
         Chunk chunk = event.getChunk();
         LoadingChunkKey loadingChunkKey = LoadingChunkKey.from(chunk);
         boolean deferred = deferredNewChunks.contains(loadingChunkKey);
-        boolean deferredDungeon = delayedDungeonScans.isDeferred(loadingChunkKey);
 
         if (BetterStructures.isReloading()) {
             if (event.isNewChunk()) deferredNewChunks.add(loadingChunkKey);
@@ -76,13 +72,7 @@ public class NewChunkLoadEvent implements Listener {
         // A deferred chunk may have unloaded while content was rebuilding. Its
         // later load is no longer reported as "new", but it still needs the one
         // generation scan that was postponed by the reload gate.
-        if (!event.isNewChunk() && !deferred) {
-            if (deferredDungeon) {
-                delayedDungeonScans.removeDeferred(loadingChunkKey);
-                scheduleDungeonScanner(loadingChunkKey);
-            }
-            return;
-        }
+        if (!event.isNewChunk() && !deferred) return;
 
         if (chunkScanReentrancyGuard.isActive()) {
             // This load is a side effect of a running scan's terrain reads. It is
@@ -93,7 +83,6 @@ public class NewChunkLoadEvent implements Listener {
             return;
         }
         deferredNewChunks.remove(loadingChunkKey);
-        delayedDungeonScans.removeDeferred(loadingChunkKey);
         // The fitters also read terrain in the neighbouring chunks. Reading one
         // that is not generated yet from inside this callback makes the server
         // thread wait for it while the chunk system is still dispatching this
@@ -108,9 +97,9 @@ public class NewChunkLoadEvent implements Listener {
     }
 
     /**
-     * Claims a new chunk's one generation scan and schedules its dungeon scan,
-     * which needs only coordinates. Reads no terrain. Returns whether the chunk
-     * is a grid point for a structure type whose fitter must read terrain.
+     * Claims a new chunk's one generation scan and runs its dungeon scan, which
+     * needs only coordinates. Reads no terrain. Returns whether the chunk is a
+     * grid point for a structure type whose fitter must read terrain.
      */
     private static boolean claimNewChunk(Chunk chunk, LoadingChunkKey loadingChunkKey) {
         if (!ValidWorldsConfig.isValidWorld(chunk.getWorld())) return false;
@@ -124,7 +113,7 @@ public class NewChunkLoadEvent implements Listener {
             }
         }.runTaskLater(MetadataHandler.PLUGIN, 20L);
 
-        scheduleDungeonScanner(loadingChunkKey);
+        dungeonScanner(chunk.getWorld(), chunk.getX(), chunk.getZ());
         return isSurfacePosition(chunk) || isShallowUndergroundPosition(chunk) || isDeepUndergroundPosition(chunk)
                 || isSkyPosition(chunk) || isLiquidSurfacePosition(chunk);
     }
@@ -182,7 +171,6 @@ public class NewChunkLoadEvent implements Listener {
     public static void prepareForContentReload() {
         cancelDeferredDrain();
         releaseHeldTerrainScans(true);
-        delayedDungeonScans.deferAllPending();
         loadingChunks.clear();
     }
 
@@ -201,12 +189,8 @@ public class NewChunkLoadEvent implements Listener {
     }
 
     private static void scheduleDeferredDrain(boolean wakeup) {
-        if (wakeup) {
-            remainingNewInspections = deferredNewChunks.size();
-            remainingDungeonInspections = delayedDungeonScans.deferredSize();
-        }
-        if (BetterStructures.isReloading()
-                || (deferredNewChunks.isEmpty() && !delayedDungeonScans.hasDeferred())
+        if (wakeup) remainingNewInspections = deferredNewChunks.size();
+        if (BetterStructures.isReloading() || deferredNewChunks.isEmpty()
                 || deferredDrainTask != null || MetadataHandler.PLUGIN == null
                 || !MetadataHandler.PLUGIN.isEnabled()) return;
 
@@ -240,34 +224,15 @@ public class NewChunkLoadEvent implements Listener {
             scanned++;
             try {
                 Chunk chunk = world.getChunkAt(key.x(), key.z());
-                if (chunkScanReentrancyGuard.runIfIdle(() -> scanNewChunk(chunk, key))) {
-                    delayedDungeonScans.removeDeferred(key);
-                } else {
-                    deferredNewChunks.add(key);
-                }
+                if (!chunkScanReentrancyGuard.runIfIdle(() -> scanNewChunk(chunk, key))) deferredNewChunks.add(key);
             } catch (Throwable failure) {
                 deferredNewChunks.add(key);
                 MetadataHandler.PLUGIN.getLogger().warning("Failed deferred chunk scan at " + key + ": " + failure.getMessage());
             }
         }
-        while (remainingDungeonInspections > 0 && delayedDungeonScans.hasDeferred()
-                && scanned < MAX_DEFERRED_SCANS_PER_DRAIN
-                && System.nanoTime() - started < MAX_DEFERRED_SCAN_NANOS) {
-            LoadingChunkKey key = delayedDungeonScans.pollDeferred();
-            remainingDungeonInspections--;
-            // A full deferred scan includes its dungeon scan and must run first.
-            // Dungeon scans do not need their origin chunk loaded.
-            if (deferredNewChunks.contains(key) || Bukkit.getWorld(key.worldId()) == null) {
-                delayedDungeonScans.defer(key);
-                continue;
-            }
-            scanned++;
-            scheduleDungeonScanner(key);
-        }
         if (deferredNewChunks.isEmpty()) remainingNewInspections = 0;
-        if (!delayedDungeonScans.hasDeferred()) remainingDungeonInspections = 0;
         // Complete at most one bounded traversal per wakeup. Dormant chunks await their next load event.
-        if (remainingNewInspections > 0 || remainingDungeonInspections > 0) scheduleDeferredDrain(false);
+        if (remainingNewInspections > 0) scheduleDeferredDrain(false);
     }
     private static void cancelDeferredDrain() {
         if (deferredDrainTask == null) return;
@@ -279,7 +244,6 @@ public class NewChunkLoadEvent implements Listener {
         cancelDeferredDrain();
         releaseHeldTerrainScans(false);
         deferredNewChunks.clear();
-        delayedDungeonScans.clear();
     }
 
     public static void shutdown() {
@@ -287,36 +251,12 @@ public class NewChunkLoadEvent implements Listener {
         releaseHeldTerrainScans(false);
         loadingChunks.clear();
         deferredNewChunks.clear();
-        delayedDungeonScans.clear();
     }
 
     private record LoadingChunkKey(UUID worldId, int x, int z) {
         private static LoadingChunkKey from(Chunk chunk) {
             return new LoadingChunkKey(chunk.getWorld().getUID(), chunk.getX(), chunk.getZ());
         }
-    }
-
-    private static void scheduleDungeonScanner(LoadingChunkKey loadingChunkKey) {
-        if (MetadataHandler.PLUGIN == null || !MetadataHandler.PLUGIN.isEnabled()) return;
-        if (!delayedDungeonScans.markPending(loadingChunkKey)) return;
-        Bukkit.getScheduler().runTaskLater(MetadataHandler.PLUGIN, () -> {
-            // A reload moves pending keys to the deferred set before cancelling Bukkit tasks.
-            // If a task survives that cancellation, it no longer owns this key.
-            if (!delayedDungeonScans.takePending(loadingChunkKey)) return;
-            if (BetterStructures.isReloading()) {
-                delayedDungeonScans.defer(loadingChunkKey);
-                return;
-            }
-            World world = Bukkit.getWorld(loadingChunkKey.worldId());
-            if (world == null) {
-                delayedDungeonScans.defer(loadingChunkKey);
-                return;
-            }
-            // Pregenerators release their chunks within a tick, so the origin may
-            // already be unloaded. The scan needs only its coordinates, and waiting
-            // for a later load would miss the two-minute generated-footprint window.
-            dungeonScanner(world, loadingChunkKey.x(), loadingChunkKey.z());
-        }, 1L);
     }
 
     private static boolean isValidStructurePosition(Chunk chunk, GeneratorConfigFields.StructureType structureType,
