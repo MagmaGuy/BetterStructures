@@ -44,54 +44,8 @@ public class Schematic {
     private static BukkitTask activePasteTask = null;
     private static PasteOperation activePasteOperation = null;
 
-    private static final EnumSet<Material> NBT_PASTED_MATERIALS = EnumSet.noneOf(Material.class);
     // Paste operations run on the server thread. Classify each destination material once.
     private static final Map<Material, Boolean> BLOCK_ENTITY_MATERIALS = new EnumMap<>(Material.class);
-
-    static {
-        for (Material material : Material.values()) {
-            String materialString = material.toString().toUpperCase(Locale.ROOT);
-            if (materialString.endsWith("SIGN") ||
-                    materialString.endsWith("STAIRS") ||
-                    materialString.endsWith("BOX") ||
-                    materialString.endsWith("CHEST_BOAT") ||
-                    materialString.equals("BEACON") ||
-                    materialString.endsWith("FURNACE") ||
-                    materialString.equals("CALIBRATED_SCULK_SENSOR") ||
-                    materialString.equals("CAMPFIRE") ||
-                    materialString.equals("CARTOGRAPHY_TABLE") ||
-                    materialString.equals("CAULDRON") ||
-                    materialString.contains("COMMAND_BLOCK") ||
-                    materialString.endsWith("ANVIL") ||
-                    materialString.equals("CRAFTER") ||
-                    materialString.equals("ITEM_FRAME") ||
-                    materialString.equals("DISPENSER") ||
-                    materialString.equals("DROPPER") ||
-                    materialString.equals("ENCHANTING_TABLE") ||
-                    materialString.equals("BARREL") ||
-                    materialString.equals("CHEST") ||
-                    materialString.equals("ENDER_CHEST") ||
-                    materialString.equals("TRAPPED_CHEST") ||
-                    materialString.equals("FLETCHING_TABLE") ||
-                    materialString.equals("FURNACE_MINECART") ||
-                    materialString.equals("GRINDSTONE") ||
-                    materialString.equals("HOPPER") ||
-                    materialString.equals("HOPPER_MINECART") ||
-                    materialString.equals("JUKEBOX") ||
-                    materialString.equals("LEVER") ||
-                    materialString.equals("LOOM") ||
-                    materialString.equals("LODESTONE") ||
-                    materialString.startsWith("POTTED") ||
-                    materialString.startsWith("SCULK") ||
-                    materialString.equals("POWERED_RAIL") ||
-                    materialString.equals("SMOKER") ||
-                    materialString.equals("STONECUTTER") ||
-                    materialString.equals("SOUL_CAMPFIRE") ||
-                    materialString.contains("SPAWNER")) {
-                NBT_PASTED_MATERIALS.add(material);
-            }
-        }
-    }
 
     private Schematic() {
     }
@@ -200,11 +154,13 @@ public class Schematic {
     }
 
     /**
-     * Each block pasted through WorldEdit opens its own edit session. Stairs, potted plants and the other listed
-     * blocks without block-entity data are whole in their block data, which places them the same way.
+     * Block-entity data (sign text, container contents, banner patterns, lectern books) only pastes through
+     * WorldEdit, and each block pasted that way opens its own edit session. Every other block is whole in its
+     * block data. End gateways keep only their block data: their saved exit points into the world the build
+     * was made in.
      */
     static boolean pastesThroughWorldEdit(BaseBlock baseBlock, Material material) {
-        return NBT_PASTED_MATERIALS.contains(material) && baseBlock.getNbtReference() != null;
+        return baseBlock.getNbtReference() != null && material != Material.END_GATEWAY;
     }
 
     private static void pasteClipboardBlock(

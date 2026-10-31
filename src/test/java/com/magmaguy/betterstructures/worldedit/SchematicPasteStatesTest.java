@@ -129,6 +129,10 @@ final class SchematicPasteStatesTest {
         assertFalse(Schematic.pastesThroughWorldEdit(block("chest", false, true), Material.CHEST),
                 "A chest saved without block-entity data has nothing for WorldEdit to add");
         assertTrue(Schematic.pastesThroughWorldEdit(withData(block("chest", false, true)), Material.CHEST));
+        assertTrue(Schematic.pastesThroughWorldEdit(withData(block("white_wall_banner", false, true)),
+                Material.WHITE_WALL_BANNER), "Banner patterns are block-entity data");
+        assertFalse(Schematic.pastesThroughWorldEdit(withData(block("end_gateway", false, false)), Material.END_GATEWAY),
+                "An end gateway's saved exit points into the world the build was made in");
     }
 
     private void paste(Location origin) {
