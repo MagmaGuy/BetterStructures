@@ -199,6 +199,14 @@ public class Schematic {
         }
     }
 
+    /**
+     * Each block pasted through WorldEdit opens its own edit session. Stairs, potted plants and the other listed
+     * blocks without block-entity data are whole in their block data, which places them the same way.
+     */
+    static boolean pastesThroughWorldEdit(BaseBlock baseBlock, Material material) {
+        return NBT_PASTED_MATERIALS.contains(material) && baseBlock.getNbtReference() != null;
+    }
+
     private static void pasteClipboardBlock(
             Clipboard schematicClipboard,
             Location adjustedLocation,
@@ -241,7 +249,7 @@ public class Schematic {
             return;
         }
 
-        if (NBT_PASTED_MATERIALS.contains(material)) {
+        if (pastesThroughWorldEdit(baseBlock, material)) {
             pasteBlock(new PasteBlock(worldBlock, null,
                     WorldEditUtils.createSingleBlockClipboard(baseBlock, blockState)));
         } else if (material == Material.BEDROCK) {

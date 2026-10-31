@@ -4,15 +4,20 @@ import com.magmaguy.betterstructures.MetadataHandler;
 import com.magmaguy.betterstructures.util.PluginChunkHolds;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
 import com.sk89q.worldedit.math.BlockVector3;
+import com.sk89q.worldedit.util.concurrency.LazyReference;
 import com.sk89q.worldedit.world.block.BaseBlock;
 import com.sk89q.worldedit.world.block.BlockState;
 import com.sk89q.worldedit.world.block.BlockType;
 import com.sk89q.worldedit.world.registry.BlockMaterial;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.BlockData;
+import org.bukkit.block.data.Bisected;
+import org.bukkit.block.data.type.Stairs;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.util.Vector;
+import org.enginehub.linbus.tree.LinCompoundTag;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -102,6 +108,29 @@ final class SchematicPasteStatesTest {
         assertEquals(2, parsed.get("minecraft:bedrock"));
     }
 
+    @Test
+    void stairsPasteFromTheirBlockData() {
+        Location origin = new Location(world, 8, 70, 8);
+        BaseBlock stairs = block("oak_stairs", "[facing=east,half=top,shape=straight,waterlogged=false]", false, true);
+
+        paste(origin, Map.of(BlockVector3.ZERO, stairs), BlockVector3.ONE);
+
+        assertEquals(1, completions);
+        assertEquals(1, parsed.get("minecraft:oak_stairs[facing=east,half=top,shape=straight,waterlogged=false]"));
+        Stairs placed = (Stairs) world.getBlockAt(origin).getBlockData();
+        assertEquals(BlockFace.EAST, placed.getFacing());
+        assertEquals(Bisected.Half.TOP, placed.getHalf());
+    }
+
+    @Test
+    void onlyBlockEntityDataPastesThroughWorldEdit() {
+        assertFalse(Schematic.pastesThroughWorldEdit(block("oak_stairs", false, true), Material.OAK_STAIRS),
+                "Stairs carry no block-entity data");
+        assertFalse(Schematic.pastesThroughWorldEdit(block("chest", false, true), Material.CHEST),
+                "A chest saved without block-entity data has nothing for WorldEdit to add");
+        assertTrue(Schematic.pastesThroughWorldEdit(withData(block("chest", false, true)), Material.CHEST));
+    }
+
     private void paste(Location origin) {
         Map<BlockVector3, BaseBlock> blocks = new HashMap<>();
         for (int x = 0; x < WIDTH; x++)
@@ -110,8 +139,12 @@ final class SchematicPasteStatesTest {
                 blocks.put(BlockVector3.at(x, 1, z), x < 2 ? stone : air);
                 blocks.put(BlockVector3.at(x, 2, z), z == 0 ? planks : z == 1 ? barrier : air);
             }
+        paste(origin, blocks, BlockVector3.at(WIDTH, HEIGHT, DEPTH));
+    }
+
+    private void paste(Location origin, Map<BlockVector3, BaseBlock> blocks, BlockVector3 dimensions) {
         Clipboard clipboard = mock(Clipboard.class);
-        when(clipboard.getDimensions()).thenReturn(BlockVector3.at(WIDTH, HEIGHT, DEPTH));
+        when(clipboard.getDimensions()).thenReturn(dimensions);
         when(clipboard.getMinimumPoint()).thenReturn(BlockVector3.ZERO);
         when(clipboard.getFullBlock(any())).thenAnswer(call -> {
             BaseBlock value = blocks.get(call.<BlockVector3>getArgument(0));
@@ -134,6 +167,10 @@ final class SchematicPasteStatesTest {
     }
 
     private static BaseBlock block(String id, boolean isAir, boolean solid) {
+        return block(id, "", isAir, solid);
+    }
+
+    private static BaseBlock block(String id, String properties, boolean isAir, boolean solid) {
         BlockMaterial material = mock(BlockMaterial.class);
         when(material.isAir()).thenReturn(isAir);
         when(material.isSolid()).thenReturn(solid);
@@ -143,10 +180,15 @@ final class SchematicPasteStatesTest {
         when(type.getProperties()).thenReturn(List.of());
         BlockState state = mock(BlockState.class);
         when(state.getBlockType()).thenReturn(type);
-        when(state.getAsString()).thenReturn("minecraft:" + id);
+        when(state.getAsString()).thenReturn("minecraft:" + id + properties);
         BaseBlock block = mock(BaseBlock.class);
         when(block.getBlockType()).thenReturn(type);
         when(block.toImmutableState()).thenReturn(state);
+        return block;
+    }
+
+    private static BaseBlock withData(BaseBlock block) {
+        when(block.getNbtReference()).thenReturn(LazyReference.computed(LinCompoundTag.of(Map.of())));
         return block;
     }
 
