@@ -284,9 +284,8 @@ public class Schematic {
                         try {
                             long stopTime = System.nanoTime() + maxNanosPerTick;
                             boolean processedAtLeastOne = false;
-                            int steps = 0;
                             while (operation.hasNext() &&
-                                    steps++ < 4096 && (!processedAtLeastOne || System.nanoTime() < stopTime)) {
+                                    (!processedAtLeastOne || System.nanoTime() < stopTime)) {
                                 if (!operation.ready()) break;
                                 operation.pasteNext();
                                 processedAtLeastOne = true;
