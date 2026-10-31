@@ -58,8 +58,13 @@ public class WorldEditUtils {
 
     @Nullable
     public static BlockData createBlockDataOrNull(@NotNull BaseBlock baseBlock) {
+        return createBlockDataOrNull(baseBlock.toImmutableState());
+    }
+
+    @Nullable
+    public static BlockData createBlockDataOrNull(@NotNull BlockState blockState) {
         try {
-            return Bukkit.createBlockData(baseBlock.toImmutableState().getAsString());
+            return Bukkit.createBlockData(blockState.getAsString());
         } catch (IllegalArgumentException e) {
             return null;
         }

@@ -161,14 +161,49 @@ public class Schematic {
         }
     }
 
-    private static boolean isSolidBlock(Clipboard schematicClipboard, BlockVector3 clipboardPosition) {
-        return WorldEditUtils.isSolid(schematicClipboard.getBlock(clipboardPosition));
+    private static boolean isSolidBlock(Clipboard schematicClipboard, Map<BlockState, PreparedState> states,
+                                        BlockVector3 clipboardPosition) {
+        return states.computeIfAbsent(schematicClipboard.getBlock(clipboardPosition), PreparedState::new).solid();
+    }
+
+    /**
+     * One clipboard state, adapted once per paste. A paste reads every position of its clipboard, but a
+     * clipboard holds a few hundred states; adapting each position again parsed its block id two or three
+     * times and its whole state string once. Pasting only reads the block data, so positions share it.
+     */
+    private static final class PreparedState {
+        private final BlockState state;
+        private final Material material;
+        private final boolean air;
+        private Boolean solid;
+        private BlockData blockData;
+        private boolean blockDataParsed;
+
+        private PreparedState(BlockState state) {
+            this.state = state;
+            material = WorldEditUtils.adaptMaterial(state);
+            air = WorldEditUtils.isAir(state);
+        }
+
+        private boolean solid() {
+            if (solid == null) solid = WorldEditUtils.isSolid(state);
+            return solid;
+        }
+
+        private BlockData blockData() {
+            if (!blockDataParsed) {
+                blockData = material == null ? null : WorldEditUtils.createBlockDataOrNull(state);
+                blockDataParsed = true;
+            }
+            return blockData;
+        }
     }
 
     private static void pasteClipboardBlock(
             Clipboard schematicClipboard,
             Location adjustedLocation,
             Function<Boolean, Material> pedestalMaterialProvider,
+            Map<BlockState, PreparedState> states,
             PasteCoordinate coordinate) {
         int x = coordinate.x();
         int y = coordinate.y();
@@ -180,23 +215,24 @@ public class Schematic {
                 z + min.z());
         BaseBlock baseBlock = schematicClipboard.getFullBlock(adjustedClipboardLocation);
         BlockState blockState = baseBlock.toImmutableState();
-        Material material = WorldEditUtils.adaptMaterial(blockState);
+        PreparedState prepared = states.computeIfAbsent(blockState, PreparedState::new);
+        Material material = prepared.material;
         Block worldBlock = adjustedLocation.clone().add(new Vector(x, y, z)).getBlock();
 
         if (material == Material.BARRIER) {
             // Special behavior: do not replace barriers.
             return;
         }
-        if (WorldEditUtils.isAir(blockState) && worldBlock.getType().isAir()) {
+        if (prepared.air && worldBlock.getType().isAir()) {
             // Large schematics contain mostly empty volume. Avoid creating and
             // queuing an AIR BlockData object when the destination is already
             // air; interior air still carves existing terrain below.
             return;
         }
 
-        BlockData blockData = material == null ? null : WorldEditUtils.createBlockDataOrNull(baseBlock);
+        BlockData blockData = prepared.blockData();
         if (blockData == null) {
-            if (WorldEditUtils.isAir(blockState)) {
+            if (prepared.air) {
                 pasteBlock(new PasteBlock(worldBlock, Material.AIR.createBlockData(), null));
             } else {
                 pasteBlock(new PasteBlock(worldBlock, null,
@@ -210,7 +246,7 @@ public class Schematic {
                     WorldEditUtils.createSingleBlockClipboard(baseBlock, blockState)));
         } else if (material == Material.BEDROCK) {
             if (!worldBlock.getType().isSolid()) {
-                boolean isGround = !isSolidBlock(schematicClipboard, BlockVector3.at(
+                boolean isGround = !isSolidBlock(schematicClipboard, states, BlockVector3.at(
                         adjustedClipboardLocation.x(),
                         adjustedClipboardLocation.y() + 1,
                         adjustedClipboardLocation.z()));
@@ -405,6 +441,8 @@ public class Schematic {
         private final Function<Boolean, Material> pedestalMaterialProvider;
         private final PasteCursor cursor;
         private final PasteChunkReadiness chunks;
+        // Bounded by the clipboard's distinct states; lives only as long as this paste.
+        private final Map<BlockState, PreparedState> states = new HashMap<>();
         private final Runnable onComplete;
 
         private ClipboardPasteOperation(
@@ -428,7 +466,10 @@ public class Schematic {
             return chunks.ready(adjustedLocation.clone().add(cursor.x, cursor.y, cursor.z));
         }
 
-        @Override public void close() { chunks.close(); }
+        @Override public void close() {
+            chunks.close();
+            states.clear();
+        }
 
         @Override
         public boolean hasNext() {
@@ -437,7 +478,7 @@ public class Schematic {
 
         @Override
         public void pasteNext() {
-            pasteClipboardBlock(clipboard, adjustedLocation, pedestalMaterialProvider, cursor.next());
+            pasteClipboardBlock(clipboard, adjustedLocation, pedestalMaterialProvider, states, cursor.next());
         }
 
         @Override
