@@ -33,7 +33,7 @@ dependencies {
     }
     implementation group: 'org.bstats', name: 'bstats-bukkit', version: '3.0.2'
     implementation group: 'org.joml', name: 'joml', version: '1.10.8'
-    compileOnly group: 'com.magmaguy', name: 'EliteMobs', version: '10.9.7'
+    compileOnly group: 'com.magmaguy', name: 'EliteMobs', version: '10.9.14'
     compileOnly group: 'io.lumine', name: 'Mythic-Dist', version: '5.2.1'
     compileOnly group: 'io.lumine', name: 'MythicLib-dist', version: '1.5.2-SNAPSHOT'
     compileOnly group: 'net.Indyuce', name: 'MMOItems-API', version: '6.9.2-SNAPSHOT'
