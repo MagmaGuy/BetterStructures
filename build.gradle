@@ -53,7 +53,7 @@ dependencies {
     // The cache ticket test exercises the production Clipboard seam without starting Bukkit.
     testImplementation 'com.sk89q.worldedit:worldedit-core:7.4.2'
     testImplementation 'com.sk89q.worldedit:worldedit-bukkit:7.4.2'
-    testImplementation('com.magmaguy:EliteMobs:10.9.7') {
+    testImplementation('com.magmaguy:EliteMobs:10.9.14') {
         changing = true
         exclude group: 'org.spigotmc', module: 'spigot-api'
     }
