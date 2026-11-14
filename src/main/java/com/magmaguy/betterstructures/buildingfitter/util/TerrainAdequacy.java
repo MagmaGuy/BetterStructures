@@ -30,14 +30,26 @@ public class TerrainAdequacy {
         int totalCount = 0;
         int negativeCount = 0;
 
+        //One reused Location: the anchor plus the schematic offset, then plus each sample's (x, y, z), the same
+        //additions LocationProjector.project makes for every sample, without two clones and a Vector per sample
+        Location projectedLocation = LocationProjector.project(iteratedLocation, schematicOffset);
+        double baseX = projectedLocation.getX();
+        double baseY = projectedLocation.getY();
+        double baseZ = projectedLocation.getZ();
+
         for (int x = 0; x < width; x += scanStep) {
             for (int y = 0; y < height; y += scanStep) {
                 for (int z = 0; z < depth; z += scanStep) {
                     BlockState schematicBlockStateAtPosition = schematicClipboard.getBlock(BlockVector3.at(x, y, z).add(minimumPoint));
                     Material schematicMaterialAtPosition = WorldEditUtils.adaptMaterial(schematicBlockStateAtPosition);
-                    boolean schematicBlockIsAir = WorldEditUtils.isAir(schematicBlockStateAtPosition);
+                    //Same answer as WorldEditUtils.isAir, reusing the Material adapted on the line above
+                    boolean schematicBlockIsAir = schematicMaterialAtPosition != null
+                            ? schematicMaterialAtPosition.isAir()
+                            : schematicBlockStateAtPosition.getBlockType().getMaterial().isAir();
                     boolean schematicBlockIsLiquid = schematicMaterialAtPosition == Material.WATER || schematicMaterialAtPosition == Material.LAVA;
-                    Location projectedLocation = LocationProjector.project(iteratedLocation, schematicOffset, new Vector(x, y, z));
+                    projectedLocation.setX(baseX + x);
+                    projectedLocation.setY(baseY + y);
+                    projectedLocation.setZ(baseZ + z);
                     if (!isBlockAdequate(projectedLocation, schematicBlockIsAir, schematicBlockIsLiquid, iteratedLocation.getBlockY() - 1, scanType))
                         negativeCount++;
                     totalCount++;
