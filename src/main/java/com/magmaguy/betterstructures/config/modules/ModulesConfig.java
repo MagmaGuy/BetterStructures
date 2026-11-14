@@ -69,7 +69,7 @@ public class ModulesConfig extends CustomConfig {
                                         + file.getPath()
                                         + "; module configuration lookup would be ambiguous.");
                     }
-                    Clipboard clipboard = clipboardCache.get(file);
+                    Clipboard clipboard = clipboardCache.get(file, diskCache);
                     if (clipboard == null) {
                         SchematicDiskCache.LoadedClipboard loaded = diskCache.loadWithIdentity(file);
                         clipboard = loaded == null ? null : loaded.clipboard();

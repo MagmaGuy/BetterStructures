@@ -101,7 +101,14 @@ public final class SchematicDiskCache {
 
     /** The identity and parsed value always describe the same captured bytes. */
     public record SourceIdentity(long size, long lastModifiedNanos, String sha256) {}
-    public record LoadedClipboard(Clipboard clipboard, SourceIdentity identity) {}
+    /**
+     * @param sourceSha1 the SHA-1 of the same captured bytes, the content part of the disk-cache key, or null
+     */
+    public record LoadedClipboard(Clipboard clipboard, SourceIdentity identity, String sourceSha1) {
+        public LoadedClipboard(Clipboard clipboard, SourceIdentity identity) {
+            this(clipboard, identity, null);
+        }
+    }
 
     public LoadedClipboard loadWithIdentity(File schematicFile) {
         Path snapshot = null;
@@ -128,7 +135,8 @@ public final class SchematicDiskCache {
             SourceIdentity identity = new SourceIdentity(size,
                     attributes.lastModifiedTime().to(TimeUnit.NANOSECONDS),
                     HexFormat.of().formatHex(sha256.digest()));
-            String key = keyForDigest(HexFormat.of().formatHex(sha1.digest()));
+            String sourceSha1 = HexFormat.of().formatHex(sha1.digest());
+            String key = keyForDigest(sourceSha1);
             computedKeys.put(schematicFile, key);
             File cacheFile = cacheIndex.get(key);
             Clipboard clipboard = cacheFile == null ? null : readVerifiedCacheEntry(cacheFile);
@@ -139,7 +147,7 @@ public final class SchematicDiskCache {
             }
             if (clipboard == null) return null;
             filesRead.incrementAndGet();
-            return new LoadedClipboard(clipboard, identity);
+            return new LoadedClipboard(clipboard, identity, sourceSha1);
         } catch (IOException | NoSuchAlgorithmException exception) {
             Logger.warn("Could not capture schematic " + schematicFile.getName() + ": " + exception.getMessage());
             return null;
@@ -205,10 +213,16 @@ public final class SchematicDiskCache {
     }
 
     private static String hashOf(byte[] contents) throws NoSuchAlgorithmException {
-        byte[] hash = MessageDigest.getInstance("SHA-1").digest(contents);
-        StringBuilder hex = new StringBuilder();
-        for (byte b : hash) hex.append(String.format("%02x", b));
-        return hex.toString();
+        return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-1").digest(contents));
+    }
+
+    /**
+     * Records the key of a file the in-memory clipboard cache served this pass. Its SHA-256 identity
+     * was just verified against the bytes the SHA-1 was taken from, so the key is the one
+     * {@link #cacheKey} would compute, and pruning does not have to read the file again.
+     */
+    void rememberSourceDigest(File schematicFile, String sourceSha1) {
+        computedKeys.put(schematicFile, keyForDigest(sourceSha1));
     }
 
     /**

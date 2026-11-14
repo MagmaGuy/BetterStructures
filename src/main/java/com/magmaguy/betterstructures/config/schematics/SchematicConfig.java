@@ -316,7 +316,7 @@ public class SchematicConfig extends CustomConfig {
                                            SchematicDiskCache diskCache,
                                            SchematicLoadCoordinator.ActiveLoad activeLoad) {
         activeLoad.checkRunning();
-        Clipboard cached = clipboardCache.get(schematicFile);
+        Clipboard cached = clipboardCache.get(schematicFile, diskCache);
         activeLoad.checkRunning();
         if (cached != null) {
             return cached;

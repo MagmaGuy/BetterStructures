@@ -55,16 +55,26 @@ public final class SchematicClipboardCache {
      * modified since, or can no longer be read
      */
     public Clipboard get(File schematicFile) {
+        return get(schematicFile, null);
+    }
+
+    /**
+     * Same as {@link #get(File)}; on a hit it also hands this pass's disk cache the file's disk key,
+     * so pruning that cache does not re-read a file this lookup just verified.
+     */
+    public Clipboard get(File schematicFile, SchematicDiskCache diskCache) {
         Entry entry = entries.get(pathKey(schematicFile));
         if (entry == null) return null;
         SchematicDiskCache.SourceIdentity identity = identify(schematicFile);
         if (identity == null || !identity.equals(entry.identity())) return null;
+        if (diskCache != null && entry.sourceSha1() != null)
+            diskCache.rememberSourceDigest(schematicFile, entry.sourceSha1());
         return entry.clipboard();
     }
 
     public void put(File schematicFile, SchematicDiskCache.LoadedClipboard loaded) {
         if (loaded == null || loaded.clipboard() == null || loaded.identity() == null) return;
-        entries.put(pathKey(schematicFile), new Entry(loaded.identity(), loaded.clipboard()));
+        entries.put(pathKey(schematicFile), new Entry(loaded.identity(), loaded.clipboard(), loaded.sourceSha1()));
     }
 
     /**
@@ -122,6 +132,6 @@ public final class SchematicClipboardCache {
         return HexFormat.of().formatHex(digest.digest());
     }
 
-    private record Entry(SchematicDiskCache.SourceIdentity identity, Clipboard clipboard) {
+    private record Entry(SchematicDiskCache.SourceIdentity identity, Clipboard clipboard, String sourceSha1) {
     }
 }

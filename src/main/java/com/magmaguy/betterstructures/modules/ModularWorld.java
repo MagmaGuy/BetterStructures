@@ -188,7 +188,7 @@ public class ModularWorld {
     }
 
     private static Clipboard loadComponent(File componentFile, SchematicDiskCache diskCache) {
-        Clipboard clipboard = componentClipboardCache.get(componentFile);
+        Clipboard clipboard = componentClipboardCache.get(componentFile, diskCache);
         if (clipboard != null) return clipboard;
         SchematicDiskCache.LoadedClipboard loaded = diskCache.loadWithIdentity(componentFile);
         clipboard = loaded == null ? null : loaded.clipboard();
