@@ -30,12 +30,6 @@ permissions:
   betterstructures.initialize:
     description: Gives admins access to the /betterstructures initialize command
     default: op
-  betterstructures.generatemodules.slowly:
-    description: Gives admins access to the /betterstructures generateModulesSlowly command
-    default: op
-  betterstructures.generatemodules.instantly:
-    description: Gives admins access to the /betterstructures generateModulesInstantly command
-    default: op
   betterstructures.generatemodules:
     description: Gives admins access to the /betterstructures generateModules command
     default: op
