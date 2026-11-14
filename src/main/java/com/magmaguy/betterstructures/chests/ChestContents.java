@@ -1,12 +1,11 @@
 package com.magmaguy.betterstructures.chests;
 
 import com.magmaguy.betterstructures.config.treasures.TreasureConfigFields;
+import com.magmaguy.betterstructures.thirdparty.MMOItems;
 import com.magmaguy.betterstructures.util.ItemStackSerialization;
 import com.magmaguy.betterstructures.util.WeighedProbability;
 import com.magmaguy.magmacore.util.Logger;
 import lombok.Getter;
-import net.Indyuce.mmoitems.MMOItems;
-import net.Indyuce.mmoitems.api.item.mmoitem.MMOItem;
 import org.bukkit.Material;
 import org.bukkit.block.Container;
 import org.bukkit.configuration.MemorySection;
@@ -100,13 +99,16 @@ public class ChestContents {
     }
 
     private ItemStack getMMOItemsItemStack(String string) {
+        //Without MMOItems its classes do not exist, so touching its API would throw NoClassDefFoundError and abort content loading
+        if (!MMOItems.isEnabled()) {
+            Logger.warn("Treasure file " + treasureConfigFields.getFilename() + " has the MMOItems entry " + string + " but MMOItems is not installed or enabled. Skipping that item.");
+            return null;
+        }
         try {
-            String[] args = string.split("@");
-            MMOItems mmo = MMOItems.plugin;
-            MMOItem mmoitem = mmo.getMMOItem(mmo.getTypes().get(args[0]), args[1]);
-            if (mmoitem == null) throw new NullPointerException("mmo item is null");
-            return mmoitem.newBuilder().build();
-        } catch (Exception ex) {
+            ItemStack itemStack = MMOItems.resolve(string);
+            if (itemStack == null) throw new NullPointerException("mmo item is null");
+            return itemStack;
+        } catch (Exception | LinkageError ex) {
             Logger.warn("Invalid mmo item detected! Problematic entry: " + string + " in " + treasureConfigFields.getFilename());
             return null;
         }
