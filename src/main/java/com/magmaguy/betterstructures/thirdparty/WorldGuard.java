@@ -31,7 +31,6 @@ import org.bukkit.util.Vector;
 public class WorldGuard implements Listener {
     private static StateFlag BETTERSTRUCTURES_PROTECTED = null;
     private static final StateFlag.State allow = StateFlag.State.ALLOW;
-    private static final StateFlag.State deny = StateFlag.State.DENY;
 
 
     public static void initializeFlag() {
