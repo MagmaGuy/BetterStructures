@@ -43,6 +43,7 @@ import com.magmaguy.magmacore.nightbreak.NightbreakPluginUpdater;
 import com.magmaguy.magmacore.nightbreak.NightbreakPluginStateRegistry;
 import com.magmaguy.magmacore.nightbreak.NightbreakRecommendedPluginsCommand;
 import com.magmaguy.magmacore.util.Logger;
+import com.magmaguy.magmacore.util.VersionChecker;
 import org.bstats.bukkit.Metrics;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
@@ -54,6 +55,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public final class BetterStructures extends JavaPlugin {
+    private static final String VERSION_CHECK_SPIGOT_RESOURCE_ID = "103241";
+    private static final String VERSION_CHECK_DOWNLOAD_URL = "https://nightbreak.io/plugin/betterstructures/";
     private volatile boolean contentReloadInProgress;
     private final List<CommandSender> activeReloadSenders = new ArrayList<>();
     private final List<CommandSender> queuedReloadSenders = new ArrayList<>();
@@ -283,7 +286,7 @@ public final class BetterStructures extends JavaPlugin {
         commandManager.registerCommand(new BetterStructuresCommand());
 
         initializationContext.step("Version Check");
-        MagmaCore.checkVersionUpdate("103241", "https://nightbreak.io/plugin/betterstructures/");
+        MagmaCore.checkVersionUpdate(VERSION_CHECK_SPIGOT_RESOURCE_ID, VERSION_CHECK_DOWNLOAD_URL);
 
         initializationContext.step("WorldGuard Integration");
         if (Bukkit.getPluginManager().isPluginEnabled("WorldGuard") &&
@@ -338,6 +341,7 @@ public final class BetterStructures extends JavaPlugin {
         NewChunkLoadEvent.prepareForContentReload();
         ChunkPregenerator.shutdown();
         Bukkit.getServer().getScheduler().cancelTasks(MetadataHandler.PLUGIN);
+        rearmVersionCheck();
         BSPackage.shutdown();
         ModulesContainer.shutdown();
         WFCGenerator.shutdown();
@@ -358,6 +362,18 @@ public final class BetterStructures extends JavaPlugin {
                     // Disabling inside the initialization callback would wait on itself.
                     Bukkit.getScheduler().runTask(this, () -> finishImportedContentReload(false));
                 });
+    }
+
+    /**
+     * The content reload cancels every task this plugin owns, including MagmaCore's hourly version
+     * check started during startup. Schedule that check again so exactly one timer runs after any
+     * number of reloads. This calls VersionChecker directly rather than MagmaCore.checkVersionUpdate,
+     * which would also register a second join listener and send operators the outdated notice twice;
+     * the listener from startup is still registered, because the reload does not unregister listeners.
+     */
+    private void rearmVersionCheck() {
+        VersionChecker.shutdown(this);
+        VersionChecker.checkPluginVersion(VERSION_CHECK_SPIGOT_RESOURCE_ID, VERSION_CHECK_DOWNLOAD_URL);
     }
 
     private void finishImportedContentReload(boolean successful) {
