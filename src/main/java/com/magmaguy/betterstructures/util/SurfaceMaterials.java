@@ -1,6 +1,5 @@
 package com.magmaguy.betterstructures.util;
 
-import com.magmaguy.magmacore.util.VersionChecker;
 import org.bukkit.Material;
 
 import java.util.EnumSet;
@@ -41,15 +40,10 @@ public class SurfaceMaterials {
             Material material = Material.getMaterial(name);
             if (material != null) IGNORABLE.add(material);
         }
-        //Version-dependent entries, resolved once here exactly as the old default arm resolved them
-        //per call: SHORT_GRASS only counts on 1.21+, and older servers expose the same plant as the
-        //GRASS constant (key "grass").
-        if (!VersionChecker.serverVersionOlderThan(21, 0)) {
-            Material shortGrass = Material.getMaterial("SHORT_GRASS");
-            if (shortGrass != null) IGNORABLE.add(shortGrass);
-        }
-        Material legacyGrass = Material.getMaterial("GRASS");
-        if (legacyGrass != null) IGNORABLE.add(legacyGrass);
+        //SHORT_GRASS is the 1.20.3+ name of the plain grass plant; every supported server has it. The pre-1.20.3
+        //GRASS name resolves to null on 1.21.4+, so it is no longer looked up.
+        Material shortGrass = Material.getMaterial("SHORT_GRASS");
+        if (shortGrass != null) IGNORABLE.add(shortGrass);
     }
 
     private SurfaceMaterials() {

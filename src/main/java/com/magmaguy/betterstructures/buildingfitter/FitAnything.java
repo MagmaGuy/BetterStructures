@@ -26,7 +26,6 @@ import com.sk89q.worldedit.math.BlockVector3;
 import com.sk89q.worldedit.math.transform.AffineTransform;
 import com.magmaguy.magmacore.util.Logger;
 import com.magmaguy.magmacore.util.SpigotMessage;
-import com.magmaguy.magmacore.util.VersionChecker;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
 import lombok.Getter;
 import org.bukkit.Bukkit;
@@ -396,8 +395,7 @@ public class FitAnything {
                 ((LivingEntity) entity).setRemoveWhenFarAway(false);
             }
 
-            if (!VersionChecker.serverVersionOlderThan(21, 0) &&
-                    entity.getType().equals(EntityType.END_CRYSTAL)) {
+            if (entity.getType().equals(EntityType.END_CRYSTAL)) {
                 EnderCrystal enderCrystal = (EnderCrystal) entity;
                 enderCrystal.setShowingBottom(false);
             }

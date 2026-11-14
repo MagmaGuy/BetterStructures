@@ -1,6 +1,5 @@
 package com.magmaguy.betterstructures.util;
 
-import com.magmaguy.magmacore.util.VersionChecker;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.enchantments.Enchantment;
@@ -41,8 +40,7 @@ public class DefaultChestContents {
         commonList.add(generateEntry(Material.BOOK, 1, 3, normalWeight));
         commonList.add(generateEntry(Material.BOW, 1, 1, normalWeight, true));
         commonList.add(generateEntry(Material.BREAD, 8, 16, normalWeight));
-        if (!VersionChecker.serverVersionOlderThan(20, 0))
-            commonList.add(generateEntry(Material.BRUSH, 1, 1, extraRareWeight));
+        commonList.add(generateEntry(Material.BRUSH, 1, 1, extraRareWeight));
         commonList.add(generateEntry(Material.BROWN_DYE, 1, 3, normalWeight));
         commonList.add(generateEntry(Material.BROWN_WOOL, 1, 6, normalWeight));
         commonList.add(generateEntry(Material.CANDLE, 1, 5, normalWeight));
@@ -91,8 +89,7 @@ public class DefaultChestContents {
         commonList.add(generateEntry(Material.LEATHER_CHESTPLATE, 1, 1, rareWeight, true));
         commonList.add(generateEntry(Material.LIME_DYE, 1, 3, normalWeight));
         commonList.add(generateEntry(Material.MAGENTA_DYE, 1, 3, normalWeight));
-        if (!VersionChecker.serverVersionOlderThan(19, 0))
-            commonList.add(generateEntry(Material.MUSIC_DISC_5, 1, 1, extraRareWeight)); //1.19
+        commonList.add(generateEntry(Material.MUSIC_DISC_5, 1, 1, extraRareWeight)); //1.19
         commonList.add(generateEntry(Material.MUSIC_DISC_11, 1, 1, extraRareWeight));
         commonList.add(generateEntry(Material.MUSIC_DISC_13, 1, 1, extraRareWeight));
         commonList.add(generateEntry(Material.MUSIC_DISC_BLOCKS, 1, 1, extraRareWeight));
@@ -101,8 +98,7 @@ public class DefaultChestContents {
         commonList.add(generateEntry(Material.MUSIC_DISC_FAR, 1, 1, extraRareWeight));
         commonList.add(generateEntry(Material.MUSIC_DISC_MALL, 1, 1, extraRareWeight));
         commonList.add(generateEntry(Material.MUSIC_DISC_MELLOHI, 1, 1, extraRareWeight));
-        if (!VersionChecker.serverVersionOlderThan(18, 0))
-            commonList.add(generateEntry(Material.MUSIC_DISC_OTHERSIDE, 1, 1, extraRareWeight)); //1.18
+        commonList.add(generateEntry(Material.MUSIC_DISC_OTHERSIDE, 1, 1, extraRareWeight)); //1.18
         commonList.add(generateEntry(Material.MUSIC_DISC_PIGSTEP, 1, 1, extraRareWeight));
         commonList.add(generateEntry(Material.MUSIC_DISC_STAL, 1, 1, extraRareWeight));
         commonList.add(generateEntry(Material.MUSIC_DISC_STRAD, 1, 1, extraRareWeight));
@@ -409,8 +405,7 @@ public class DefaultChestContents {
         rareList.add(generateEntry(Material.BUNDLE, 1, 1, rareWeight));
         epicList.add(generateEntry(Material.KNOWLEDGE_BOOK, 1, 1, extraRareWeight)); //Reveals all recipes
         epicList.add(generateEntry(Material.TNT_MINECART, 1, 1, normalWeight));
-        if (!VersionChecker.serverVersionOlderThan(19, 0))
-            epicList.add(generateEntry(Material.SCULK, 1, 6, normalWeight)); //1.19
+        epicList.add(generateEntry(Material.SCULK, 1, 6, normalWeight)); //1.19
         epicList.add(generateEntry(Material.TOTEM_OF_UNDYING, 1, 1, normalWeight));
         epicList.add(generateEntry(Material.DIAMOND_AXE, 1, 1, normalWeight));
         epicList.add(generateEntry(Material.DIAMOND_BOOTS, 1, 1, normalWeight));
