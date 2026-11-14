@@ -429,7 +429,9 @@ public final class ModulePasting {
                     if (phase == 0 && fast)
                         NMSManager.getAdapter().setBlockInNativeDataPalette(world, block.location().getBlockX(),
                                 block.location().getBlockY(), block.location().getBlockZ(), block.blockData(), false);
-                    else if (phase == 1 && !fast) block.location().getBlock().setBlockData(block.blockData(), false);
+                    //Outside generated worlds no block is fast, so phase 0 places what phase 1 would, in the same order
+                    else if ((phase == 1 || !createModularWorld) && !fast)
+                        block.location().getBlock().setBlockData(block.blockData(), false);
                 } else {
                     if (nextEntity == null) { moduleIndex++; module = null; return; }
                     var origin = module.clipboard().getOrigin().toVector3();
@@ -510,7 +512,10 @@ public final class ModulePasting {
         }
 
         private void advance() {
-            phase++; moduleIndex = 0; postIndex = 0; module = null; nextBlock = null; nextBlockData = null; nextEntity = null; nextLocation = null;
+            phase++;
+            //Phase 1 only places the blocks phase 0 deferred; an existing-world paste defers none (see pasteNext)
+            if (phase == 1 && !createModularWorld) phase++;
+            moduleIndex = 0; postIndex = 0; module = null; nextBlock = null; nextBlockData = null; nextEntity = null; nextLocation = null;
         }
         public void onComplete() {
             if (!cancelled && Bukkit.getWorld(world.getUID()) == world && createModularWorld) {
