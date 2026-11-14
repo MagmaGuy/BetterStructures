@@ -140,20 +140,10 @@ tasks.named('compileTestJava', JavaCompile) {
     javaCompiler = javaToolchains.compilerFor { languageVersion = JavaLanguageVersion.of(25) }
 }
 
-ext {
-    resourceTokens = [
-            'Version': version
-    ]
-}
-
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(21) // or your target version
     }
-}
-
-processResources {
-    filter org.apache.tools.ant.filters.ReplaceTokens, tokens: resourceTokens
 }
 
 publishing {
