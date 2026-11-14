@@ -180,7 +180,7 @@ public final class ModulePasting {
                 }
             });
 
-            //The clipboard is already rotated; going through pasteArmorStands() would rotate it twice
+            //The clipboard is already rotated; rotating it again here would rotate it twice
             WorldEditUtils.pasteArmorStandsOnlyFromTransformed(transformedClipboard, location);
 
         } catch (Exception e) {
@@ -191,21 +191,6 @@ public final class ModulePasting {
 
     private static int normalizeRotation(int rotation) {
         return (360 - rotation) % 360;
-    }
-
-    public static void pasteArmorStands(Clipboard clipboard, Location location, Integer rotation) {
-        if (rotation == null) rotation = 0;
-
-        AffineTransform transform = new AffineTransform().rotateY(normalizeRotation(rotation));
-        Clipboard transformedClipboard;
-        try {
-            transformedClipboard = clipboard.transform(transform);
-        } catch (WorldEditException e) {
-            Logger.warn("Failed to transform clipboard for entities: " + e.getMessage());
-            return;
-        }
-
-        WorldEditUtils.pasteArmorStandsOnlyFromTransformed(transformedClipboard, location);
     }
 
     private Pasteable prepareBlock(BaseBlock baseBlock, Location pasteLocation,

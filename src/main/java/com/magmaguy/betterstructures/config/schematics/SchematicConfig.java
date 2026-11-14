@@ -337,8 +337,4 @@ public class SchematicConfig extends CustomConfig {
                 ? ""
                 : " WorldEdit failed to read it, see the WorldEdit warning above.";
     }
-
-    public static SchematicConfigField getSchematicConfiguration(String filename) {
-        return schematicConfigurations.get(filename);
-    }
 }

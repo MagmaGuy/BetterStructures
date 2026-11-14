@@ -90,14 +90,6 @@ public final class SchematicDiskCache {
     }
 
     /**
-     * Loads a schematic, going through the on-disk cache of already-converted copies.
-     */
-    public Clipboard load(File schematicFile) {
-        LoadedClipboard loaded = loadWithIdentity(schematicFile);
-        return loaded == null ? null : loaded.clipboard();
-    }
-
-    /**
      * How many files this instance actually read, whether from a cache entry or the original —
      * that is, files the caller's in-memory clipboard cache could not vouch for. The on-disk
      * cache can only have gained entries for files that were actually read, so a pass where

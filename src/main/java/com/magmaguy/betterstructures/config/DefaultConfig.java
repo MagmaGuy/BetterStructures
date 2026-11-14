@@ -94,11 +94,6 @@ public class DefaultConfig extends ConfigurationFile {
         instance = this;
     }
 
-    public static void toggleSetupDone() {
-        setupDone = !setupDone;
-        ConfigurationEngine.writeValue(setupDone, instance.file, instance.getFileConfiguration(), "setupDone");
-    }
-
     public static void toggleSetupDone(boolean value) {
         setupDone = value;
         ConfigurationEngine.writeValue(setupDone, instance.file, instance.getFileConfiguration(), "setupDone");

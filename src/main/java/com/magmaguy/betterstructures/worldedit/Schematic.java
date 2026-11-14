@@ -51,16 +51,6 @@ public class Schematic {
     }
 
     /**
-     * Loads a schematic from a file
-     *
-     * @param schematicFile The schematic file to load
-     * @return The loaded clipboard or null if loading failed
-     */
-    public static Clipboard load(File schematicFile) {
-        return load(schematicFile, schematicFile);
-    }
-
-    /**
      * Loads a schematic from a copy of the installed file.
      *
      * @param schematicFile The file to read

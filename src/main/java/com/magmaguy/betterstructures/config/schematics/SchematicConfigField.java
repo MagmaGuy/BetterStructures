@@ -11,7 +11,6 @@ import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.Material;
 
-import java.io.IOException;
 import java.util.List;
 
 public class SchematicConfigField extends CustomConfigFields {
@@ -114,15 +113,5 @@ public class SchematicConfigField extends CustomConfigFields {
         }
         Logger.warn("This schematic was scanned, but it will not spawn or appear in /bs place until the generator is valid. Run /bs reload after editing it.");
         Logger.warn("============================================================");
-    }
-
-    public void toggleEnabled(boolean enabled) {
-        this.isEnabled = enabled;
-        fileConfiguration.set("isEnabled", enabled);
-        try {
-            fileConfiguration.save(file);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
     }
 }

@@ -202,13 +202,6 @@ public class WFCLattice {
     }
 
 
-    public boolean isBoundary(Vector3i location) {
-        return location.x == -latticeRadius
-                || location.x == latticeRadius
-                || location.z == -latticeRadius
-                || location.z == latticeRadius;
-    }
-
     public WFCNode getLowestEntropyNode() {
         // The queue only ever contains un-collapsed, non-boundary nodes: updateNodeEntropy() is the
         // sole insertion point and it rejects collapsed/boundary nodes, while collapses only happen
