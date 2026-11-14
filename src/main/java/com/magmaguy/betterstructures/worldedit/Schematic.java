@@ -158,11 +158,11 @@ public class Schematic {
             Location adjustedLocation,
             Function<Boolean, Material> pedestalMaterialProvider,
             Map<BlockState, PreparedState> states,
+            BlockVector3 min,
             PasteCoordinate coordinate) {
         int x = coordinate.x();
         int y = coordinate.y();
         int z = coordinate.z();
-        BlockVector3 min = schematicClipboard.getMinimumPoint();
         BlockVector3 adjustedClipboardLocation = BlockVector3.at(
                 x + min.x(),
                 y + min.y(),
@@ -171,7 +171,11 @@ public class Schematic {
         BlockState blockState = baseBlock.toImmutableState();
         PreparedState prepared = states.computeIfAbsent(blockState, PreparedState::new);
         Material material = prepared.material;
-        Block worldBlock = adjustedLocation.clone().add(new Vector(x, y, z)).getBlock();
+        //The block Location#getBlock finds after adjustedLocation.clone().add(x, y, z): same sums, no copies
+        Block worldBlock = adjustedLocation.getWorld().getBlockAt(
+                Location.locToBlock(adjustedLocation.getX() + x),
+                Location.locToBlock(adjustedLocation.getY() + y),
+                Location.locToBlock(adjustedLocation.getZ() + z));
 
         if (material == Material.BARRIER) {
             // Special behavior: do not replace barriers.
@@ -397,6 +401,7 @@ public class Schematic {
         // Bounded by the clipboard's distinct states; lives only as long as this paste.
         private final Map<BlockState, PreparedState> states = new HashMap<>();
         private final Runnable onComplete;
+        private final BlockVector3 minimum;
 
         private ClipboardPasteOperation(
                 Clipboard clipboard,
@@ -412,11 +417,14 @@ public class Schematic {
                     clipboard.getDimensions().z());
             this.onComplete = onComplete;
             this.chunks = new PasteChunkReadiness(adjustedLocation.getWorld());
+            //Clipboards are never modified after loading; reading the minimum once spares a region query per block
+            this.minimum = clipboard.getMinimumPoint();
         }
 
         @Override
         public boolean ready() {
-            return chunks.ready(adjustedLocation.clone().add(cursor.x, cursor.y, cursor.z));
+            return chunks.ready(Location.locToBlock(adjustedLocation.getX() + cursor.x),
+                    Location.locToBlock(adjustedLocation.getZ() + cursor.z));
         }
 
         @Override public void close() {
@@ -431,7 +439,7 @@ public class Schematic {
 
         @Override
         public void pasteNext() {
-            pasteClipboardBlock(clipboard, adjustedLocation, pedestalMaterialProvider, states, cursor.next());
+            pasteClipboardBlock(clipboard, adjustedLocation, pedestalMaterialProvider, states, minimum, cursor.next());
         }
 
         @Override
