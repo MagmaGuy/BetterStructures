@@ -78,18 +78,19 @@ public class NewChunkLoadEvent implements Listener {
      * Chunky release their chunks right after loading.
      */
     private static void scanNewChunk(Chunk chunk, LoadingChunkKey loadingChunkKey) {
-        if (claimNewChunk(chunk, loadingChunkKey))
-            TerrainScanQueue.enqueue(loadingChunkKey, chunk, terrainScans(chunk));
+        List<Supplier<FitAnything>> scans = claimNewChunk(chunk, loadingChunkKey);
+        if (!scans.isEmpty())
+            TerrainScanQueue.enqueue(loadingChunkKey, chunk, scans);
     }
 
     /**
      * Claims a new chunk's one generation scan and runs its dungeon scan, which
-     * needs only coordinates. Reads no terrain. Returns whether the chunk is a
-     * grid point for a structure type whose fitter must read terrain.
+     * needs only coordinates. Reads no terrain. Returns the terrain scans for the
+     * structure types this chunk is a grid point of, empty when there are none.
      */
-    private static boolean claimNewChunk(Chunk chunk, LoadingChunkKey loadingChunkKey) {
-        if (!ValidWorldsConfig.isValidWorld(chunk.getWorld())) return false;
-        if (loadingChunks.contains(loadingChunkKey)) return false;
+    private static List<Supplier<FitAnything>> claimNewChunk(Chunk chunk, LoadingChunkKey loadingChunkKey) {
+        if (!ValidWorldsConfig.isValidWorld(chunk.getWorld())) return List.of();
+        if (loadingChunks.contains(loadingChunkKey)) return List.of();
         //In some cases the same chunk gets loaded (at least at an event level) several times, this prevents the plugin from doing multiple scans and placing multiple builds, enhancing performance
         loadingChunks.add(loadingChunkKey);
         new BukkitRunnable() {
@@ -100,10 +101,10 @@ public class NewChunkLoadEvent implements Listener {
         }.runTaskLater(MetadataHandler.PLUGIN, 20L);
 
         dungeonScanner(chunk.getWorld(), chunk.getX(), chunk.getZ());
-        return isSurfacePosition(chunk) || isShallowUndergroundPosition(chunk) || isDeepUndergroundPosition(chunk)
-                || isSkyPosition(chunk) || isLiquidSurfacePosition(chunk);
+        return terrainScans(chunk);
     }
 
+    // Evaluates each structure-type grid once per chunk.
     private static List<Supplier<FitAnything>> terrainScans(Chunk chunk) {
         List<Supplier<FitAnything>> scans = new ArrayList<>();
         if (isSurfacePosition(chunk)) scans.add(() -> new FitSurfaceBuilding(chunk));
