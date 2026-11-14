@@ -1,14 +1,8 @@
 package com.magmaguy.betterstructures.config.modules;
 
-import com.magmaguy.betterstructures.chests.ChestContents;
-import com.magmaguy.betterstructures.config.treasures.TreasureConfig;
-import com.magmaguy.betterstructures.config.treasures.TreasureConfigFields;
-import com.magmaguy.betterstructures.util.RegistrySnapshot;
 import com.magmaguy.magmacore.config.CustomConfigFields;
 import com.magmaguy.magmacore.util.Logger;
-import lombok.Getter;
 import lombok.Setter;
-import org.bukkit.block.Biome;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -17,10 +11,6 @@ import java.util.UUID;
 
 public class ModulesConfigFields extends CustomConfigFields {
 
-    @Setter
-    private String treasureFile = null;
-    @Setter
-    private ChestContents chestContents = null;
     @Setter
     private String barrelTreasureFilename = "treasure_barrel_food.yml";
     @Setter
@@ -33,30 +23,14 @@ public class ModulesConfigFields extends CustomConfigFields {
     private boolean noRepeat = false;
     private double weight = 100D;
     private double repetitionPenalty = 0;
-    @Getter
-    private String moduleBiome = "default";
-    private String minecraftBiomeString = "null";
-    @Getter
-    private Biome minecraftBiome = null;
     private String cloneConfig = "";
     private ModulesConfigFields clonedConfig = null;
-    private boolean northIsPassable = true;
-    private boolean southIsPassable = true;
-    private boolean eastIsPassable = true;
-    private boolean westIsPassable = true;
-    private boolean upIsPassable = true;
-    private boolean downIsPassable = true;
     private UUID uuid = UUID.randomUUID();
-    private String compoundModule = null;
     private boolean isAutomaticallyPlaced = true;
 
     //used to check if a config is either cloned or the same between two modules
     public UUID getUuid() {
         return clonedConfig == null ? uuid : clonedConfig.getUuid();
-    }
-
-    public String getCompoundModule() {
-        return clonedConfig == null ? compoundModule : clonedConfig.getCompoundModule();
     }
 
     /**
@@ -67,14 +41,6 @@ public class ModulesConfigFields extends CustomConfigFields {
      */
     public ModulesConfigFields(String filename, boolean isEnabled) {
         super(filename, isEnabled);
-    }
-
-    public String getTreasureFile() {
-        return clonedConfig == null ? treasureFile : clonedConfig.getTreasureFile();
-    }
-
-    public ChestContents getChestContents() {
-        return clonedConfig == null ? chestContents : clonedConfig.getChestContents();
     }
 
     public String getBarrelTreasureFilename() {
@@ -117,30 +83,6 @@ public class ModulesConfigFields extends CustomConfigFields {
         return clonedConfig == null ? repetitionPenalty : clonedConfig.getRepetitionPenalty();
     }
 
-    public boolean isNorthIsPassable() {
-        return clonedConfig == null ? northIsPassable : clonedConfig.isNorthIsPassable();
-    }
-
-    public boolean isSouthIsPassable() {
-        return clonedConfig == null ? southIsPassable : clonedConfig.isSouthIsPassable();
-    }
-
-    public boolean isEastIsPassable() {
-        return clonedConfig == null ? eastIsPassable : clonedConfig.isEastIsPassable();
-    }
-
-    public boolean isWestIsPassable() {
-        return clonedConfig == null ? westIsPassable : clonedConfig.isWestIsPassable();
-    }
-
-    public boolean isUpIsPassable() {
-        return clonedConfig == null ? upIsPassable : clonedConfig.isUpIsPassable();
-    }
-
-    public boolean isDownIsPassable() {
-        return clonedConfig == null ? downIsPassable : clonedConfig.isDownIsPassable();
-    }
-
     public boolean isAutomaticallyPlaced() {
         return clonedConfig == null ? isAutomaticallyPlaced : clonedConfig.isAutomaticallyPlaced();
     }
@@ -148,15 +90,6 @@ public class ModulesConfigFields extends CustomConfigFields {
     @Override
     public void processConfigFields() {
         this.isEnabled = processBoolean("isEnabled", isEnabled, true, true);
-        this.treasureFile = processString("treasureFile", treasureFile, null, true);
-        if (treasureFile != null && !treasureFile.isEmpty()) {
-            TreasureConfigFields treasureConfigFields = TreasureConfig.getConfigFields(treasureFile);
-            if (treasureConfigFields == null) {
-                Logger.warn("Failed to get treasure config file " + treasureFile + " for schematic configuration " + filename + " ! Defaulting to the generator treasure.");
-            } else {
-                this.chestContents = treasureConfigFields.getChestContents();
-            }
-        }
         this.generateLootInBarrels = processBoolean("generateLootInBarrels", generateLootInBarrels, true, true);
         this.barrelTreasureFilename = processString("barrelTreasureFilename", barrelTreasureFilename, "treasure_barrel_food.yml", true);
         this.borderMap = processMap("borders", new HashMap<>());
@@ -171,22 +104,7 @@ public class ModulesConfigFields extends CustomConfigFields {
         }
         this.repetitionPenalty = processDouble("repetitionPenalty", repetitionPenalty, repetitionPenalty, true);
         this.enforceHorizontalRotation = processBoolean("enforceHorizontalRotation", enforceHorizontalRotation, enforceHorizontalRotation, true);
-        this.northIsPassable = processBoolean("northIsPassable", northIsPassable, northIsPassable, true);
-        this.southIsPassable = processBoolean("southIsPassable", southIsPassable, southIsPassable, true);
-        this.eastIsPassable = processBoolean("eastIsPassable", eastIsPassable, eastIsPassable, true);
-        this.westIsPassable = processBoolean("westIsPassable", westIsPassable, westIsPassable, true);
-        this.upIsPassable = processBoolean("upIsPassable", upIsPassable, upIsPassable, true);
-        this.downIsPassable = processBoolean("downIsPassable", downIsPassable, downIsPassable, true);
-        this.moduleBiome = processString("biome", moduleBiome, moduleBiome, true);
-        this.minecraftBiomeString = processString("minecraftBiome", minecraftBiomeString, minecraftBiomeString, true);
-        if (!minecraftBiomeString.equalsIgnoreCase("null"))
-            try {
-                this.minecraftBiome = RegistrySnapshot.biome(minecraftBiomeString);
-            } catch (Exception e) {
-                Logger.warn("Biome " + minecraftBiomeString + " is not a valid biome! Fix it in " + filename);
-            }
         this.cloneConfig = processString("cloneConfig", cloneConfig, cloneConfig, true);
-        this.compoundModule = processString("compoundModule", compoundModule, compoundModule, true);
         this.isAutomaticallyPlaced = processBoolean("isAutomaticallyPlaced", isAutomaticallyPlaced, isAutomaticallyPlaced, true);
     }
 
@@ -216,7 +134,6 @@ public class ModulesConfigFields extends CustomConfigFields {
             Logger.warn("Configuration " + filename + " is supposed to clone " + cloneConfig + " but that is not a valid configuration file! The cloning setting will be ignored.");
             return;
         }
-        fileConfiguration.set("treasureFile", null);
         fileConfiguration.set("barrelTreasureFilename", null);
         fileConfiguration.set("borders", null);
         fileConfiguration.set("minY", null);
@@ -227,12 +144,6 @@ public class ModulesConfigFields extends CustomConfigFields {
         fileConfiguration.set("repetitionPenalty", null);
         fileConfiguration.set("enforceHorizontalRotation", null);
         fileConfiguration.set("generateLootInBarrels", null);
-        fileConfiguration.set("northIsPassable", null);
-        fileConfiguration.set("southIsPassable", null);
-        fileConfiguration.set("eastIsPassable", null);
-        fileConfiguration.set("westIsPassable", null);
-        fileConfiguration.set("upIsPassable", null);
-        fileConfiguration.set("downIsPassable", null);
         fileConfiguration.set("isAutomaticallyPlaced", null);
         try {
             fileConfiguration.save(file);

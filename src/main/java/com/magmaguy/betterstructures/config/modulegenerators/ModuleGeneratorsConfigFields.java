@@ -13,8 +13,6 @@ import java.util.List;
 public class ModuleGeneratorsConfigFields extends CustomConfigFields {
     @Getter
     protected int radius;
-    @Getter
-    protected boolean edges;
     protected List<String> startModules;
     @Getter
     protected int minChunkY;
@@ -26,8 +24,6 @@ public class ModuleGeneratorsConfigFields extends CustomConfigFields {
     protected int moduleSizeY;
     @Getter
     protected boolean debug;
-    @Getter
-    protected boolean useGradientLevels;
     @Getter
     protected String spawnPoolSuffix;
     @Getter
@@ -74,14 +70,12 @@ public class ModuleGeneratorsConfigFields extends CustomConfigFields {
     public void processConfigFields() {
         this.isEnabled = processBoolean("isEnabled", isEnabled, true, true);
         this.radius = processInt("radius", radius, 1, true);
-        this.edges = processBoolean("edges", edges, false, true);
         this.startModules = processStringList("startModule", startModules, null, true);
         this.minChunkY = processInt("minChunkY", minChunkY, 0, true);
         this.maxChunkY = processInt("maxChunkY", maxChunkY, 0, true);
         this.moduleSizeXZ = processInt("moduleSizeXZ", moduleSizeXZ, 16, true);
         this.moduleSizeY = processInt("moduleSizeY", moduleSizeY, 16, true);
         this.debug = processBoolean("debug", debug, false, true);
-        this.useGradientLevels = processBoolean("useGradientLevels", useGradientLevels, useGradientLevels, true);
         this.spawnPoolSuffix = processString("spawnPoolSuffix", spawnPoolSuffix, spawnPoolSuffix, true);
         this.isWorldGeneration = processBoolean("isWorldGeneration", isWorldGeneration, isWorldGeneration, true);
         this.treasureFile = processString("treasureFile", treasureFile, null, false);

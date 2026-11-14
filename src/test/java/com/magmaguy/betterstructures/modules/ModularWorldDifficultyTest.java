@@ -90,7 +90,6 @@ class ModularWorldDifficultyTest {
         String poolId = "modular_difficulty_fixture.yml", bossId = "modular_difficulty_boss.yml";
         SpawnPoolsConfigFields pool = mock(SpawnPoolsConfigFields.class);
         when(pool.getPoolStrings()).thenReturn(List.of(bossId));
-        when(pool.getMinLevel()).thenReturn(1);
         when(pool.getMaxLevel()).thenReturn(40);
         CustomBossesConfigFields boss = new CustomBossesConfigFields(bossId, EntityType.ZOMBIE, true, "Fixture", "7");
         boss.setInstanced(true);
