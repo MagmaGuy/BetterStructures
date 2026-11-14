@@ -34,9 +34,10 @@ public class ChunkPregenerator implements Listener {
     private final int maxRadiusBlocks;
     private final int maxRadiusChunks;
     private int actualMaxRadiusChunks = 0;
-    private final Set<String> generatedChunks = new HashSet<>();
-    private final Set<String> queuedChunks = new HashSet<>();
-    private final Set<String> loadedChunks = new HashSet<>(); // Track which chunks have been loaded (to avoid double counting)
+    // Chunk coordinates packed into one long (see chunkKey) instead of an "x,z" String per chunk
+    private final Set<Long> generatedChunks = new HashSet<>();
+    private final Set<Long> queuedChunks = new HashSet<>();
+    private final Set<Long> loadedChunks = new HashSet<>(); // Track which chunks have been loaded (to avoid double counting)
     private int newlyGeneratedChunks = 0;
     private int chunksLoadedLast30s = 0;
     private int allChunksLoadedLast30s = 0; // Track all chunks (new or existing) loaded in last 30s
@@ -252,8 +253,12 @@ public class ChunkPregenerator implements Listener {
         return (long) floor * floor == value ? floor : floor + 1;
     }
 
+    private static long chunkKey(int chunkX, int chunkZ) {
+        return ((long) chunkX << 32) | (chunkZ & 0xFFFFFFFFL);
+    }
+
     private boolean addChunkToWorkload(WorkloadRunnable workload, int chunkX, int chunkZ) {
-        String chunkKey = chunkX + "," + chunkZ;
+        long chunkKey = chunkKey(chunkX, chunkZ);
         if (generatedChunks.contains(chunkKey) || !queuedChunks.add(chunkKey)) {
             return false; // Already generated or queued
         }
@@ -266,7 +271,7 @@ public class ChunkPregenerator implements Listener {
         return true;
     }
 
-    private void generateChunk(int chunkX, int chunkZ, String chunkKey) {
+    private void generateChunk(int chunkX, int chunkZ, long chunkKey) {
         try {
             Chunk chunk = world.getChunkAt(chunkX, chunkZ);
             if (!chunk.isLoaded()) {
@@ -279,7 +284,7 @@ public class ChunkPregenerator implements Listener {
             isCancelled = true;
             if (beginFinish()) {
                 cleanup();
-                Logger.warn("Chunk pregeneration incomplete. Failed coordinate: " + chunkKey
+                Logger.warn("Chunk pregeneration incomplete. Failed coordinate: " + chunkX + "," + chunkZ
                         + "; completed " + generatedChunks.size() + " chunks. World border was not changed.");
             }
         }
@@ -367,7 +372,7 @@ public class ChunkPregenerator implements Listener {
             return;
         }
         
-        String chunkKey = event.getChunk().getX() + "," + event.getChunk().getZ();
+        long chunkKey = chunkKey(event.getChunk().getX(), event.getChunk().getZ());
         // Only count if this chunk is part of our pregeneration
         if (generatedChunks.contains(chunkKey)) {
             // Only count each chunk once for total and 30s rate
