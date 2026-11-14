@@ -208,8 +208,7 @@ public class DefaultConfig extends ConfigurationFile {
                         "Sets the minimum distance (in blocks) from world spawn (coordinates 0, 0) within which no structures will be placed.",
                         "This applies to all worlds. Set to 0 to disable spawn protection."),
                 fileConfiguration, "spawnProtectionRadius", 100);
-
-        ConfigurationEngine.fileSaverOnlyDefaults(fileConfiguration, file);
+        // ConfigurationFile.saveDefaults() writes the file right after this method returns.
     }
 
     private int validatedDistance(String configKey, int configuredValue, int defaultValue) {
