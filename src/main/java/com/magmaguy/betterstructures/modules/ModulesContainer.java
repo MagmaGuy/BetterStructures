@@ -53,6 +53,16 @@ public class ModulesContainer {
     }
 
     public static void postInitializeModulesContainer() {
+        // Every container's tags indexed by (direction, exact tag), in container then tag order, so each
+        // border tag looks up its matching neighbours instead of comparing against every container.
+        Map<Direction, Map<String, List<TaggedContainer>>> tagIndex = new EnumMap<>(Direction.class);
+        for (ModulesContainer container : modulesContainers.values())
+            for (Map.Entry<Direction, List<NeighborTag>> entry : container.borderTags.entrySet())
+                for (NeighborTag tag : entry.getValue())
+                    tagIndex.computeIfAbsent(entry.getKey(), k -> new HashMap<>())
+                            .computeIfAbsent(tag.getTag(), k -> new ArrayList<>())
+                            .add(new TaggedContainer(container, tag));
+
         for (ModulesContainer modulesContainer : modulesContainers.values()) {
             for (Map.Entry<Direction, List<NeighborTag>> buildBorderListEntry : modulesContainer.borderTags.entrySet()) {
                 Direction direction = buildBorderListEntry.getKey();
@@ -69,16 +79,12 @@ public class ModulesContainer {
                         continue;
                     }
 
-                    for (ModulesContainer neighborContainer : modulesContainers.values()) {
-                        List<NeighborTag> neighborTags = neighborContainer.borderTags.neighborMap.get(direction.getOpposite());
-                        if (neighborTags == null) continue;
-                        for (NeighborTag neighborTag : neighborTags) {
-                            if (borderTag.getTag().equals(neighborTag.getTag()) && (borderTag.isCanMirror() || neighborTag.isCanMirror())) {
-                                modulesContainer.validBorders.computeIfAbsent(direction, k -> new HashSet<>()).add(neighborContainer);
-                                break;
-                            }
-                        }
-                    }
+                    Map<String, List<TaggedContainer>> oppositeTags = tagIndex.get(direction.getOpposite());
+                    List<TaggedContainer> matches = oppositeTags == null ? null : oppositeTags.get(borderTag.getTag());
+                    if (matches == null) continue;
+                    for (TaggedContainer match : matches)
+                        if (borderTag.isCanMirror() || match.tag().isCanMirror())
+                            modulesContainer.validBorders.computeIfAbsent(direction, k -> new HashSet<>()).add(match.container());
                 }
             }
             for (Direction direction : Direction.values()) {
@@ -262,6 +268,9 @@ public class ModulesContainer {
             }
         }
 
+    }
+
+    private record TaggedContainer(ModulesContainer container, NeighborTag tag) {
     }
 
     public record BorderTags(Map<Direction, List<NeighborTag>> neighborMap) {
