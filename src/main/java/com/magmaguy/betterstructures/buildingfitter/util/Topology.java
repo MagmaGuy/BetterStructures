@@ -104,13 +104,16 @@ public class Topology {
     }
 
     private static boolean validNetherSurface(Location location) {
+        //Reads the same blocks as Location#getBlock, without a Location and Vector per read
+        World world = location.getWorld();
+        int x = location.getBlockX(), y = location.getBlockY(), z = location.getBlockZ();
         //See if current block is solid and if the one above it is air or similar to air
-        if (!(!SurfaceMaterials.ignorable(location.getBlock().getType()) &&
-                SurfaceMaterials.ignorable(location.getBlock().getLocation().add(new Vector(0, 1, 0)).getBlock().getType())))
+        if (!(!SurfaceMaterials.ignorable(world.getBlockAt(x, y, z).getType()) &&
+                SurfaceMaterials.ignorable(world.getBlockAt(x, y + 1, z).getType())))
             return false;
         //Scan 10 blocks vertically to make sure they're all air
         for (int i = 1; i < 11; i++) {
-            if (SurfaceMaterials.ignorable(location.clone().add(new Vector(0, i, 0)).getBlock().getType()))
+            if (SurfaceMaterials.ignorable(world.getBlockAt(x, y + i, z).getType()))
                 continue;
             return false;
         }
