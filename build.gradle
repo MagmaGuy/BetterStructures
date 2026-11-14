@@ -94,13 +94,11 @@ jar {
     archiveClassifier.set('min') // we want the Uberjar to be distributed, this is the minified version
 }
 
-String packagePath = 'com.magmaguy.shaded'
-
 // Relocating a Package
 shadowJar {
-    dependencies {
-        relocate('org.bstats', packagePath + '.bstats')
-    }
+    // A per-plugin bStats package: a name shared with other plugins lets Bukkit's cross-plugin
+    // class lookup bind to another plugin's copy. bStats refuses to run under its own org.bstats name.
+    relocate 'org.bstats', 'com.magmaguy.betterstructures.shaded.bstats'
     relocate 'com.magmaguy.easyminecraftgoals', 'com.magmaguy.betterstructures.easyminecraftgoals'
     // Relocate the shaded MagmaCore so its static singleton (and config-folder resolution via
     // MagmaCore.getInstance().getRequestingPlugin()) is isolated per plugin. Without this, every
