@@ -32,7 +32,10 @@ dependencies {
         changing = true
     }
     implementation group: 'org.bstats', name: 'bstats-bukkit', version: '3.0.2'
-    implementation group: 'org.joml', name: 'joml', version: '1.10.8'
+    // The server ships JOML (Spigot and Paper since 1.19.4; 1.10.8 on the 1.21.4 floor), and
+    // Bukkit's plugin class loader already resolves it from there. Shading it only added its
+    // transitive Kotlin stdlib to the jar.
+    compileOnly group: 'org.joml', name: 'joml', version: '1.10.8'
     compileOnly group: 'com.magmaguy', name: 'EliteMobs', version: '10.9.14'
     compileOnly group: 'io.lumine', name: 'Mythic-Dist', version: '5.2.1'
     compileOnly group: 'io.lumine', name: 'MythicLib-dist', version: '1.5.2-SNAPSHOT'
