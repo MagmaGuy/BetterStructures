@@ -20,13 +20,13 @@
 # 🟠 Main Features (100% optional and configurable!)
  
 * **Add hand-crafted structures to your Minecraft world!**
-* **Add unique randomly generated [modular dungeons](https://nightbreak.io/plugin/betterstructures/#dungeoneering-modules-free) to your world!**
+* **Add unique randomly generated [modular dungeons](https://nightbreak.io/content/dungeoneering-modules/#dungeoneering-modules-free) to your world!**
 * **Use pre-made packs or build your own with WorldEdit!**
 * **Fits any world generator.**
 * **Structures spawn on the surface, underground, in the sky and on liquid surfaces.** [Placement types](https://wiki.nightbreak.io/BetterStructures/creating_generators#structuretype)
 * **Chests with randomized loot.**
 * **Optional vanilla mob spawns inside structures.**
-* **Contains custom props and furniture when used with the [BetterStructures Prop Pack](https://nightbreak.io/plugin/freeminecraftmodels/#betterstructures-prop-pack)**
+* **Contains custom props and furniture when used with the [BetterStructures Prop Pack](https://nightbreak.io/content/betterstructures-prop-pack/)**
 * **Only generates in new chunks.**
 * **Supports custom items.**
 * **[EliteMobs](https://nightbreak.io/plugin/elitemobs/) integration** for advanced **boss fights**.
@@ -77,34 +77,34 @@
 </p>
 
 <p align="center">
-  <a href="https://nightbreak.io/plugin/betterstructures/#dungeoneering-modules-free">
+  <a href="https://nightbreak.io/content/dungeoneering-modules/#dungeoneering-modules-free">
     <img src="https://i.postimg.cc/43xH03qV/Modular-Dungeons-BS.gif" width="804"/>
   </a>
 </p>
 
 <p align="center">
-  <a href="https://nightbreak.io/plugin/betterstructures/#dungeoneering-modules-premium">
+  <a href="https://nightbreak.io/content/dungeoneering-modules/#dungeoneering-modules-premium">
     <img src="https://i.postimg.cc/Z5sv1dN1/Group-7096.png" width="400"/>
   </a>
-  <a href="https://nightbreak.io/plugin/betterstructures/#default-structures">
+  <a href="https://nightbreak.io/content/default-structures/">
     <img src="https://i.postimg.cc/jqmHWQwm/Group-43.png" width="400"/>
   </a>
 </p>
  
 <p align="center">
-  <a href="https://nightbreak.io/plugin/betterstructures/#caves-and-lost-civilizations-free">
+  <a href="https://nightbreak.io/content/caves-and-lost-civilizations/#caves-and-lost-civilizations-free">
     <img src="https://i.postimg.cc/h4X4GNd8/Group-44.png" width="400"/>
   </a>
-  <a href="https://nightbreak.io/plugin/betterstructures/#caves-and-lost-civilizations-premium">
+  <a href="https://nightbreak.io/content/caves-and-lost-civilizations/#caves-and-lost-civilizations-premium">
     <img src="https://i.postimg.cc/ncxWWDps/Group-45.png" width="400"/>
   </a>
 </p>
  
 <p align="center">
-  <a href="https://nightbreak.io/plugin/betterstructures/#premium-shrines">
+  <a href="https://nightbreak.io/content/premium-shrines/">
     <img src="https://i.postimg.cc/Y2RNpGQL/Group-46.png" width="400"/>
   </a>
-  <a href="https://nightbreak.io/plugin/betterstructures/#adventure-pack">
+  <a href="https://nightbreak.io/content/adventure-pack/">
     <img src="https://i.postimg.cc/QNF5r4Nw/Group-48.png" width="400"/>
   </a>
 </p>
@@ -146,34 +146,34 @@
 # 🟠 View More by Magmaguy!
  
 <p align="center">
-  <a href="https://nightbreak.io/plugin/elitemobs">
+  <a href="https://nightbreak.io/plugin/elitemobs/">
     <img src="https://i.postimg.cc/zXQRn1jD/Elite-Mobs.png" width="300"/>
   </a>
-  <a href="https://nightbreak.io/plugin/betterstructures">
+  <a href="https://nightbreak.io/plugin/betterstructures/">
     <img src="https://i.postimg.cc/3rVK1rPq/Better-Structures.png" width="300"/>
   </a>
 </p>
 <p align="center">
-  <a href="https://nightbreak.io/plugin/extractioncraft">
+  <a href="https://nightbreak.io/plugin/extractioncraft/">
     <img src="https://i.postimg.cc/gjV6VMYz/extractioncraft.png" width="300"/>
   </a>
-  <a href="https://nightbreak.io/plugin/eternaltd">
+  <a href="https://nightbreak.io/plugin/eternaltd/">
     <img src="https://i.postimg.cc/Kjf8cCGM/ETD.png" width="300"/>
   </a>
 </p>
 <p align="center">
-  <a href="https://nightbreak.io/plugin/resourcepackmanager">
+  <a href="https://nightbreak.io/plugin/resourcepackmanager/">
     <img src="https://i.postimg.cc/Y0GdtBfX/Resource-Pack-Manager.png" width="300"/>
   </a>
-  <a href="https://nightbreak.io/plugin/freeminecraftmodels">
+  <a href="https://nightbreak.io/plugin/freeminecraftmodels/">
     <img src="https://i.postimg.cc/0Qxv6ZHd/FMM.png" width="300"/>
   </a>
 </p>
 <p align="center">
-  <a href="https://nightbreak.io/plugin/betterfood">
+  <a href="https://nightbreak.io/plugin/betterfood/">
     <img src="https://i.postimg.cc/JzcDSB80/Better-Food.png" width="300"/>
   </a>
-  <a href="https://nightbreak.io/plugin/resurrectionchest">
+  <a href="https://nightbreak.io/plugin/resurrectionchest/">
     <img src="https://i.imgur.com/qpgXCge.png" width="300"/>
   </a>
 </p>
