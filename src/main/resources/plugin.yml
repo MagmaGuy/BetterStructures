@@ -5,6 +5,7 @@ api-version: '1.21.4'
 depend: [ WorldEdit ]
 softdepend:
   - EliteMobs
+  - FreeMinecraftModels
   - MythicMobs
   - MMOItems
   - WorldGuard

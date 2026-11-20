@@ -11,6 +11,7 @@ import com.magmaguy.betterstructures.config.spawnpools.SpawnPoolsConfigFields;
 import com.magmaguy.betterstructures.config.treasures.TreasureConfig;
 import com.magmaguy.betterstructures.config.treasures.TreasureConfigFields;
 import com.magmaguy.betterstructures.thirdparty.EliteMobs;
+import com.magmaguy.betterstructures.thirdparty.FreeMinecraftModels;
 import com.magmaguy.betterstructures.util.WorldEditUtils;
 import com.magmaguy.easyminecraftgoals.NMSManager;
 import com.magmaguy.magmacore.util.Logger;
@@ -36,6 +37,7 @@ import org.bukkit.block.data.Directional;
 import org.bukkit.block.data.Rail;
 import org.bukkit.block.data.type.Chest;
 import org.bukkit.block.data.type.Sign;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -75,7 +77,8 @@ public final class ModulePasting {
         }
     };
     private ModularWorld modularWorld;
-    private boolean missingEliteMobsWarned;
+    static final String PROP_MARKER = "[prop]";
+    private boolean missingEliteMobsWarned, missingModelsWarned;
     private final World world;
     private final File worldFolder;
     private final ModuleGeneratorsConfigFields moduleGeneratorsConfigFields;
@@ -267,11 +270,28 @@ public final class ModulePasting {
     /**
      * Modules pasted into an existing world have no ModularWorld consumer, so their boss signs spawn
      * one-time regional bosses, the same way [elitemobs] signs do in regular structures.
+     * <p>
+     * A boss sign with a {@value #PROP_MARKER} line is a boss whose FreeMinecraftModels model is the point: without
+     * FreeMinecraftModels it spawns nothing, rather than a bare vanilla mob, and without EliteMobs its model stands
+     * in the room as a static prop. Put the marker above "[elitemobs]": versions before it read every line after
+     * "[elitemobs]" as the filename.
      */
     private void spawnSignBoss(InterpretedSign sign) {
         String bossFilename = bossFilename(sign.text());
         if (bossFilename == null) return;
+        boolean modelBoss = isPropSign(sign.text());
+        if (modelBoss && !FreeMinecraftModels.isEnabled()) {
+            if (!missingModelsWarned)
+                Logger.info("Modular structure at " + blockText(startLocation) + " has bosses that need FreeMinecraftModels,"
+                        + " which is not enabled. They were not spawned.");
+            missingModelsWarned = true;
+            return;
+        }
         if (!Bukkit.getPluginManager().isPluginEnabled("EliteMobs")) {
+            if (modelBoss) {
+                spawnStandInProp(sign, bossFilename);
+                return;
+            }
             if (!missingEliteMobsWarned)
                 Logger.warn("Modular structure at " + startLocation.getBlockX() + ", " + startLocation.getBlockY() + ", "
                         + startLocation.getBlockZ() + " has EliteMobs boss signs, but EliteMobs is not enabled. Its bosses were not spawned.");
@@ -281,9 +301,49 @@ public final class ModulePasting {
         EliteMobs.Spawn(entitySpawnLocation(sign.location()), bossFilename);
     }
 
+    /** The boss's model as a static prop, read from its file in EliteMobs' folder, where pack imports put it. */
+    private void spawnStandInProp(InterpretedSign sign, String bossFilename) {
+        String model = bossModel(new File(MetadataHandler.PLUGIN.getDataFolder().getParentFile(),
+                "EliteMobs" + File.separator + "custombosses"), bossFilename);
+        if (model == null) {
+            Logger.warn("Modular structure at " + blockText(startLocation) + " has a prop sign for " + bossFilename
+                    + ", but no boss file with a customModel was found for it in plugins/EliteMobs/custombosses.");
+            return;
+        }
+        if (!FreeMinecraftModels.spawnProp(model, entitySpawnLocation(sign.location())))
+            Logger.warn("FreeMinecraftModels did not place the " + model + " prop for " + bossFilename + " at "
+                    + blockText(sign.location()) + ".");
+    }
+
+    /** The customModel of the first boss file with this name under the folder, or null. */
+    static String bossModel(File customBossesFolder, String bossFilename) {
+        File[] files = customBossesFolder.listFiles();
+        if (files == null) return null;
+        for (File file : files) {
+            if (file.isDirectory()) {
+                String model = bossModel(file, bossFilename);
+                if (model != null) return model;
+            } else if (file.getName().equalsIgnoreCase(bossFilename)) {
+                String model = YamlConfiguration.loadConfiguration(file).getString("customModel");
+                return model == null || model.isBlank() ? null : model.trim();
+            }
+        }
+        return null;
+    }
+
+    static boolean isPropSign(List<String> lines) {
+        for (String line : lines) if (line != null && line.trim().equalsIgnoreCase(PROP_MARKER)) return true;
+        return false;
+    }
+
+    private static String blockText(Location location) {
+        return location.getBlockX() + ", " + location.getBlockY() + ", " + location.getBlockZ();
+    }
+
     /**
      * The boss a module sign requests: "[elitemobs]" followed by the boss filename, which may be split
      * across the remaining lines, or "[pool:name]" resolved through spawn_pools/name.yml.
+     * A {@value #PROP_MARKER} line is never part of the filename.
      * Null for signs that do not request a boss, or whose pool cannot supply one.
      */
     static String bossFilename(List<String> lines) {
@@ -291,7 +351,8 @@ public final class ModulePasting {
             String line = lines.get(i);
             if (line.toLowerCase(Locale.ROOT).contains("[elitemobs]")) {
                 StringBuilder filename = new StringBuilder();
-                for (String part : lines.subList(i + 1, lines.size())) filename.append(part.trim());
+                for (String part : lines.subList(i + 1, lines.size()))
+                    if (!part.trim().equalsIgnoreCase(PROP_MARKER)) filename.append(part.trim());
                 if (filename.isEmpty()) {
                     Logger.warn("Module sign " + lines + " has no EliteMobs boss filename");
                     return null;
