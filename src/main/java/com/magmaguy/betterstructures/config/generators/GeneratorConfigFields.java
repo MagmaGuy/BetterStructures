@@ -31,6 +31,21 @@ public class GeneratorConfigFields extends CustomConfigFields {
     @Getter
     @Setter
     private List<World.Environment> validWorldEnvironments = null;
+    /**
+     * Closest horizontal distance, in blocks from block coordinates 0, 0 of the world being
+     * generated, at which this generator's structures appear naturally. 0 or less means no limit.
+     */
+    @Getter
+    private int minDistanceFromOrigin = 0;
+    /**
+     * Furthest horizontal distance, in blocks from block coordinates 0, 0 of the world being
+     * generated, at which this generator's structures appear naturally. 0 or less means no limit.
+     */
+    @Getter
+    private int maxDistanceFromOrigin = 0;
+    //Squared forms of the two limits, read once per candidate for every new chunk
+    private long minDistanceFromOriginSquared = 0;
+    private long maxDistanceFromOriginSquared = Long.MAX_VALUE;
     @Getter
     @Setter
     private List<String> validBiomesStrings = new ArrayList<>();
@@ -81,6 +96,13 @@ public class GeneratorConfigFields extends CustomConfigFields {
         this.highestYLevel = processInt("highestYLevel", highestYLevel, 320, false);
         this.validWorlds = processStringList("validWorlds", validWorlds, new ArrayList<>(), false);
         this.validWorldEnvironments = processEnumList("validWorldEnvironments", validWorldEnvironments, null, World.Environment.class, false);
+        //Optional: the value equals the plugin default, so a file without these keys is not rewritten
+        int configuredMinDistance = processInt("minDistanceFromOrigin", minDistanceFromOrigin, 0, false);
+        int configuredMaxDistance = processInt("maxDistanceFromOrigin", maxDistanceFromOrigin, 0, false);
+        if (!setDistanceFromOrigin(configuredMinDistance, configuredMaxDistance))
+            Logger.warn("Generator " + filename + " has minDistanceFromOrigin " + configuredMinDistance
+                    + " greater than maxDistanceFromOrigin " + configuredMaxDistance
+                    + " ! Both are ignored and this generator has no distance limit until fixed.");
 
         // Process biomes
         processBiomes();
@@ -109,6 +131,37 @@ public class GeneratorConfigFields extends CustomConfigFields {
                 Logger.warn("No valid barrel treasure config found for generator " + filename + " (looked for: " + barrelTreasureFilename + "). Barrels in this generator will be left empty until fixed.");
             }
         }
+    }
+
+    /**
+     * Sets the distance ring this generator's structures appear in, in blocks from block
+     * coordinates 0, 0. A value of 0 or less means no limit on that side.
+     *
+     * @param minDistance Closest distance allowed
+     * @param maxDistance Furthest distance allowed
+     * @return False when both are set and the minimum is greater than the maximum; both are then ignored
+     */
+    public boolean setDistanceFromOrigin(int minDistance, int maxDistance) {
+        boolean inverted = minDistance > 0 && maxDistance > 0 && minDistance > maxDistance;
+        this.minDistanceFromOrigin = inverted ? 0 : Math.max(0, minDistance);
+        this.maxDistanceFromOrigin = inverted ? 0 : Math.max(0, maxDistance);
+        this.minDistanceFromOriginSquared = (long) minDistanceFromOrigin * minDistanceFromOrigin;
+        this.maxDistanceFromOriginSquared = maxDistanceFromOrigin > 0
+                ? (long) maxDistanceFromOrigin * maxDistanceFromOrigin
+                : Long.MAX_VALUE;
+        return !inverted;
+    }
+
+    /**
+     * Checks block coordinates against this generator's distance limits. Both limits are inclusive.
+     *
+     * @param blockX The block X coordinate
+     * @param blockZ The block Z coordinate
+     * @return True if the horizontal distance to block coordinates 0, 0 is within the limits
+     */
+    public boolean isWithinDistanceFromOrigin(int blockX, int blockZ) {
+        long distanceSquared = (long) blockX * blockX + (long) blockZ * blockZ;
+        return distanceSquared >= minDistanceFromOriginSquared && distanceSquared <= maxDistanceFromOriginSquared;
     }
 
     /**

@@ -315,6 +315,18 @@ public class SchematicContainer {
         return generatorConfigFields.getLowestYLevel() <= yLevel && generatorConfigFields.getHighestYLevel() >= yLevel;
     }
 
+    /**
+     * Validates the generator's minDistanceFromOrigin and maxDistanceFromOrigin, measured
+     * horizontally from block coordinates 0, 0 of the world being generated.
+     *
+     * @param blockX The block X coordinate of the anchor
+     * @param blockZ The block Z coordinate of the anchor
+     * @return True if the position is within the generator's distance limits
+     */
+    public boolean isValidDistance(int blockX, int blockZ) {
+        return generatorConfigFields.isWithinDistanceFromOrigin(blockX, blockZ);
+    }
+
     public boolean isValidWorld(String worldName) {
         return generatorConfigFields.getValidWorlds() == null ||
                 generatorConfigFields.getValidWorlds().isEmpty() ||
