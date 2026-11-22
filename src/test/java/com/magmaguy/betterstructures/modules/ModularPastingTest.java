@@ -133,7 +133,9 @@ class ModularPastingTest {
 
         assertEquals(Material.DIRT, world.getBlockAt(0, 70, 0).getType(), "Void-world air must not be written");
         assertEquals(Material.GLOWSTONE, world.getBlockAt(32, 70, 0).getType());
-        assertEquals(List.of("2,0"), world.requestedChunks, "Empty and barrier-only chunks must not be requested");
+        // The written chunk, then the eight round it, which a write beside a chunk border reads.
+        assertEquals(List.of("2,0", "1,-1", "1,0", "1,1", "2,-1", "2,1", "3,-1", "3,0", "3,1"), world.requestedChunks,
+                "Empty and barrier-only chunks must not be readied for themselves");
         assertEquals(1, completions.size());
         assertSame(world, completions.getFirst().getModularWorld().getWorld());
         assertEquals(new Location(world, 8, 62, 8), completions.getFirst().getModularWorld().getCenter());

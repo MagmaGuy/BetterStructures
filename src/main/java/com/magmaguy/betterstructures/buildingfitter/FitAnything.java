@@ -158,6 +158,7 @@ public class FitAnything {
         }
         @Override public boolean hasNext() { return phase < 2; }
         @Override public boolean ready() { return chunks.ready(corner.clone().add(x, 0, z)); }
+        @Override public String label() { return "the placement of " + describe(base) + " (no block was placed)"; }
         @Override public void pasteNext() {
             if (phase == 0) {
                 Block ground = corner.clone().add(x, y, z).getBlock();
@@ -247,6 +248,9 @@ public class FitAnything {
             }
             return chunks.ready(destination);
         }
+        @Override public String label() {
+            return "the finishing of " + describe(base) + " (its pedestal, chests, spawns or props may be missing)";
+        }
         @Override public void pasteNext() {
             switch (phase) {
                 case 0 -> addPedestalColumn(corner, x, z);
@@ -291,6 +295,11 @@ public class FitAnything {
                     new BuildPasteCompleteEvent(FitAnything.this, corner, highestCorner, containers));
             announceComplete(base);
         }
+    }
+
+    private String describe(Location base) {
+        return schematicContainer.getConfigFilename() + " at " + base.getWorld().getName() + " " + base.getBlockX()
+                + ", " + base.getBlockY() + ", " + base.getBlockZ();
     }
 
     private void announceComplete(Location base) {

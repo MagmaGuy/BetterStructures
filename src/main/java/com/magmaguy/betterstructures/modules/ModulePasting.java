@@ -417,6 +417,7 @@ public final class ModulePasting {
 
         private ModularPaste(List<ModuleInput> inputs) { this.inputs = inputs; }
         public boolean hasNext() { return !closed && phase < 8; }
+        public String label() { return "a modular dungeon paste in " + world.getName(); }
 
         private void selectModule() {
             module = inputs.get(moduleIndex);

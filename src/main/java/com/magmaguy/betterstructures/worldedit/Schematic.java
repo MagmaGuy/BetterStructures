@@ -267,6 +267,8 @@ public class Schematic {
             isDistributedPasting = true;
             try {
                 activePasteTask = new BukkitRunnable() {
+                    private boolean started;
+
                     @Override
                     public void run() {
                         PasteOperation operation = activePasteOperation;
@@ -283,6 +285,7 @@ public class Schematic {
                                 if (!operation.ready()) break;
                                 operation.pasteNext();
                                 processedAtLeastOne = true;
+                                started = true;
                             }
 
                             if (!operation.hasNext()) {
@@ -290,6 +293,15 @@ public class Schematic {
                                 cancel();
                                 processNextPaste();
                             }
+                        } catch (PasteChunkReadiness.LoadTimeout timeout) {
+                            // Expected where Paper strands a chunk: a console line, no stack trace.
+                            Logger.warn((started ? "Stopped " + operation.label() + " partway" : "Skipped " + operation.label())
+                                    + " because " + timeout.getMessage() + ". Paper can leave a chunk stuck partway"
+                                    + " through generation (PaperMC/Paper#11174); BetterStructures gives up on it"
+                                    + " instead of waiting on the server thread.");
+                            abortActivePaste();
+                            cancel();
+                            processNextPaste();
                         } catch (Throwable throwable) {
                             Logger.warn("Failed while pasting a BetterStructures schematic: " + throwable.getMessage());
                             throwable.printStackTrace();
@@ -387,6 +399,9 @@ public class Schematic {
 
         default void close() { }
 
+        /** What this operation is, for the console line when it gives up waiting for a chunk. */
+        default String label() { return "a paste"; }
+
         void pasteNext();
 
         void onComplete();
@@ -402,6 +417,7 @@ public class Schematic {
         private final Map<BlockState, PreparedState> states = new HashMap<>();
         private final Runnable onComplete;
         private final BlockVector3 minimum;
+        private boolean surveyed;
 
         private ClipboardPasteOperation(
                 Clipboard clipboard,
@@ -423,8 +439,20 @@ public class Schematic {
 
         @Override
         public boolean ready() {
+            int x = Location.locToBlock(adjustedLocation.getX()), z = Location.locToBlock(adjustedLocation.getZ());
+            // Every chunk of the footprint, each with the chunks round it, before the first write: a chunk
+            // that never loads then skips the whole paste instead of leaving part of a build.
+            if (!surveyed) {
+                if (!chunks.readyAll(x, z, x + cursor.width - 1, z + cursor.depth - 1)) return false;
+                surveyed = true;
+            }
             return chunks.ready(Location.locToBlock(adjustedLocation.getX() + cursor.x),
                     Location.locToBlock(adjustedLocation.getZ() + cursor.z));
+        }
+
+        @Override public String label() {
+            return "the structure paste at " + adjustedLocation.getWorld().getName() + " " + adjustedLocation.getBlockX()
+                    + ", " + adjustedLocation.getBlockY() + ", " + adjustedLocation.getBlockZ();
         }
 
         @Override public void close() {
